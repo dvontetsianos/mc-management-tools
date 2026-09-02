@@ -1,0 +1,75 @@
+import { jwtDecode } from "jwt-decode";
+import { API_URL } from "../config";
+
+
+
+export async function login(username, password) {
+
+    const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            username: username,
+            password: password
+        })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Login failed");
+    }
+
+    return data;
+}
+
+export function logout() {
+    localStorage.removeItem("token");
+}
+
+
+export function getToken() {
+    return localStorage.getItem("token");
+}
+
+
+export function getUser() {
+    const token = getToken();
+
+    if (!token) {
+        return null;
+    }
+
+    try {
+
+        const decoded = jwtDecode(token);
+
+        if (decoded.exp * 1000 < Date.now()) {
+
+            logout();
+
+            return null;
+        }
+
+        return decoded;
+
+    } catch (error) {
+
+        logout();
+        
+        return null;
+    }
+}
+
+export function hasPermission(permission) {
+
+    const user = getUser();
+
+    if (!user) {
+        return false;
+    }
+
+    return user.permissions?.includes(permission);
+}

@@ -1,0 +1,9 @@
+{
+  "appId": "com.marbellacollection.quickcount",
+  "appName": "Quick Count",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "http"
+  }
+}

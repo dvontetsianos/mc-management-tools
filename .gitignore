@@ -1,0 +1,37 @@
+# Secrets / environment
+.env
+.env.local
+
+
+#Backend (Python)
+.venv/
+__pycache__/
+**/__pucache__/
+*.pyc
+
+# Live data - never commit
+assets.db
+assets_backup*.db
+uploads/
+logs/
+*.log
+
+
+# Frontend (Node / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+
+# Capacitor / Android - regenerate with `npx cap add android` after cloning
+frontend/android/
+
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+.VSCodeCounter/
