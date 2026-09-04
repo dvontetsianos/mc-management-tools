@@ -131,6 +131,7 @@ function ItemLocationFormDialog({
                         fullWidth
                     />
 
+                    {/*}
                     <TextField
                         label="Broken Quantity"
                         type="number"
@@ -143,6 +144,7 @@ function ItemLocationFormDialog({
                         }
                         fullWidth
                     />
+                    */}
 
                 </Stack>
 

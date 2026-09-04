@@ -191,7 +191,7 @@ class LostFoundItem(Base):
     description = Column(String)
     location_found = Column(String, nullable=True)
     date_found = Column(DateTime, default=datetime.utcnow)
-    found_by = Column(String)
+    found_by = Column(String, nullable=True)
     status = Column(String, default="unclaimed")
     claimed_by = Column(String, nullable=True)
     claimed_date = Column(DateTime, nullable=True)
@@ -209,8 +209,10 @@ class Item(Base):
     supplier = relationship("Supplier", back_populates="items")
     cost_per_unit = Column(Float, nullable=True)
     image_url = Column(String, nullable=True)
+    opening_quantity = Column(Integer, default=0)
 
     locations = relationship("ItemLocation", back_populates="item")
+    purchases = relationship("Purchase", back_populates="item")
 
 
 
@@ -233,3 +235,22 @@ class ItemLocation(Base):
     location = relationship("Location", back_populates="item_locations")
     total_quantity = Column(Integer, default=0)
     broken_quantity = Column(Integer, default=0)
+
+
+
+class Purchase(Base):
+    __tablename__ = "purchases"
+
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("items.id"))
+    item = relationship("Item", back_populates="purchases")
+    quantity = Column(Integer)
+    unit_cost = Column(Float, nullable=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+    supplier = relationship("Supplier")
+    document_number = Column(String, nullable=True)
+    document_date = Column(DateTime, nullable=True)
+    source_file = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

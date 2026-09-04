@@ -91,10 +91,14 @@ function ItemTable({
                                     Category{getSortArrow("category")}
                                 </TableCell>
 
+                                <TableCell align="center" sx={{ width: 140 }}>
+                                    Total Quantity
+                                </TableCell>
+
                                 <TableCell
                                     align="center"
                                     onClick={() => onSort("total_quantity")}>
-                                        Total Quantity{getSortArrow("total_quantity")}
+                                        Available{getSortArrow("total_quantity")}
                                 </TableCell>
 
                                 <TableCell
@@ -169,12 +173,13 @@ function ItemTable({
 
                                     <TableCell align="center">{item.name}</TableCell>
                                     <TableCell sx={{ width: 100}} align="center">{item.category}</TableCell>
+                                    <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
                                     <TableCell align="center" sx={{ width: 140}}>{item.total_quantity}</TableCell>
                                     <TableCell
                                         align="center"
                                         sx={{ width:120 }}
                                     >
-                                        {item.broken_quantity}
+                                        {item.broken_missing}
                                     </TableCell>
 
                                     <TableCell align="center" sx={{ width: 250, maxWidth: 250 }}>

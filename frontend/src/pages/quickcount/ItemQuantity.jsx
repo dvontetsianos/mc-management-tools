@@ -168,6 +168,7 @@ function ItemQuantity() {
                     </Box>
                 </Paper>
 
+                {/*
                 <Paper sx={{ p: 3, borderRadius: 3 }}>
                     <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
                         Broken / out of service
@@ -198,6 +199,7 @@ function ItemQuantity() {
                         </IconButton>
                     </Box>
                 </Paper>
+                */}
             </Box>
 
             <Box sx={{ px: 2, mt: 4, mb: 4 }}>

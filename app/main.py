@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Form, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine, get_db, SessionLocal
@@ -616,8 +617,6 @@ def upload_asset_image(
             status_code=400,
             detail="Only JPG, PNG and WEBP images are allowed"
         )
-
-    file_extension = file.filename.split(".")[-1]
 
     unique_filename = (
         f"{uuid.uuid4().hex}_{file.filename}"
@@ -1499,9 +1498,11 @@ def login(user: schemas.UserLogin, request: Request, db: Session = Depends(get_d
 
     os.makedirs("logs", exist_ok=True)
 
+    client_host = request.client.host if request.client else "unknown"
+
     print(
         f"LOGIN | User: {db_user.username} | "
-        f"IP: {request.client.host} | "
+        f"IP: {client_host} | "
         f"Time: {datetime.now().strftime('%H:%M:%S')}"
     )
 
@@ -1509,7 +1510,7 @@ def login(user: schemas.UserLogin, request: Request, db: Session = Depends(get_d
         log_file.write(
             f"{datetime.now().strftime('%Y-%m-%d %H:%M')} | "
             f"User: {db_user.username} | "
-            f"IP: {request.client.host}\n"
+            f"IP: {client_host}\n"
         )
     
     permissions = []
@@ -1724,6 +1725,13 @@ def get_items(db: Session = Depends(get_db)):
         joinedload(models.Item.locations).joinedload(models.ItemLocation.location)
     ).all()
 
+
+    purchases_by_item = dict(
+        db.query(models.Purchase.item_id, func.sum(models.Purchase.quantity))
+        .group_by(models.Purchase.item_id)
+        .all()
+    )
+
     result = []
 
     for item in items:
@@ -1748,6 +1756,12 @@ def get_items(db: Session = Depends(get_db)):
             broken_quantity += item_location.broken_quantity
 
 
+        opening_quantity = item.opening_quantity or 0
+        purchases_this_year = purchases_by_item.get(item.id, 0) or 0
+        expected_total = opening_quantity + purchases_this_year
+        broken_missing = expected_total - total_quantity
+
+
         result.append({
             "id": item.id,
             "name": item.name,
@@ -1759,6 +1773,10 @@ def get_items(db: Session = Depends(get_db)):
             "image_url": item.image_url,
             "total_quantity": total_quantity,
             "broken_quantity": broken_quantity,
+            "opening_quantity": opening_quantity,
+            "purchases_this_year": purchases_this_year,
+            "expected_total": expected_total,
+            "broken_missing": broken_missing,
             "locations": locations
         })
 
@@ -2102,23 +2120,23 @@ def upload_item_image(
             buffer
         )
 
-        item.image_url = upload_path.replace("\\", "/")
+    item.image_url = upload_path.replace("\\", "/")
 
-        db.commit()
-        db.refresh(item)
+    db.commit()
+    db.refresh(item)
 
-        log_action(db, user, "uploaded image for", "Item", item.name, item.id)
+    log_action(db, user, "uploaded image for", "Item", item.name, item.id)
 
-        if old_image:
+    if old_image:
 
-            if os.path.exists(old_image):
+        if os.path.exists(old_image):
 
-                os.remove(old_image)
+            os.remove(old_image)
 
-        return {
-            "message": "Image uploaded successfully",
-            "image_url": item.image_url
-        }
+    return {
+        "message": "Image uploaded successfully",
+        "image_url": item.image_url
+    }
 
 
 #----------------------------------------------------------------------------------
@@ -2356,3 +2374,153 @@ def delete_item_location(
     log_action(db, user, "unassigned", "Item", item_name, item_id, details=f"Removed from {location_name}")
 
     return {"message": "Item removed from location successfully"}
+
+
+#--------------------------------------------------------------------------
+#get purchases, optionally filtered to one item
+@app.get("/purchases", response_model=list[schemas.PurchaseResponse])
+def get_purchases(
+    item_id: int | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_assets_access)
+):
+
+
+    query = db.query(models.Purchase).options(
+        joinedload(models.Purchase.item),
+        joinedload(models.Purchase.supplier)
+    )
+
+    if item_id is not None:
+        query = query.filter(models.Purchase.item_id == item_id)
+
+
+    purchases = query.order_by(models.Purchase.created_at.desc()).all()
+
+
+    result = []
+
+
+    for purchase in purchases:
+
+        result.append({
+            "id": purchase.id,
+            "item_id": purchase.item_id,
+            "item_name": purchase.item.name if purchase.item else None,
+            "quantity": purchase.quantity,
+            "unit_cost": purchase.unit_cost,
+            "supplier_id": purchase.supplier_id,
+            "supplier": purchase.supplier.name if purchase.supplier else None,
+            "document_number": purchase.document_number,
+            "document_date": purchase.document_date,
+            "source_file": purchase.source_file,
+            "notes": purchase.notes,
+            "created_at": purchase.created_at
+        })
+
+    return result
+
+
+#---------------------------------------------------------------------
+#log a purchase
+@app.post("/purchases", response_model=schemas.PurchaseResponse)
+def create_purchase(
+    purchase: schemas.PurchaseCreate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_assets_access)
+):
+
+    item = db.query(models.Item).filter(
+        models.Item.id == purchase.item_id
+    ).first()
+
+
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Item not found"
+        )
+
+    supplier = None
+
+    if purchase.supplier_id is not None:
+        supplier = db.query(models.Supplier).filter(
+            models.Supplier.id == purchase.supplier_id
+        ).first()
+
+
+        if not supplier:
+            raise HTTPException(
+                status_code=404,
+                detail="Supplier not found"
+            )
+
+
+    new_purchase = models.Purchase(
+        item_id=purchase.item_id,
+        quantity=purchase.quantity,
+        unit_cost=purchase.unit_cost,
+        supplier_id=purchase.supplier_id,
+        document_number=purchase.document_number,
+        document_date=purchase.document_date,
+        notes=purchase.notes
+    )
+
+    db.add(new_purchase)
+    db.commit()
+    db.refresh(new_purchase)
+
+    log_action(
+        db,
+        user,
+        "logged a purchase of",
+        item.name,
+        item.id,
+        details=f"Qty: {new_purchase.quantity}" + (f", Supplier: {supplier.name}" if supplier else "")
+    )
+
+    return {
+        "id": new_purchase.id,
+        "item_id": new_purchase.item_id,
+        "item_name": item.name,
+        "quantity": new_purchase.quantity,
+        "unit_cost": new_purchase.unit_cost,
+        "supplier_id": new_purchase.supplier_id,
+        "supplier": supplier.name if supplier else None,
+        "document_number": new_purchase.document_number,
+        "document_date": new_purchase.document_date,
+        "source_file": new_purchase.source_file,
+        "notes": new_purchase.notes,
+        "created_at": new_purchase.created_at
+    }
+
+#-------------------------------------------------------------------
+#delete a purchase (admin only, for correcting mistakes)
+@app.delete("/purchases/{purchase_id}")
+def delete_purchase(
+    purchase_id: int,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    db_purchase = db.query(models.Purchase).filter(
+        models.Purchase.id == purchase_id
+    ).first()
+
+    if db_purchase is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase not found"
+        )
+
+    item_name = db_purchase.item.name if db_purchase.item else "Unknown item"
+    item_id = db_purchase.item_id
+
+    db.delete(db_purchase)
+    db.commit()
+
+
+    log_action(db, user=admin, action="deleted a logged purchase for",entity_type="Item", entity_name=item_name, entity_id=item_id, details=f"Qty: {db_purchase.quantity}")
+
+
+    return {"message": "Purchase deleted successfully"}

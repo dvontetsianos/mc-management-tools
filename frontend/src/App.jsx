@@ -21,6 +21,7 @@ import LostFound from "./pages/LostFound";
 import LocationPicker from "./pages/quickcount/LocationPicker";
 import ItemList from "./pages/quickcount/ItemList";
 import ItemQuantity from "./pages/quickcount/ItemQuantity";
+import Purchases from "./pages/Purchases";
 
 
 
@@ -108,6 +109,15 @@ function App() {
                             <Assets />
                         </PermissionRoute>
                     } 
+                />
+
+                <Route
+                    path="/purchases"
+                    element={
+                        <PermissionRoute permission="assets_access">
+                            <Purchases />
+                        </PermissionRoute>
+                    }
                 />
 
                 <Route

@@ -25,7 +25,7 @@ class AssetUpdate(BaseModel):
 class AssetResponse(BaseModel):
     id: int
     name: str
-    category: str
+    category: str | None = None
     category_id: int | None
     location: str | None
     location_id: int | None
@@ -184,6 +184,10 @@ class ItemResponse(BaseModel):
     image_url: str | None = None
     total_quantity: int
     broken_quantity: int
+    opening_quantity: int = 0
+    purchases_this_year: int = 0
+    expected_total: int = 0
+    broken_missing: int = 0
     locations: list[ItemLocationResponse] = []
 
     class Config:
@@ -200,3 +204,33 @@ class ItemLocationCreate(BaseModel):
 class ItemLocationUpdate(BaseModel):
     total_quantity: int
     broken_quantity: int
+
+
+
+class PurchaseCreate(BaseModel):
+    item_id: int
+    quantity: int
+    unit_cost: float | None = None
+    supplier_id: int | None = None
+    document_number: str | None = None
+    document_date: datetime | None = None
+    notes: str | None = None
+
+
+
+class PurchaseResponse(BaseModel):
+    id: int
+    item_id: int
+    item_name: str | None = None
+    quantity: int
+    unit_cost: float | None = None
+    supplier_id: int | None = None
+    supplier: str | None = None
+    document_number: str | None = None
+    document_date: datetime | None = None
+    source_file: str | None = None
+    notes: str | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

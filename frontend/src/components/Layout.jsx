@@ -24,6 +24,7 @@ import AssessmentIcon from "@mui/icons-material/Assessment";
 import FindInPageIcon from "@mui/icons-material/FindInPage";
 import { getPendingRequestCount } from "../services/requestService";
 import { API_URL } from "../config";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
 
 function Layout() {
@@ -304,6 +305,26 @@ function Layout() {
                                             <ListItemText
                                             primary="F&B Assets"
                                             sx={{ ml: 2 }}
+                                            />
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            )}
+
+                            {(user?.role ==="admin" || user?.permissions?.includes("assets_access")) && (
+                                <ListItem disablePadding>
+                                    <ListItemButton
+                                        onClick={() => navigate("/purchases")}
+                                        sx={{
+                                            justifyContent: sidebarOpen ? "initial" : "center",
+                                        }}
+                                    >
+                                        <ShoppingCartIcon />
+
+                                        {sidebarOpen && (
+                                            <ListItemText
+                                                primary="Purchases"
+                                                sx={{ ml: 2 }}
                                             />
                                         )}
                                     </ListItemButton>

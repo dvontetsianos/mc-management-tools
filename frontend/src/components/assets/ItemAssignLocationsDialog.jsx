@@ -42,7 +42,6 @@ function ItemAssignLocationsDialog({
 
     const [newLocationId, setNewLocationId] = useState("");
     const [newTotalQty, setNewTotalQty] = useState("0");
-    const [newBrokenQty, setNewBrokenQty] = useState("0");
 
     const tempIdRef = useRef(0);
 
@@ -64,7 +63,6 @@ function ItemAssignLocationsDialog({
 
             setNewLocationId("");
             setNewTotalQty("0");
-            setNewBrokenQty("0");
             setError("");
         }
     }, [open, item]);
@@ -98,14 +96,13 @@ function ItemAssignLocationsDialog({
                 location_id: newLocationId,
                 location: locationObj ? locationObj.name : "",
                 total_quantity: newTotalQty,
-                broken_quantity: newBrokenQty
+                broken_quantity: 0
             }
         ]);
 
         setError("");
         setNewLocationId("");
         setNewTotalQty("0");
-        setNewBrokenQty("0");
     };
 
     const handleRemoveFromDraft = (rowId) => {
@@ -240,15 +237,7 @@ function ItemAssignLocationsDialog({
                                     </TableCell>
 
                                     <TableCell align="center">
-                                        <TextField
-                                            type="number"
-                                            size="small"
-                                            value={row.broken_quantity}
-                                            onChange={(e) =>
-                                                handleDraftFieldChange(row.id, "broken_quantity", e.target.value)
-                                            }
-                                            sx={{ width: 80 }}
-                                        />
+                                       {row.broken_quantity}
                                     </TableCell>
 
                                     <TableCell align="right">
@@ -294,15 +283,6 @@ function ItemAssignLocationsDialog({
                         size="small"
                         value={newTotalQty}
                         onChange={(e) => setNewTotalQty(e.target.value)}
-                        sx={{ width: 100 }}
-                    />
-
-                    <TextField
-                        label="Broken Qty"
-                        type="number"
-                        size="small"
-                        value={newBrokenQty}
-                        onChange={(e) => setNewBrokenQty(e.target.value)}
                         sx={{ width: 100 }}
                     />
 
