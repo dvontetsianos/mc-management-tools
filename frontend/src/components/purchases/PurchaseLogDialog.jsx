@@ -158,7 +158,7 @@ function PurchaseLogDialog({
                             if (inputValue !== "" && !exists) {
                                 filtered.push({
                                     inputValue,
-                                    name: `+Add new item: "${inputValue}"`,
+                                    name: `+Add new item: "${inputValue}" ------->Only in emergency cases<-------`,
                                     isNew: true
                                 });
                             }
@@ -177,7 +177,7 @@ function PurchaseLogDialog({
                             }
                         }}
                         renderInput={(params) => (
-                            <TextField {...params} label="Item" />
+                            <TextField {...params} label="Item*" />
                         )}
                     />
 
@@ -203,7 +203,7 @@ function PurchaseLogDialog({
 
 
                     <TextField
-                        label="Quantity"
+                        label="Quantity*"
                         type="number"
                         value={form.quantity}
                         onChange={(e) =>
@@ -246,7 +246,7 @@ function PurchaseLogDialog({
 
 
                     <TextField
-                        label="Document Number (optional)"
+                        label="Document Number (Not currently in use)"
                         value={form.documentNumber}
                         onChange={(e) =>
                             setForm({ ...form, documentNumber: e.target.value })
@@ -255,7 +255,7 @@ function PurchaseLogDialog({
                     />
 
                     <TextField
-                        label="Document Date (optional)"
+                        label=""
                         type="date"
                         value={form.documentDate}
                         onChange={(e) =>

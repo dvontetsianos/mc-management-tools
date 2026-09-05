@@ -8,7 +8,7 @@ from .database import Base, engine, get_db, SessionLocal
 from . import models, schemas
 from passlib.context import CryptContext
 from jose import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from jose import JWTError
 from fastapi import Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -161,11 +161,12 @@ app.mount(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
+        "http://localhost:5173", #localhost
         "http://127.0.0.1:5173",
-        "http://192.168.0.187:5173",
+        "http://192.168.0.187:5173", #marbella: private
         "https://localhost",
-        "http://localhost"
+        "http://localhost",
+        "http://192.168.21.113:5173"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -704,62 +705,84 @@ def get_history(
     }
 
 #------------------------------------------------------------------------
-#inventory value report (grouped by category, location and supplier)
-@app.get("/reports/inventory-value")
-def get_inventory_value_report(
+#report endpoint
+@app.get("/reports/spend")
+def get_spend_report(
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin_or_reports_access)
 ):
 
-    assets = db.query(models.Asset).options(
-        joinedload(models.Asset.category),
-        joinedload(models.Asset.location),
-        joinedload(models.Asset.supplier)
-    ).all()
 
+    query = db.query(models.Purchase).options(
+        joinedload(models.Purchase.item).joinedload(models.Item.category),
+        joinedload(models.Purchase.supplier)
+    )
+
+    #a purchase's effective date for range filtering: its document date when known, falling back to when it was logged, so purchases without a document date arent silently dropped from a date-ranged report
+    effective_date = func.coalesce(models.Purchase.document_date, models.Purchase.created_at)
+
+    if start_date is not None:
+        query = query.filter(effective_date >= start_date)
+
+    if end_date is not None:
+        query = query.filter(effective_date < end_date + timedelta(days=1))
+
+
+    purchases = query.all()
 
     by_category = {}
-    by_location = {}
     by_supplier = {}
 
     grand_total = 0.0
     missing_cost_count = 0
+    purchase_count = 0
 
 
-    for asset in assets:
+    for purchase in purchases:
 
-        if asset.cost_per_unit is None:
+        if purchase.unit_cost is None:
             missing_cost_count += 1
             continue
 
-        value = asset.total_quantity * asset.cost_per_unit
+        value = purchase.quantity * purchase.unit_cost
 
+        category_id = purchase.item.category_id if purchase.item else None
+        category_name = (
+            purchase.item.category.name
+            if purchase.item and purchase.item.category
+            else "Uncategorized"
+        )
 
-        category_name = asset.category.name if asset.category else "Uncategorized"
-        location_name = asset.location.name if asset.location else "No location"
-        supplier_name = asset.supplier.name if asset.supplier else "No Supplier"
+        supplier_id = purchase.supplier_id
+        supplier_name = purchase.supplier.name if purchase.supplier else "No Supplier"
 
-        by_category[category_name] = by_category.get(category_name, 0) + value
-        by_location[location_name] = by_location.get(location_name, 0) + value
-        by_supplier[supplier_name] = by_supplier.get(supplier_name, 0) + value
+        if category_id not in by_category:
+            by_category[category_id] = {"name": category_name, "value": 0.0}
+        by_category[category_id]["value"] += value
+
+        if supplier_id not in by_supplier:
+            by_supplier[supplier_id] = {"name": supplier_name, "value": 0.0}
+        by_supplier[supplier_id]["value"] += value
 
         grand_total += value
+        purchase_count += 1
 
 
     def to_sorted_list(breakdown):
-
-        items = [{"name": name, "value": value} for name, value in breakdown.items()]
-
+        items = [
+            {"id": key, "name": entry["name"], "value": entry["value"]}
+            for key, entry in breakdown.items()
+        ]
         items.sort(key=lambda item: item["value"], reverse=True)
-
         return items
-
 
     return {
         "grand_total": grand_total,
         "missing_cost_count": missing_cost_count,
+        "purchase_count": purchase_count,
         "by_category": to_sorted_list(by_category),
-        "by_location": to_sorted_list(by_location),
         "by_supplier": to_sorted_list(by_supplier)
     }
 #-----------------------------------------------------------------------------------------
@@ -1877,7 +1900,8 @@ def create_item(
         name=item.name,
         category_id=item.category_id,
         supplier_id=item.supplier_id,
-        cost_per_unit=item.cost_per_unit
+        cost_per_unit=item.cost_per_unit,
+        opening_quantity=item.opening_quantity if user["role"].lower() == "admin" else 0
     )
 
 
@@ -1907,6 +1931,7 @@ def create_item(
         "image_url": new_item.image_url,
         "total_quantity": 0,
         "broken_quantity": 0,
+        "opening_quantity": new_item.opening_quantity,
         "locations": []
     }
 
@@ -1961,12 +1986,15 @@ def update_item(
     old_category_name = db_item.category.name if db_item.category else None
     old_supplier_name = db_item.supplier.name if db_item.supplier else None
     old_cost_per_unit = db_item.cost_per_unit
+    old_opening_quantity = db_item.opening_quantity
 
     db_item.name = item.name
     db_item.category_id = item.category_id
     db_item.supplier_id = item.supplier_id
     db_item.cost_per_unit = item.cost_per_unit
 
+    if user["role"].lower() == "admin":
+        db_item.opening_quantity = item.opening_quantity
 
     try:
         db.commit()
@@ -2000,6 +2028,8 @@ def update_item(
     if old_cost_per_unit != item.cost_per_unit:
         changes.append(f"Cost per Unit: {old_cost_per_unit} -> {item.cost_per_unit}")
 
+    if old_opening_quantity != db_item.opening_quantity:
+        changes.append(f"Opening Quantity: {old_opening_quantity} -> {db_item.opening_quantity}")
 
     details = ", ".join(changes) if changes else "No changes"
 
@@ -2015,7 +2045,8 @@ def update_item(
         "supplier": new_supplier_name,
         "supplier_id": db_item.supplier_id,
         "cost_per_unit": db_item.cost_per_unit,
-        "image_url": db_item.image_url
+        "image_url": db_item.image_url,
+        "opening_quantity": db_item.opening_quantity
     }
 
 
@@ -2381,19 +2412,36 @@ def delete_item_location(
 @app.get("/purchases", response_model=list[schemas.PurchaseResponse])
 def get_purchases(
     item_id: int | None = None,
+    category_id: int | None = None,
+    supplier_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: Session = Depends(get_db),
     user: dict = Depends(require_admin_or_assets_access)
 ):
 
 
     query = db.query(models.Purchase).options(
-        joinedload(models.Purchase.item),
+        joinedload(models.Purchase.item).joinedload(models.Item.category),
         joinedload(models.Purchase.supplier)
     )
 
     if item_id is not None:
         query = query.filter(models.Purchase.item_id == item_id)
 
+    if category_id is not None:
+        query = query.join(models.Item).filter(models.Item.category_id == category_id)
+
+    if supplier_id is not None:
+        query = query.filter(models.Purchase.supplier_id == supplier_id)
+
+    effective_date = func.coalesce(models.Purchase.document_date, models.Purchase.created_at)
+
+    if start_date is not None:
+        query = query.filter(effective_date >= start_date)
+
+    if end_date is not None:
+        query = query.filter(effective_date < end_date + timedelta(days=1))
 
     purchases = query.order_by(models.Purchase.created_at.desc()).all()
 
@@ -2407,6 +2455,8 @@ def get_purchases(
             "id": purchase.id,
             "item_id": purchase.item_id,
             "item_name": purchase.item.name if purchase.item else None,
+            "category_id": purchase.item.category_id if purchase.item else None,
+            "category": purchase.item.category.name if purchase.item and purchase.item.category else None,
             "quantity": purchase.quantity,
             "unit_cost": purchase.unit_cost,
             "supplier_id": purchase.supplier_id,

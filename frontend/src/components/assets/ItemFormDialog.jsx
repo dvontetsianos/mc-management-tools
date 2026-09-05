@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getUser } from "../../services/auth";
 import ClearIcon from "@mui/icons-material/Clear";
 import {
     Button,
@@ -36,6 +37,8 @@ function ItemFormDialog({
 
 
     const [error, setError] = useState("");
+
+    const user = getUser();
 
     return (
         <Dialog
@@ -137,6 +140,21 @@ function ItemFormDialog({
                         }
                         fullWidth
                     />
+
+                    {user.role === "admin" && (
+                        <TextField
+                            label="Opening Quantity"
+                            type="number"
+                            value={form.opening_quantity}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    opening_quantity: e.target.value
+                                })
+                            }
+                            helperText="Baseline stock this item's Total Quantity is built from. Admin only - correct after a physical count."
+                        />
+                    )}
 
 
                     <Box

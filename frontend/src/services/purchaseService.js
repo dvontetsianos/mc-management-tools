@@ -12,20 +12,31 @@ function getAuthHeaders() {
 }
 
 
-export async function getPurchases(itemId = null) {
+export async function getPurchases({
+    itemId = null,
+    categoryId = null,
+    supplierId = null,
+    startDate = null,
+    endDate = null
+} = {}) {
 
-    const url = itemId
-        ? `${API_URL}/purchases?item_id=${itemId}`
-        : `${API_URL}/purchases`;
+    const params = new URLSearchParams();
 
-    
+    if (itemId) params.append("item_id", itemId);
+    if (categoryId) params.append("category_id", categoryId);
+    if (supplierId) params.append("supplier_id", supplierId);
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+
+    const queryString = params.toString();
+    const url = `${API_URL}/purchases${queryString ? `?${queryString}` : ""}`;
+
     const response = await fetch(url, {
         method: "GET",
         headers: getAuthHeaders()
     });
 
     return await response.json();
-
 }
 
 

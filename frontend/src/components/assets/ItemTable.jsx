@@ -104,9 +104,9 @@ function ItemTable({
                                 <TableCell
                                     align="center"
                                     sx={{ width: 120 }}
-                                    onClick={() => onSort("broken_quantity")}
+                                    onClick={() => onSort("broken_missing")}
                                 >
-                                    Broken Quantity{getSortArrow("broken_quantity")}
+                                    Broken/Missing{getSortArrow("broken_missing")}
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 250 }}>

@@ -6,6 +6,7 @@ import {
     IconButton,
     Button,
     CircularProgress,
+    TextField,
     Paper
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -151,12 +152,26 @@ function ItemQuantity() {
                             <RemoveIcon />
                         </IconButton>
 
-                        <Typography
-                            variant="h3"
-                            sx={{ minWidth: 80, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
-                        >
-                            {totalQuantity}
-                        </Typography>
+                        <TextField
+                            type="number"
+                            value={totalQuantity}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setTotalQuantity(value === "" ? 0 : Math.max(0, Number(value)));
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            inputProps={{
+                                inputMode: "numeric",
+                                pattern: "[0-9]*",
+                                style: {
+                                    textAlign: "center",
+                                    fontSize: "2.5rem",
+                                    fontVariantNumeric: "tabular-nums",
+                                    padding: "8px 0"
+                                }
+                            }}
+                            sx={{ width: 120 }}
+                        />
 
                         <IconButton
                             size="large"

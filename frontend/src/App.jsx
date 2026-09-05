@@ -16,12 +16,13 @@ import Departments from "./pages/Departments";
 import Requests from "./pages/Requests";
 import History from "./pages/History";
 import Reports from "./pages/Reports";
-import InventoryValue from "./pages/reports/InventoryValue";
+import SpendReport from "./pages/reports/SpendReport";
 import LostFound from "./pages/LostFound";
 import LocationPicker from "./pages/quickcount/LocationPicker";
 import ItemList from "./pages/quickcount/ItemList";
 import ItemQuantity from "./pages/quickcount/ItemQuantity";
 import Purchases from "./pages/Purchases";
+import ItemPurchaseHistory from "./pages/items/ItemPurchaseHistory";
 
 
 
@@ -184,10 +185,19 @@ function App() {
                 />
 
                 <Route
-                    path="/reports/inventory-value"
+                    path="/reports/spend"
                     element={
                         <PermissionRoute permission="reports_access">
-                            <InventoryValue />
+                            <SpendReport />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
+                    path="/items/:itemId/purchases"
+                    element={
+                        <PermissionRoute permission="assets_access">
+                            <ItemPurchaseHistory />
                         </PermissionRoute>
                     }
                 />

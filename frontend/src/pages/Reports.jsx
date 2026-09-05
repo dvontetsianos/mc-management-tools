@@ -23,17 +23,17 @@ function Reports() {
                             <AttachMoneyIcon fontSize="large" />
 
                             <Typography variant="h6">
-                                Inventory Value
+                                Spend Report
                             </Typography>
 
                             <Typography align="center">
-                                Total inventory value broken down by category, location and supplier.
+                                Total purchase spend over a date range, broken down by category and supplier, with-drill down into individual purchases.
                             </Typography>
 
                             <Button
                                 variant="contained"
                                 sx={{ mt: 2 }}
-                                href="/reports/inventory-value"
+                                href="/reports/spend"
                             >
                                 GO
                             </Button>

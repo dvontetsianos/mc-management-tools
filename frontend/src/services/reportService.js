@@ -12,10 +12,17 @@ function getAuthHeaders() {
 
 }
 
-export async function getInventoryValueReport() {
+export async function getSpendReport(startDate = "", endDate = "") {
+
+    const params = new URLSearchParams();
+
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+
+    const queryString = params.toString();
 
     const response = await fetch(
-        `${API_URL}/reports/inventory-value`,
+        `${API_URL}/reports/spend${queryString ? `?${queryString}` : ""}`,
         {
             method: "GET",
             headers: getAuthHeaders()
@@ -23,5 +30,4 @@ export async function getInventoryValueReport() {
     );
 
     return await response.json();
-    
 }

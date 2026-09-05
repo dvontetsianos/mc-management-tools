@@ -176,13 +176,19 @@ function Purchases() {
                                     {user.role === "admin" && (
                                         <TableCell align="center">
                                             <IconButton
-                                                color="error"
+                                                variant="contained"
+                                                size="small"
                                                 onClick={() => {
                                                     setPurchaseToDelete(purchase);
                                                     setDeleteDialogOpen(true);
                                                 }}
+                                                sx={{
+                                                    minWidth : 0,
+                                                    color: "red",
+                                                    backgroundColor: "black"
+                                                }}
                                             >
-                                                <DeleteIcon />
+                                                <DeleteIcon fontSize="small"/>
                                             </IconButton>
                                         </TableCell>
                                     )}

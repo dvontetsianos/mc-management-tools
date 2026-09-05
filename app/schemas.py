@@ -150,6 +150,7 @@ class ItemCreate(BaseModel):
     category_id: int
     supplier_id: int | None = None
     cost_per_unit: float | None = None
+    opening_quantity: int = 0
 
 
 class ItemUpdate(BaseModel):
@@ -157,6 +158,7 @@ class ItemUpdate(BaseModel):
     category_id: int
     supplier_id: int | None = None
     cost_per_unit: float | None=None
+    opening_quantity: int = 0
 
 
 class ItemLocationResponse(BaseModel):
@@ -222,6 +224,8 @@ class PurchaseResponse(BaseModel):
     id: int
     item_id: int
     item_name: str | None = None
+    category_id: int | None = None
+    category: str | None = None
     quantity: int
     unit_cost: float | None = None
     supplier_id: int | None = None

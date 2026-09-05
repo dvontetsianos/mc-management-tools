@@ -75,7 +75,8 @@ function Assets() {
     name: "",
     category_id: "",
     supplier_id: "",
-    cost_per_unit: ""
+    cost_per_unit: "",
+    opening_quantity: "0"
   });
 
   const [itemEditingId, setItemEditingId] = useState(null);
@@ -172,7 +173,8 @@ function Assets() {
     const payload = {
       ...itemForm,
       supplier_id: itemForm.supplier_id === "" ? null : itemForm.supplier_id,
-      cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit
+      cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit,
+      opening_quantity: itemForm.opening_quantity === "" ? 0 : itemForm.opening_quantity
     };
 
     try {
@@ -201,7 +203,8 @@ function Assets() {
         name: "",
         category_id: "",
         supplier_id: "",
-        cost_per_unit: ""
+        cost_per_unit: "",
+        opening_quantity: "0"
       });
 
 
@@ -719,7 +722,8 @@ function Assets() {
                   name: "",
                   category_id: "",
                   supplier_id: "",
-                  cost_per_unit: ""
+                  cost_per_unit: "",
+                  opening_quantity: "0"
                 });
 
                 setSelectedImage(null);
@@ -815,7 +819,8 @@ function Assets() {
                 name: item.name,
                 category_id: item.category_id,
                 supplier_id: item.supplier_id || "",
-                cost_per_unit: item.cost_per_unit || ""
+                cost_per_unit: item.cost_per_unit || "",
+                opening_quantity: item.opening_quantity ?? 0
               });
 
               if (item.image_url) {
