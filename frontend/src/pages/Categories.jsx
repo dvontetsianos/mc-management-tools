@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getCategories, createCategory, deleteCategory } from "../services/categoryService";
+import { getDepartments } from "../services/departmentService";
+import { getUser } from "../services/auth";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Snackbar from "@mui/material/Snackbar";
@@ -19,16 +21,29 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Tabs,
+    Tab,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
  } from "@mui/material";
 
 
 
 function Categories() {
 
+    const user = getUser();
+    const isAdmin = user?.role === "admin";
+
     const [categories, setCategories] = useState([]);
+    const [departments, setDepartments] = useState([]);
+
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
 
     const [newCategory, setNewCategory] = useState("");
+    const [newCategoryDepartmentId, setNewCategoryDepartmentId] = useState("");
 
     const [categoryToDelete, setCategoryToDelete] = useState(null);
 
@@ -48,15 +63,98 @@ function Categories() {
 
     };
 
+    const fetchDepartments = async () => {
+
+        const data = await getDepartments();
+
+        setDepartments(data);
+    };
+
+    useEffect(() => {
+        fetchCategories();
+        fetchDepartments();
+    }, []);
+
+    //only departments that actually have at least one category get a tab
+    const tabDepartments = departments.filter((dept) =>
+        categories.some((cat) => cat.department_id === dept.id)
+    );
+
+    const tabDepartmentIds = tabDepartments.map((dept) => dept.id).join(",");
+
+
+    //keep the selected tab valid as tabs appear/disappear, without jumping to wrong one
+    useEffect(() => {
+
+        if (!isAdmin) {
+            return;
+        }
+
+        const stillExists = tabDepartments.some(
+            (dept) => dept.id === selectedDepartmentId
+        );
+
+        if (!stillExists && tabDepartments.length > 0) {
+            setSelectedDepartmentId(tabDepartments[0].id);
+        }
+    }, [isAdmin, tabDepartmentIds]);
+
+    const activeDepartment = isAdmin
+        ? tabDepartments.find((dept) => dept.id === selectedDepartmentId)
+        : departments.find((dept) => dept.id === user?.department_id);
+
+
+    //default the "add category" department picker to whickever tab is open
+    useEffect(() => {
+
+        if (isAdmin && activeDepartment) {
+            setNewCategoryDepartmentId(activeDepartment.id);
+        }
+    }, [isAdmin, activeDepartment?.id]);
+
+    const visibleCategories = activeDepartment
+        ? categories.filter((cat) => cat.department_id === activeDepartment.id)
+        : [];
+
+    
+    let emptyMessage = "No categories yet for this department.";
+
+    if (isAdmin && tabDepartments.length === 0) {
+        emptyMessage = "No categories exist yet. Add one below to get started.";
+    } else if (!isAdmin && !activeDepartment) {
+        emptyMessage = "Your account has no department assigned - contact an admin.";
+    }
+
+
     const handleCreate = async () => {
 
         if (!newCategory.trim()) {
             return;
         }
 
+        const departmentIdToUse = isAdmin
+            ? newCategoryDepartmentId
+            : user?.department_id;
+
+
+        if (!departmentIdToUse) {
+
+            setSnackbarMessage(
+                isAdmin
+                    ? "Please choose a department."
+                    : "Your account has no department assigned - contact an admin."
+            );
+
+            setSnackbarSeverity("error");
+
+            setSnackbarOpen(true);
+
+            return;
+        }
+
         try {
 
-            await createCategory(newCategory);
+            await createCategory(newCategory, departmentIdToUse);
 
             setNewCategory("");
 
@@ -114,9 +212,6 @@ function Categories() {
 
     };
 
-    useEffect(() => {
-        fetchCategories();
-    }, []);
 
     return (
         <>
@@ -125,11 +220,28 @@ function Categories() {
                     Category Management
                 </Typography>
 
+                {isAdmin && tabDepartments.length > 0 && (
+                    <Tabs
+                        value={selectedDepartmentId ?? false}
+                        onChange={(event, newValue) => setSelectedDepartmentId(newValue)}
+                        sx={{ mt: 3 }}
+                    >
+                        {tabDepartments.map((dept) => (
+                            <Tab
+                                key={dept.id}
+                                value={dept.id}
+                                label={dept.name}
+                            />
+                        ))}
+                    </Tabs>
+                )}
+
                 <Box
                     sx={{
                         display: "flex",
                         gap: 2,
-                        mt: 3
+                        mt: 3,
+                        alignItems: "center"
                     }}
                 >
 
@@ -140,6 +252,26 @@ function Categories() {
                             setNewCategory(e.target.value)
                         }
                     />
+
+                    {isAdmin && (
+                        <FormControl sx={{ minWidth: 200 }}>
+                            <InputLabel>Department</InputLabel>
+
+                            <Select
+                                value={newCategoryDepartmentId}
+                                label="Department"
+                                onChange={(e) =>
+                                    setNewCategoryDepartmentId(e.target.value)
+                                }
+                            >
+                                {departments.map((dept) => (
+                                    <MenuItem key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
 
                     <Button
                         variant="contained"
@@ -179,7 +311,7 @@ function Categories() {
                         </TableHead>
 
                         <TableBody>
-                            {categories.map((category) => (
+                            {visibleCategories.map((category) => (
 
                                 <TableRow key={category.id}>
                                     <TableCell>
@@ -204,6 +336,14 @@ function Categories() {
 
                                 </TableRow>
                             ))}
+
+                            {visibleCategories.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={3} align="center">
+                                        {emptyMessage}
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>

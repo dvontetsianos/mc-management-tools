@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogTitle,
@@ -39,6 +39,7 @@ function PurchaseLogDialog({
     items,
     categories,
     suppliers,
+    locations,
     onSaved
 }) {
 
@@ -47,17 +48,28 @@ function PurchaseLogDialog({
     const [newItemCategoryId, setNewItemCategoryId] = useState("");
 
     const [form, setForm] = useState(emptyForm);
+    const [locationId, setLocationId] = useState("");
 
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
 
     const isNewItem = Boolean(newItemName) && !selectedItem;
 
+    //default the receiving location to Unassigned everytime the dialog opens
+    useEffect(() => {
+
+        if (open) {
+            const unassigned = (locations || []).find((loc) => loc.name === "Unassigned");
+            setLocationId(unassigned ? unassigned.id : "");
+        }
+    }, [open, locations]);
+
     const resetAndClose = () => {
         setSelectedItem(null);
         setNewItemName("");
         setNewItemCategoryId("");
         setForm(emptyForm);
+        setLocationId("");
         setError("");
         onClose();
     };
@@ -78,6 +90,11 @@ function PurchaseLogDialog({
 
         if (!form.quantity || Number(form.quantity) <= 0) {
             setError("Please enter a quantity greater than 0.");
+            return;
+        }
+
+        if (!locationId) {
+            setError("Please choose a receiving location.");
             return;
         }
 
@@ -102,6 +119,7 @@ function PurchaseLogDialog({
             await createPurchase({
                 item_id: itemId,
                 quantity: Number(form.quantity),
+                location_id: Number(locationId),
                 unit_cost: form.unitCost ? Number(form.unitCost) : null,
                 supplier_id: form.supplierId || null,
                 document_number: form.documentNumber || null,
@@ -211,6 +229,22 @@ function PurchaseLogDialog({
                         }
                         fullWidth
                     />
+
+                    <FormControl fullWidth>
+                        <InputLabel>Receiving Location*</InputLabel>
+
+                        <Select
+                            value={locationId}
+                            label="Receiving Location*"
+                            onChange={(e) => setLocationId(e.target.value)}
+                        >
+                            {(locations || []).map((loc) => (
+                                <MenuItem key={loc.id} value={loc.id}>
+                                    {loc.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
                     <TextField
                         label="Unit Cost (optional)"

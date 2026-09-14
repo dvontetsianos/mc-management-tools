@@ -12,9 +12,13 @@ function getAuthHeaders() {
 }
 
 
-export async function getItems() {
+export async function getItems(department_id) {
 
-    const response = await fetch(`${API_URL}/items`, {
+    const url = department_id
+        ? `${API_URL}/items?department_id=${department_id}`
+        : `${API_URL}/items`;
+
+    const response = await fetch(url, {
         method: "GET",
         headers: getAuthHeaders()
     });

@@ -3,43 +3,23 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
 
-class Asset(Base):
-    __tablename__ = "assets"
-
-    __table_args__ = (
-        UniqueConstraint(
-            "name",
-            "location_id",
-            name="unique_asset_per_locations"
-        ),
-    )
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    category_id = Column(
-        Integer,
-        ForeignKey("categories.id")
-    )
-    category = relationship(
-        "Category",
-        back_populates="assets"
-    )
-    location_id = Column(Integer, ForeignKey("locations.id"))
-    location = relationship("Location", back_populates="assets")
-    total_quantity = Column(Integer, default=0)
-    broken_quantity = Column(Integer, default=0)
-    image_url = Column(String, nullable=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
-    supplier = relationship("Supplier", back_populates="assets")
-    cost_per_unit = Column(Float, nullable=True)
 
 class Location(Base):
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    assets = relationship("Asset", back_populates="location")
     item_locations = relationship("ItemLocation", back_populates="location")
+    movements_from = relationship(
+        "ItemMovement",
+        foreign_keys="ItemMovement.from_location_id",
+        back_populates="from_location"
+    )
+    movements_to = relationship(
+        "ItemMovement",
+        foreign_keys="ItemMovement.to_location_id",
+        back_populates="to_location"
+    )
 
 
 class Category(Base):
@@ -47,11 +27,8 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-
-    assets = relationship(
-        "Asset",
-        back_populates="category"
-    )
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    department = relationship("Department")
 
     items = relationship(
         "Item",
@@ -64,11 +41,6 @@ class Supplier(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-
-    assets = relationship(
-        "Asset",
-        back_populates="supplier"
-    )
 
     items = relationship(
         "Item",
@@ -210,9 +182,12 @@ class Item(Base):
     cost_per_unit = Column(Float, nullable=True)
     image_url = Column(String, nullable=True)
     opening_quantity = Column(Integer, default=0)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    department = relationship("Department")
 
     locations = relationship("ItemLocation", back_populates="item")
-    purchases = relationship("Purchase", back_populates="item")
+    purchases = relationship("Purchase", back_populates="item", passive_deletes=True)
+    movements = relationship("ItemMovement", back_populates="item", passive_deletes=True)
 
 
 
@@ -253,4 +228,39 @@ class Purchase(Base):
     document_date = Column(DateTime, nullable=True)
     source_file = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    movements = relationship("ItemMovement", back_populates="purchase")
+
+
+
+
+class ItemMovement(Base):
+    __tablename__ = "item_movements"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    item_id = Column(Integer, ForeignKey("items.id"))
+    item = relationship("Item", back_populates="movements")
+
+    from_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    from_location = relationship(
+        "Location",
+        foreign_keys=[from_location_id],
+        back_populates="movements_from"
+    )
+
+    to_location_id = Column(Integer, ForeignKey("locations.id"))
+    to_location = relationship(
+        "Location",
+        foreign_keys=[to_location_id],
+        back_populates="movements_to"
+    )
+
+    quantity = Column(Integer)
+    moved_by = Column(String)
+    reason = Column(String, nullable=True)
+
+    purchase_id = Column(Integer, ForeignKey("purchases.id"), nullable=True)
+    purchase = relationship("Purchase", back_populates="movements")
+
     created_at = Column(DateTime, default=datetime.utcnow)

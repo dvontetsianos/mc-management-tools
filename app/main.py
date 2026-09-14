@@ -87,6 +87,16 @@ def require_admin_or_assets_access(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin or Assets access required")
 
     return user
+#----------------------------------------------------------------------
+def require_admin_or_items_access(user: dict = Depends(get_current_user)):
+    if (
+        user["role"].lower() != "admin"
+        and "assets_access" not in user.get("permissions", [])
+        and "housekeeping_items_access" not in user.get("permissions", [])
+    ):
+        raise HTTPException(status_code=403, detail="Admin, Assets access, or Housekeeping Items access required")
+
+    return user
 #---------------------------------------------------------------------------------
 def require_admin_or_categories_access(user: dict = Depends(get_current_user)):
     if user["role"].lower() != "admin" and "categories_access" not in user.get("permissions", []):
@@ -117,7 +127,25 @@ def require_admin_or_reports_access(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin or Reports access required")
 
     return user
+#----------------------------------------------------------------------
+def require_admin_or_movements_access(user: dict = Depends(get_current_user)):
+    if user["role"].lower() != "admin" and "movements_access" not in user.get("permissions", []):
+        raise HTTPException(status_code=403, detail="Admin or Movements access required")
+
+    return user
 #-------------------------------------------------------------------------------------
+def require_admin_or_purchases_access(user: dict = Depends(get_current_user)):
+    if user["role"].lower() != "admin" and "purchases_access" not in user.get("permissions", []):
+        raise HTTPException(status_code=403, detail="Admin or Purchases access required")
+
+    return user
+#---------------------------------------------------------------------------------------
+def require_admin_or_requests_access(user: dict = Depends(get_current_user)):
+    if user["role"].lower() != "admin" and "requests_access" not in user.get("permissions", []):
+        raise HTTPException(status_code=403, detail="Admin or Requests access required")
+
+    return user
+#------------------------------------------------------------------------------
 def create_access_token(data: dict):
     to_encode = data.copy()
 
@@ -180,12 +208,16 @@ def create_default_permissions():
 
     permissions = [
         "assets_access",
+        "housekeeping_items_access",
         "categories_access",
         "locations_access",
         "suppliers_access",
         "view_excel_access",
         "lost_found_access",
-        "reports_access"
+        "reports_access",
+        "movements_access",
+        "purchases_access",
+        "requests_access"
     ]
 
     for permission_name in permissions:
@@ -207,94 +239,6 @@ create_default_permissions()
 def home():
     return {"message": "F&B Asset System is running"}
 
-
-#---------------------------------------------------------------------------------------
-#get assets
-@app.get("/assets", response_model=list[schemas.AssetResponse])
-def get_assets(db: Session = Depends(get_db)):
-
-    assets = db.query(models.Asset).options(
-        joinedload(models.Asset.category),
-        joinedload(models.Asset.location),
-        joinedload(models.Asset.supplier)
-    ).all()
-
-    result = []
-
-    for asset in assets:
-
-        result.append({
-            "id": asset.id,
-            "name": asset.name,
-            "category": asset.category.name if asset.category else None,
-            "category_id": asset.category.id if asset.category else None,
-            "location": asset.location.name if asset.location else None,
-            "location_id": asset.location_id,
-            "total_quantity": asset.total_quantity,
-            "broken_quantity": asset.broken_quantity,
-            "image_url": asset.image_url,
-            "supplier": asset.supplier.name if asset.supplier else None,
-            "supplier_id": asset.supplier_id,
-            "cost_per_unit": asset.cost_per_unit
-        })
-
-    return result
-
-
-#---------------------------------------------------------------------------
-#export excel
-@app.post("/assets/export")
-def export_assets(
-    assets: list[dict],
-    db: Session = Depends(get_db)
-):
-
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = "Assets"
-
-    sheet.append([
-        "ID",
-        "Name",
-        "Category",
-        "Location",
-        "Location ID",
-        "Total Quantity",
-        "Broken Quantity",
-        "Supplier",
-        "Cost per Unit"
-    ])
-
-    for asset in assets:
-        sheet.append([
-            asset["id"],
-            asset["name"],
-            asset["category"],
-            asset.get("location"),
-            asset.get("location_id"),
-            asset["total_quantity"],
-            asset["broken_quantity"],
-            asset.get("supplier"),
-            asset.get("cost_per_unit")
-        ])
-
-    for row in sheet.iter_rows(min_col=5, max_col=9):
-        for cell in row:
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-
-
-    file = BytesIO()
-    workbook.save(file)
-
-    file.seek(0)
-
-    return StreamingResponse(
-        file,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=assets.xlsx"
-        }
-    )
 
 #-----------------------------------------------------------------------------------
 #import excel
@@ -367,326 +311,6 @@ async def preview_excel(
 
     finally:
         workbook.close()
-#----------------------------------------------------------------------------------------
-#create assets
-@app.post("/assets")
-
-def create_asset(
-    asset: schemas.AssetCreate,
-    db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
-):
-
-    location = db.query(models.Location).filter(models.Location.id == asset.location_id).first()
-
-    if not location:
-        raise HTTPException(status_code=404, detail="Location not found")
-
-    category = db.query(models.Category).filter(
-        models.Category.id == asset.category_id
-    ).first()
-
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail="Category not found"
-        )
-
-    supplier = None
-
-    if asset.supplier_id is not None:
-        supplier = db.query(models.Supplier).filter(
-            models.Supplier.id == asset.supplier_id
-        ).first()
-
-        if not supplier:
-            raise HTTPException(
-                status_code=404,
-                detail="Supplier not found"
-            )
-
-    new_asset = models.Asset(
-        name=asset.name,
-        category_id=asset.category_id,
-        location_id=asset.location_id,
-        total_quantity=asset.total_quantity,
-        broken_quantity=asset.broken_quantity,
-        supplier_id=asset.supplier_id,
-        cost_per_unit=asset.cost_per_unit
-    )
-
-    try:
-        db.add(new_asset)
-        db.commit()
-        db.refresh(new_asset)
-
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="An asset with this name already exists in this location"
-        )
-
-    log_action(db, user, "created", "Asset", new_asset.name, new_asset.id)
-
-    return {
-        "id": new_asset.id,
-        "name": new_asset.name,
-        "category": category.name,
-        "location": location.name,
-        "total_quantity": new_asset.total_quantity,
-        "broken_quantity": new_asset.broken_quantity,
-        "supplier": supplier.name if supplier else None,
-        "supplier_id": new_asset.supplier_id,
-        "cost_per_unit": new_asset.cost_per_unit
-    }
-
-#---------------------------------------------------------------------------------------
-
-
-#---------------------------------------------------------------------------------------
-#update assets
-@app.put("/assets/{asset_id}")
-
-def update_asset(
-    asset_id: int,
-    asset: schemas.AssetUpdate,
-    db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
-):
-    db_asset = db.query(models.Asset).filter(
-        models.Asset.id == asset_id
-        ).first()
-
-    if db_asset is None:
-        return {"error": "Asset not found"}
-
-    category = db.query(models.Category).filter(
-        models.Category.id == asset.category_id
-    ).first()
-
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail="Category not found"
-        )
-
-    location = db.query(models.Location).filter(
-        models.Location.id == asset.location_id
-    ).first()
-
-    if not location:
-        raise HTTPException(
-            status_code=404,
-            detail="Location not found"
-        )
-
-    supplier = None
-
-    if asset.supplier_id is not None:
-        supplier = db.query(models.Supplier).filter(
-            models.Supplier.id == asset.supplier_id
-        ).first()
-
-        if not supplier:
-            raise HTTPException(
-                status_code=404,
-                detail="Supplier not found"
-            )
-
-    old_name = db_asset.name
-    old_category_name = db_asset.category.name if db_asset.category else None
-    old_location_name = db_asset.location.name if db_asset.location else None
-    old_total_quantity = db_asset.total_quantity
-    old_broken_quantity = db_asset.broken_quantity
-    old_supplier_name = db_asset.supplier.name if db_asset.supplier else None
-    old_cost_per_unit = db_asset.cost_per_unit
-
-    
-    db_asset.name = asset.name
-    db_asset.category = category
-    db_asset.location_id = asset.location_id
-    db_asset.total_quantity = asset.total_quantity
-    db_asset.broken_quantity = asset.broken_quantity
-    db_asset.supplier_id = asset.supplier_id
-    db_asset.cost_per_unit = asset.cost_per_unit
-
-    db.commit()
-    db.refresh(db_asset)
-
-    new_supplier_name = supplier.name if supplier else None
-
-    changes = []
-
-    if old_name != asset.name:
-        changes.append(f"Name: {old_name} -> {asset.name}")
-
-    if old_category_name != category.name:
-        changes.append(f"Category: {old_category_name} -> {category.name}")
-
-    if old_location_name != location.name:
-        changes.append(f"Location: {old_location_name} -> {location.name}")
-
-    if old_total_quantity != asset.total_quantity:
-        changes.append(f"Total Quantity: {old_total_quantity} -> {asset.total_quantity}")
-
-    if old_broken_quantity != asset.broken_quantity:
-        changes.append(f"Broken Quantity: {old_broken_quantity} -> {asset.broken_quantity}")
-
-    if old_supplier_name != new_supplier_name:
-        changes.append(f"Supplier: {old_supplier_name} -> {new_supplier_name}")
-
-    if old_cost_per_unit != asset.cost_per_unit:
-        changes.append(f"Cost per Unit: {old_cost_per_unit} -> {asset.cost_per_unit}")
-
-    details = ", ".join(changes) if changes else "No changes"
-
-    log_action(db, user, "updated", "Asset", db_asset.name, db_asset.id, details=details)
-#==================================================
-    return {
-        "id": db_asset.id,
-        "name": db_asset.name,
-        "category": db_asset.category.name,
-        "location": db_asset.location.name,
-        "location_id": db_asset.location_id,
-        "total_quantity": db_asset.total_quantity,
-        "broken_quantity": db_asset.broken_quantity,
-        "supplier": db_asset.supplier.name if db_asset.supplier else None,
-        "supplier_id": db_asset.supplier_id,
-        "cost_per_unit": db_asset.cost_per_unit
-    }
-
-
-#--------------------------------------------------------------------------------------
-#delete assets
-@app.delete("/assets/{asset_id}")
-def delete_asset(
-    asset_id: int,
-    db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
-):
-    db_asset = db.query(models.Asset).filter(models.Asset.id == asset_id).first()
-
-    if db_asset is None:
-        return {"error": "Asset not found"}
-
-    image_to_delete = db_asset.image_url
-
-    asset_name = db_asset.name
-
-    db.delete(db_asset)
-    db.commit()
-
-    log_action(db, user, "deleted", "Asset", asset_name, asset_id)
-
-    if image_to_delete:
-        if os.path.exists(image_to_delete):
-            os.remove(image_to_delete)
-
-    return {"message": "Asset deleted successfully"}
-
-#-----------------------------------------------------------------------------------
-#image
-@app.post("/assets/{asset_id}/image")
-def upload_asset_image(
-    asset_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
-):
-
-    asset = db.query(models.Asset).filter(
-        models.Asset.id == asset_id
-    ).first()
-
-    if not asset:
-        raise HTTPException(
-            status_code=404,
-            detail="Asset not found"
-        )
-
-    old_image = asset.image_url
-
-    allowed_types = [
-        "image/jpeg",
-        "image/png",
-        "image/webp"
-    ]
-
-    if file.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=400,
-            detail="Only JPG, PNG and WEBP images are allowed"
-        )
-
-    unique_filename = (
-        f"{uuid.uuid4().hex}_{file.filename}"
-    )
-
-    upload_path = os.path.join(
-        "uploads",
-        "assets",
-        unique_filename
-    )
-
-    with open(upload_path, "wb") as buffer:
-        shutil.copyfileobj(
-            file.file,
-            buffer
-        )
-
-    asset.image_url = upload_path.replace("\\", "/")
-
-    db.commit()
-    db.refresh(asset)
-
-    log_action(db, user, "uploaded image for", "Asset", asset.name, asset.id)
-
-    if old_image:
-
-        if os.path.exists(old_image):
-
-            os.remove(old_image)
-
-    return {
-        "message": "Image uploaded successfully",
-        "image_url": asset.image_url
-    }
-
-#------------------------------------------------------------------------
-@app.delete("/assets/{asset_id}/image")
-def delete_asset_image(
-    asset_id: int,
-    db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
-):
-
-    asset = db.query(models.Asset).filter(
-        models.Asset.id == asset_id
-    ).first()
-
-
-    if not asset:
-        raise HTTPException(
-            status_code=404,
-            detail="Asset not found"
-        )
-
-    image_to_delete = asset.image_url
-
-    asset.image_url = None
-    db.commit()
-
-    log_action(db, user, "removed image from", "Asset", asset.name, asset.id)
-
-
-    if image_to_delete:
-        if os.path.exists(image_to_delete):
-            os.remove(image_to_delete)
-
-    return {"message": "Image removed successfully"}
-
-
 #---------------------------------------------------------------------
 #get action history
 @app.get("/history")
@@ -839,14 +463,14 @@ def delete_location(
             detail="Location not found"
         )
 
-    assets_using_location = db.query(models.Asset).filter(
-        models.Asset.location_id == location_id
+    items_using_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.location_id == location_id
     ).count()
 
-    if assets_using_location > 0:
+    if items_using_location > 0:
         raise HTTPException(
             status_code=404,
-            detail="Cannot delete location. Assets are using this location."
+            detail="Cannot delete location. Items are assigned to this location."
         )
 
     db.delete(location)
@@ -859,21 +483,31 @@ def delete_location(
 #get category
 @app.get("/categories")
 def get_categories(
-    db: Session = Depends(get_db)
+    department_id: int | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_categories_access)
 ):
-    return db.query(models.Category).all()
+
+    query = db.query(models.Category)
+
+    if department_id is not None:
+        query = query.filter(models.Category.department_id == department_id)
+
+    return query.all()
 
 #---------------------------------------------------------------------------
 #create category
 @app.post("/categories")
 def create_category(
     category_name: str,
+    department_id: int,
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin_or_categories_access)
 ):
 
     new_category = models.Category(
-        name=category_name
+        name=category_name,
+        department_id=department_id
     )
 
     try:
@@ -910,14 +544,14 @@ def delete_category(
             detail="Category not found"
         )
 
-    assets_using_category = db.query(models.Asset).filter(
-        models.Asset.category_id == category_id
+    items_using_category = db.query(models.Item).filter(
+        models.Item.category_id == category_id
     ).count()
 
-    if assets_using_category > 0:
+    if items_using_category > 0:
         raise HTTPException(
             status_code=404,
-            detail="Cannot delete category. Assets are using this category."
+            detail="Cannot delete category. Items are using this category."
         )
 
     db.delete(category)
@@ -981,14 +615,14 @@ def delete_supplier(
         )
 
 
-    assets_using_supplier = db.query(models.Asset).filter(
-        models.Asset.supplier_id == supplier_id
+    items_using_supplier = db.query(models.Item).filter(
+        models.Item.supplier_id == supplier_id
     ).count()
 
-    if assets_using_supplier > 0:
+    if items_using_supplier > 0:
         raise HTTPException(
             status_code=404,
-            detail="Cannot delete supplier. Assets are using this supplier."
+            detail="Cannot delete supplier. Items are using this supplier."
         )
 
     db.delete(supplier)
@@ -1076,7 +710,7 @@ def delete_department(
 def create_request(
     request_data: schemas.RequestCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin_or_requests_access)
 ):
 
     sender = db.query(models.User).filter(
@@ -1128,7 +762,7 @@ def create_request(
 @app.get("/requests", response_model=list[schemas.RequestResponse])
 def get_requests(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin_or_requests_access)
 ):
 
     viewer = db.query(models.User).filter(
@@ -1560,7 +1194,8 @@ def refresh_token(current_user: dict = Depends(get_current_user)):
     token = create_access_token({
         "sub": current_user["username"],
         "role": current_user["role"],
-        "permissions": current_user["permissions"]
+        "permissions": current_user["permissions"],
+        "department_id": current_user.get("department_id")
     })
 
     return {
@@ -1740,13 +1375,25 @@ def delete_lost_found_item(
 #-----------------------------------------------------------------------
 #get items with aggregate total and their location assignments
 @app.get("/items", response_model=list[schemas.ItemResponse])
-def get_items(db: Session = Depends(get_db)):
+def get_items(
+    department_id: int | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_items_access)
+):
 
-    items = db.query(models.Item).options(
+    query = db.query(models.Item).options(
         joinedload(models.Item.category),
         joinedload(models.Item.supplier),
+        joinedload(models.Item.department),
         joinedload(models.Item.locations).joinedload(models.ItemLocation.location)
-    ).all()
+    )
+
+    if user["role"].lower() != "admin":
+        query = query.filter(models.Item.department_id == user.get("department_id"))
+    elif department_id is not None:
+        query = query.filter(models.Item.department_id == department_id)
+
+    items = query.all()
 
 
     purchases_by_item = dict(
@@ -1762,8 +1409,11 @@ def get_items(db: Session = Depends(get_db)):
         locations = []
         total_quantity = 0
         broken_quantity = 0
+        assigned_quantity = 0
 
         for item_location in item.locations:
+
+            location_name = item_location.location.name if item_location.location else None
 
             locations.append({
                 "id": item_location.id,
@@ -1778,11 +1428,14 @@ def get_items(db: Session = Depends(get_db)):
             total_quantity += item_location.total_quantity
             broken_quantity += item_location.broken_quantity
 
+            if location_name != "Unassigned":
+                assigned_quantity += item_location.total_quantity
+
 
         opening_quantity = item.opening_quantity or 0
         purchases_this_year = purchases_by_item.get(item.id, 0) or 0
         expected_total = opening_quantity + purchases_this_year
-        broken_missing = expected_total - total_quantity
+        broken_missing = expected_total - assigned_quantity
 
 
         result.append({
@@ -1795,12 +1448,15 @@ def get_items(db: Session = Depends(get_db)):
             "cost_per_unit": item.cost_per_unit,
             "image_url": item.image_url,
             "total_quantity": total_quantity,
+            "assigned_quantity": assigned_quantity,
             "broken_quantity": broken_quantity,
             "opening_quantity": opening_quantity,
             "purchases_this_year": purchases_this_year,
             "expected_total": expected_total,
             "broken_missing": broken_missing,
-            "locations": locations
+            "locations": locations,
+            "department_id": item.department_id,
+            "department": item.department.name if item.department else None
         })
 
     return result
@@ -1839,7 +1495,7 @@ def export_items(
             item["name"],
             item.get("category"),
             location_names,
-            item["total_quantity"],
+            item.get("assigned_quantity", item.get("total_quantity")),
             item["broken_quantity"],
             item.get("supplier"),
             item.get("cost_per_unit")
@@ -1868,7 +1524,7 @@ def export_items(
 def create_item(
     item: schemas.ItemCreate,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
     category = db.query(models.Category).filter(
@@ -1896,12 +1552,24 @@ def create_item(
             )
 
 
+    department_id_to_use = (
+        item.department_id if user["role"].lower() == "admin" else user.get("department_id")
+    )
+
+    if not department_id_to_use:
+        raise HTTPException(
+            status_code=400,
+            detail="Department is required"
+        )
+
+
     new_item = models.Item(
         name=item.name,
         category_id=item.category_id,
         supplier_id=item.supplier_id,
         cost_per_unit=item.cost_per_unit,
-        opening_quantity=item.opening_quantity if user["role"].lower() == "admin" else 0
+        opening_quantity=item.opening_quantity if user["role"].lower() == "admin" else 0,
+        department_id=department_id_to_use
     )
 
 
@@ -1932,7 +1600,9 @@ def create_item(
         "total_quantity": 0,
         "broken_quantity": 0,
         "opening_quantity": new_item.opening_quantity,
-        "locations": []
+        "locations": [],
+        "department_id": new_item.department_id,
+        "department": new_item.department.name if new_item.department else None
     }
 
 
@@ -1943,7 +1613,7 @@ def update_item(
     item_id: int,
     item: schemas.ItemUpdate,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
     db_item = db.query(models.Item).filter(
@@ -1996,6 +1666,9 @@ def update_item(
     if user["role"].lower() == "admin":
         db_item.opening_quantity = item.opening_quantity
 
+        if item.department_id is not None:
+            db_item.department_id = item.department_id
+
     try:
         db.commit()
         db.refresh(db_item)
@@ -2046,7 +1719,9 @@ def update_item(
         "supplier_id": db_item.supplier_id,
         "cost_per_unit": db_item.cost_per_unit,
         "image_url": db_item.image_url,
-        "opening_quantity": db_item.opening_quantity
+        "opening_quantity": db_item.opening_quantity,
+        "department_id": db_item.department_id,
+        "department": db_item.department.name if db_item.department else None
     }
 
 
@@ -2074,6 +1749,20 @@ def delete_item(
         for item_location in db_item.locations
         if item_location.location
     ]
+
+    other_locations = [
+        item_location.location.name
+        for item_location in db_item.locations
+        if item_location.location
+        and item_location.location.name != "Unassigned"
+        and (item_location.total_quantity > 0 or item_location.broken_quantity > 0)
+    ]
+
+    if other_locations:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete item. It is assigned to locations other than Unassigned: " + ", ".join(other_locations)
+        )
 
     image_to_delete = db_item.image_url
     item_name = db_item.name
@@ -2107,7 +1796,7 @@ def upload_item_image(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
     item = db.query(models.Item).filter(
@@ -2175,7 +1864,7 @@ def upload_item_image(
 def delete_item_image(
     item_id: int,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
     item = db.query(models.Item).filter(
@@ -2239,7 +1928,7 @@ def get_item_locations(db: Session = Depends(get_db)):
 def create_item_location(
     item_location: schemas.ItemLocationCreate,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
     item = db.query(models.Item).filter(
@@ -2313,7 +2002,7 @@ def update_item_location(
     item_location_id: int,
     item_location: schemas.ItemLocationUpdate,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
     db_item_location = db.query(models.ItemLocation).filter(
@@ -2377,7 +2066,7 @@ def update_item_location(
 def delete_item_location(
     item_location_id: int,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_items_access)
 ):
 
 
@@ -2407,6 +2096,189 @@ def delete_item_location(
     return {"message": "Item removed from location successfully"}
 
 
+#---------------------------------------------------------------------------
+#get item movements, optionally filtered
+@app.get("/item-movements", response_model=list[schemas.ItemMovementResponse])
+def get_item_movements(
+    item_id: int | None = None,
+    location_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_movements_access)
+):
+
+    query = db.query(models.ItemMovement).options(
+        joinedload(models.ItemMovement.item),
+        joinedload(models.ItemMovement.from_location),
+        joinedload(models.ItemMovement.to_location)
+    )
+
+    if item_id is not None:
+        query = query.filter(models.ItemMovement.item_id == item_id)
+
+    if location_id is not None:
+        query = query.filter(
+            (models.ItemMovement.from_location_id == location_id) |
+            (models.ItemMovement.to_location_id == location_id)
+        )
+
+    if start_date is not None:
+        query = query.filter(models.ItemMovement.created_at >= start_date)
+
+    if end_date is not None:
+        query = query.filter(models.ItemMovement.created_at < end_date + timedelta(days=1))
+
+
+    movements = query.order_by(models.ItemMovement.created_at.desc()).all()
+
+    result = []
+
+    for movement in movements:
+
+        result.append({
+            "id": movement.id,
+            "item_id": movement.item_id,
+            "item_name": movement.item.name if movement.item else None,
+            "from_location_id": movement.from_location_id,
+            "from_location": movement.from_location.name if movement.from_location else None,
+            "to_location_id": movement.to_location_id,
+            "to_location": movement.to_location.name if movement.to_location else None,
+            "quantity": movement.quantity,
+            "moved_by": movement.moved_by,
+            "reason": movement.reason,
+            "purchase_id": movement.purchase_id,
+            "created_at": movement.created_at
+        })
+
+    return result
+
+
+#---------------------------------------------------------------------------
+#move an item from one location to another (or somewhere new)
+@app.post("/item-movements", response_model=schemas.ItemMovementResponse)
+def create_item_movement(
+    movement: schemas.ItemMovementCreate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_movements_access)
+):
+
+    item = db.query(models.Item).filter(
+        models.Item.id == movement.item_id
+    ).first()
+
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Item not found"
+        )
+
+    to_location = db.query(models.Location).filter(
+        models.Location.id == movement.to_location_id
+    ).first()
+
+    if not to_location:
+        raise HTTPException(
+            status_code=404,
+            detail="Destination location not found"
+        )
+
+    if movement.quantity <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantity must be greater than 0"
+        )
+
+    if movement.from_location_id == movement.to_location_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot move an item to the same location"
+        )
+
+    from_location = db.query(models.Location).filter(
+        models.Location.id == movement.from_location_id
+    ).first()
+
+
+    if not from_location:
+        raise HTTPException(
+            status_code=404,
+            detail="Source location not found"
+        )
+
+
+    from_item_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.item_id == movement.item_id,
+        models.ItemLocation.location_id == movement.from_location_id
+    ).first()
+
+
+    if not from_item_location or from_item_location.total_quantity < movement.quantity:
+        raise HTTPException(
+            status_code=400,
+            detail="Not enough stock of this item at the source location"
+        )
+
+
+    #move the stock: decrease the source, increase (or create) the destination
+
+    from_item_location.total_quantity -= movement.quantity
+
+    to_item_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.item_id == movement.item_id,
+        models.ItemLocation.location_id == movement.to_location_id
+    ).first()
+
+    if to_item_location:
+        to_item_location.total_quantity += movement.quantity
+    else:
+        to_item_location = models.ItemLocation(
+            item_id=movement.item_id,
+            location_id=movement.to_location_id,
+            total_quantity=movement.quantity,
+            broken_quantity=0
+        )
+        db.add(to_item_location)
+
+
+    new_movement = models.ItemMovement(
+        item_id=movement.item_id,
+        from_location_id=movement.from_location_id,
+        to_location_id=movement.to_location_id,
+        quantity=movement.quantity,
+        moved_by=user["username"],
+        reason=movement.reason
+    )
+
+    db.add(new_movement)
+    db.commit()
+    db.refresh(new_movement)
+
+    log_action(
+        db,
+        user,
+        "moved",
+        "Item",
+        item.name,
+        item.id,
+        details=f"{movement.quantity} unit(s) from {from_location.name if from_location else 'new stock'} to {to_location.name}" + (f" ({movement.reason})" if movement.reason else "")
+    )
+
+    return {
+        "id": new_movement.id,
+        "item_id": new_movement.item_id,
+        "item_name": item.name,
+        "from_location_id": new_movement.from_location_id,
+        "from_location": from_location.name if from_location else None,
+        "to_location_id": new_movement.to_location_id,
+        "to_location": to_location.name,
+        "quantity": new_movement.quantity,
+        "moved_by": new_movement.moved_by,
+        "reason": new_movement.reason,
+        "purchase_id": new_movement.purchase_id,
+        "created_at": new_movement.created_at
+    }
+    
 #--------------------------------------------------------------------------
 #get purchases, optionally filtered to one item
 @app.get("/purchases", response_model=list[schemas.PurchaseResponse])
@@ -2417,13 +2289,14 @@ def get_purchases(
     start_date: date | None = None,
     end_date: date | None = None,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_purchases_access)
 ):
 
 
     query = db.query(models.Purchase).options(
         joinedload(models.Purchase.item).joinedload(models.Item.category),
-        joinedload(models.Purchase.supplier)
+        joinedload(models.Purchase.supplier),
+        joinedload(models.Purchase.movements).joinedload(models.ItemMovement.to_location)
     )
 
     if item_id is not None:
@@ -2451,6 +2324,8 @@ def get_purchases(
 
     for purchase in purchases:
 
+        receiving_movement = purchase.movements[0] if purchase.movements else None
+
         result.append({
             "id": purchase.id,
             "item_id": purchase.item_id,
@@ -2458,6 +2333,8 @@ def get_purchases(
             "category_id": purchase.item.category_id if purchase.item else None,
             "category": purchase.item.category.name if purchase.item and purchase.item.category else None,
             "quantity": purchase.quantity,
+            "location_id": receiving_movement.to_location_id if receiving_movement else None,
+            "location": receiving_movement.to_location.name if receiving_movement and receiving_movement.to_location else None,
             "unit_cost": purchase.unit_cost,
             "supplier_id": purchase.supplier_id,
             "supplier": purchase.supplier.name if purchase.supplier else None,
@@ -2477,7 +2354,7 @@ def get_purchases(
 def create_purchase(
     purchase: schemas.PurchaseCreate,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_assets_access)
+    user: dict = Depends(require_admin_or_purchases_access)
 ):
 
     item = db.query(models.Item).filter(
@@ -2491,13 +2368,29 @@ def create_purchase(
             detail="Item not found"
         )
 
+    location = db.query(models.Location).filter(
+        models.Location.id == purchase.location_id
+    ).first()
+
+    if not location:
+        raise HTTPException(
+            status_code=404,
+            detail="Receiving location not found"
+        )
+
+    if purchase.quantity <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantity must be greater than 0"
+        )
+
     supplier = None
+
 
     if purchase.supplier_id is not None:
         supplier = db.query(models.Supplier).filter(
             models.Supplier.id == purchase.supplier_id
         ).first()
-
 
         if not supplier:
             raise HTTPException(
@@ -2517,6 +2410,40 @@ def create_purchase(
     )
 
     db.add(new_purchase)
+    db.flush()
+
+
+    #receive the purchased quantity straight into the chosen location
+
+    item_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.item_id == purchase.item_id,
+        models.ItemLocation.location_id == purchase.location_id
+    ).first()
+
+    if item_location:
+        item_location.total_quantity += purchase.quantity
+
+    else:
+        item_location = models.ItemLocation(
+            item_id=purchase.item_id,
+            location_id=purchase.location_id,
+            total_quantity=purchase.quantity,
+            broken_quantity=0
+        )
+        db.add(item_location)
+
+
+    receiving_movement = models.ItemMovement(
+        item_id=purchase.item_id,
+        from_location_id=None,
+        to_location_id=purchase.location_id,
+        quantity=purchase.quantity,
+        moved_by=user["username"],
+        reason="Received from purchase",
+        purchase_id=new_purchase.id
+    )
+
+    db.add(receiving_movement)
     db.commit()
     db.refresh(new_purchase)
 
@@ -2524,9 +2451,10 @@ def create_purchase(
         db,
         user,
         "logged a purchase of",
+        "Item",
         item.name,
         item.id,
-        details=f"Qty: {new_purchase.quantity}" + (f", Supplier: {supplier.name}" if supplier else "")
+        details=f"Qty: {new_purchase.quantity}" + (f", Supplier: {supplier.name}" if supplier else "") + f", received into {location.name}"
     )
 
     return {
@@ -2534,6 +2462,8 @@ def create_purchase(
         "item_id": new_purchase.item_id,
         "item_name": item.name,
         "quantity": new_purchase.quantity,
+        "location_id": purchase.location_id,
+        "location": location.name,
         "unit_cost": new_purchase.unit_cost,
         "supplier_id": new_purchase.supplier_id,
         "supplier": supplier.name if supplier else None,
@@ -2565,12 +2495,39 @@ def delete_purchase(
 
     item_name = db_purchase.item.name if db_purchase.item else "Unknown item"
     item_id = db_purchase.item_id
+    quantity = db_purchase.quantity
+
+    receiving_movement = db.query(models.ItemMovement).filter(
+        models.ItemMovement.purchase_id == purchase_id
+    ).first()
+
+    location_note = ""
+
+    if receiving_movement is not None and db_purchase.item is not None:
+
+        item_location = db.query(models.ItemLocation).filter(
+            models.ItemLocation.item_id == receiving_movement.item_id,
+            models.ItemLocation.location_id == receiving_movement.to_location_id
+        ).first()
+
+        location_name = receiving_movement.to_location.name if receiving_movement.to_location else "its receiving location"
+
+        available = item_location.total_quantity if item_location else 0
+
+        if available < receiving_movement.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot delete: only {available} of {receiving_movement.quantity} unit(s) remain at {location_name}. Move them back there before deleting this purchase."
+            )
+
+        item_location.total_quantity -= receiving_movement.quantity
+        location_note = f" (removed from {location_name})"
 
     db.delete(db_purchase)
     db.commit()
 
 
-    log_action(db, user=admin, action="deleted a logged purchase for",entity_type="Item", entity_name=item_name, entity_id=item_id, details=f"Qty: {db_purchase.quantity}")
+    log_action(db, user=admin, action="deleted a logged purchase for",entity_type="Item", entity_name=item_name, entity_id=item_id, details=f"Qty: {quantity}{location_note}")
 
 
     return {"message": "Purchase deleted successfully"}

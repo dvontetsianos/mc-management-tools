@@ -2,44 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-class AssetCreate(BaseModel):
-    name: str
-    category_id: int
-    location_id: int
-    total_quantity: int = 0
-    broken_quantity: int = 0
-    supplier_id: int | None = None
-    cost_per_unit: float | None = None
-
-
-class AssetUpdate(BaseModel):
-    name: str
-    category_id: int
-    location_id: int
-    total_quantity: int
-    broken_quantity: int
-    supplier_id: int | None = None
-    cost_per_unit: float | None = None
-    
-
-class AssetResponse(BaseModel):
-    id: int
-    name: str
-    category: str | None = None
-    category_id: int | None
-    location: str | None
-    location_id: int | None
-    total_quantity: int
-    broken_quantity: int
-    image_url: str | None = None
-    supplier: str | None = None
-    supplier_id: int | None = None
-    cost_per_unit: float | None = None
-
-    class Config:
-        from_attributes = True
-
-
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -151,6 +113,7 @@ class ItemCreate(BaseModel):
     supplier_id: int | None = None
     cost_per_unit: float | None = None
     opening_quantity: int = 0
+    department_id: int | None = None
 
 
 class ItemUpdate(BaseModel):
@@ -159,6 +122,7 @@ class ItemUpdate(BaseModel):
     supplier_id: int | None = None
     cost_per_unit: float | None=None
     opening_quantity: int = 0
+    department_id: int | None = None
 
 
 class ItemLocationResponse(BaseModel):
@@ -185,12 +149,15 @@ class ItemResponse(BaseModel):
     cost_per_unit: float | None = None
     image_url: str | None = None
     total_quantity: int
+    assigned_quantity: int = 0
     broken_quantity: int
     opening_quantity: int = 0
     purchases_this_year: int = 0
     expected_total: int = 0
     broken_missing: int = 0
     locations: list[ItemLocationResponse] = []
+    department_id: int | None = None
+    department: str | None = None
 
     class Config:
         from_attributes = True
@@ -212,6 +179,7 @@ class ItemLocationUpdate(BaseModel):
 class PurchaseCreate(BaseModel):
     item_id: int
     quantity: int
+    location_id: int
     unit_cost: float | None = None
     supplier_id: int | None = None
     document_number: str | None = None
@@ -222,11 +190,13 @@ class PurchaseCreate(BaseModel):
 
 class PurchaseResponse(BaseModel):
     id: int
-    item_id: int
+    item_id: int | None = None
     item_name: str | None = None
     category_id: int | None = None
     category: str | None = None
     quantity: int
+    location_id: int | None = None
+    location: str | None = None
     unit_cost: float | None = None
     supplier_id: int | None = None
     supplier: str | None = None
@@ -234,6 +204,33 @@ class PurchaseResponse(BaseModel):
     document_date: datetime | None = None
     source_file: str | None = None
     notes: str | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+
+class ItemMovementCreate(BaseModel):
+    item_id: int
+    from_location_id: int
+    to_location_id: int
+    quantity: int
+    reason: str | None = None
+
+
+class ItemMovementResponse(BaseModel):
+    id: int
+    item_id: int | None = None
+    item_name: str | None = None
+    from_location_id: int | None = None
+    from_location: str | None = None
+    to_location_id: int
+    to_location: str | None = None
+    quantity: int
+    moved_by: str
+    reason: str | None = None
+    purchase_id: int | None = None
     created_at: datetime
 
     class Config:

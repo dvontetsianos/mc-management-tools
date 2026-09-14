@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { IconButton, Tooltip, Button } from "@mui/material"
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ImageNotSupportedIcon from "@mui/icons-material/ImageNotSupported";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import HistoryIcon from "@mui/icons-material/History";
 import {
     Paper,
     Table,
@@ -15,7 +17,9 @@ import {
     TableContainer,
     Avatar,
     Chip,
-    Box
+    Box,
+    Menu,
+    MenuItem
 } from "@mui/material";
 import { getUser } from "../../services/auth";
 import { API_URL } from "../../config";
@@ -27,13 +31,32 @@ function ItemTable({
     selectedLocations,
     onDelete,
     onEdit,
-    onAssign,
+    onMove,
+    onHistory,
     onSort,
     sortColumn,
     sortDirection
 }) {
 
     const user = getUser();
+
+    const [historyMenuAnchor, setHistoryMenuAnchor] = useState(null);
+    const [historyMenuItem, setHistoryMenuItem] = useState(null);
+
+    const handleHistoryMenuOpen = (event, item) => {
+        setHistoryMenuAnchor(event.currentTarget);
+        setHistoryMenuItem(item);
+    };
+
+    const handleHistoryMenuClose = () => {
+        setHistoryMenuAnchor(null);
+        setHistoryMenuItem(null);
+    };
+
+    const handleHistoryChoice = (type) => {
+        onHistory(historyMenuItem, type);
+        handleHistoryMenuClose();
+    };
 
     const getSortArrow = (column) => {
 
@@ -92,13 +115,13 @@ function ItemTable({
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 140 }}>
-                                    Total Quantity
+                                    Expected Total
                                 </TableCell>
 
                                 <TableCell
                                     align="center"
-                                    onClick={() => onSort("total_quantity")}>
-                                        Available{getSortArrow("total_quantity")}
+                                    onClick={() => onSort("assigned_quantity")}>
+                                        Total Quantity{getSortArrow("assigned_quantity")}
                                 </TableCell>
 
                                 <TableCell
@@ -130,7 +153,7 @@ function ItemTable({
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 180 }}>
-                                    Edit / Assign / Delete
+                                    Edit / Assign / History
                                 </TableCell>
 
                             </TableRow>
@@ -147,7 +170,8 @@ function ItemTable({
                                             backgroundColor: "#ddc9b6"
                                         },
                                         "& .MuiTableCell-root": {
-                                            py: 0
+                                            py: 0,
+                                            height: 120
                                         }
                                     }}
                                 >
@@ -162,8 +186,12 @@ function ItemTable({
                                                 :undefined
                                             }
                                             sx={{
-                                                width: 100,
-                                                height: 100
+                                                width: 120,
+                                                height: 120,
+                                                backgroundColor: "#f5f5f5",
+                                                "& img": {
+                                                    objectFit: "contain"
+                                                }
                                             }}
                                         >
                                             {!item.image_url &&
@@ -174,7 +202,7 @@ function ItemTable({
                                     <TableCell align="center">{item.name}</TableCell>
                                     <TableCell sx={{ width: 100}} align="center">{item.category}</TableCell>
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
-                                    <TableCell align="center" sx={{ width: 140}}>{item.total_quantity}</TableCell>
+                                    <TableCell align="center" sx={{ width: 140}}>{item.assigned_quantity}</TableCell>
                                     <TableCell
                                         align="center"
                                         sx={{ width:120 }}
@@ -183,9 +211,9 @@ function ItemTable({
                                     </TableCell>
 
                                     <TableCell align="center" sx={{ width: 250, maxWidth: 250 }}>
-                                        {item.locations && item.locations.length > 0 ? (
+                                        {item.locations && item.locations.filter((loc) => loc.total_quantity > 0).length > 0 ? (
                                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0, justifyContent: "center" }}>
-                                                {item.locations.map((loc) => (
+                                                {item.locations.filter((loc) => loc.total_quantity > 0).map((loc) => (
                                                     <Chip
                                                         key={loc.id}
                                                         label={loc.location}
@@ -215,16 +243,24 @@ function ItemTable({
                                                 color="primary"
                                                 onClick={() => onEdit(item)}
                                             >
-                                                <EditIcon />
+                                                <EditIcon fontSize="large"/>
                                             </IconButton>
                                         </Tooltip>
 
-                                        <Tooltip title="Manage Locations">
+                                        <Tooltip title="Move Item">
                                             <IconButton
                                                 color="secondary"
-                                                onClick={() => onAssign(item)}
+                                                onClick={() => onMove(item)}
                                             >
-                                                <LocationOnIcon />
+                                                <SwapHorizIcon fontSize="large"/>
+                                            </IconButton>
+                                        </Tooltip>
+
+                                        <Tooltip title="History">
+                                            <IconButton
+                                                onClick={(e) => handleHistoryMenuOpen(e, item)}
+                                            >
+                                                <HistoryIcon fontSize="large"/>
                                             </IconButton>
                                         </Tooltip>
 
@@ -255,6 +291,20 @@ function ItemTable({
 
                     </Table>
                 </TableContainer>
+            
+            <Menu
+                anchorEl={historyMenuAnchor}
+                open={Boolean(historyMenuAnchor)}
+                onClose={handleHistoryMenuClose}
+            >
+                <MenuItem onClick={() => handleHistoryChoice("purchases")}>
+                    Purchases
+                </MenuItem>
+
+                <MenuItem onClick={() => handleHistoryChoice("movements")}>
+                    Movements
+                </MenuItem>
+            </Menu>
 
         </Paper>
     );

@@ -31,8 +31,8 @@ function ItemDeleteConfirmDialog({
             <DialogContent>
                 <DialogContentText>
                     Are you sure you want to delete {" "}
-                    <strong>{itemName}</strong>? This will also delete its image (if any)
-                    and remove it from every location it is currently assigned to.
+                    <strong>{itemName}</strong>? This will also delete its image (if any).
+                    <b>To proceed with the deletion, this Item should only by assigned to "Unassigned" location.</b>
                 </DialogContentText>
 
                 {itemLocations && itemLocations.length > 0 ? (

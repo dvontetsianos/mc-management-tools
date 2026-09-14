@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import {
     Box,
     Typography,
@@ -16,13 +17,15 @@ import {
     DialogContent,
     DialogActions,
     Snackbar,
-    Alert
+    Alert,
+    Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getPurchases, deletePurchase } from "../services/purchaseService";
 import { getItems } from "../services/itemService";
 import { getCategories } from "../services/categoryService";
 import { getSuppliers } from "../services/supplierService";
+import { getLocations } from "../services/locationService";
 import { getUser } from "../services/auth";
 import PurchaseLogDialog from "../components/purchases/PurchaseLogDialog";
 
@@ -31,11 +34,23 @@ import PurchaseLogDialog from "../components/purchases/PurchaseLogDialog";
 function Purchases() {
 
     const user = getUser();
+    const [searchParams] = useSearchParams();
+    const routerLocation = useLocation();
+    const navigate = useNavigate();
+
+    const categoryId = searchParams.get("category_id");
+    const supplierId = searchParams.get("supplier_id");
+    const startDate = searchParams.get("start_date");
+    const endDate = searchParams.get("end_date");
+    const filterLabel = routerLocation.state?.filterLabel;
+
+    const hasFilters = Boolean(categoryId || supplierId || startDate || endDate);
 
     const [purchases, setPurchases] = useState([]);
     const [items, setItems] = useState([]);
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
+    const [locations, setLocations] = useState([]);
 
     const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -47,25 +62,30 @@ function Purchases() {
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
     const fetchPurchases = async () => {
-        const data = await getPurchases();
+        const data = await getPurchases({ categoryId, supplierId, startDate, endDate });
         setPurchases(data);
     };
 
     const fetchLookups = async () => {
 
-        const [itemsData, categoriesData, suppliersData] = await Promise.all([
+        const [itemsData, categoriesData, suppliersData, locationsData] = await Promise.all([
             getItems(),
             getCategories(),
-            getSuppliers()
+            getSuppliers(),
+            getLocations()
         ]);
 
         setItems(itemsData);
         setCategories(categoriesData);
         setSuppliers(suppliersData);
+        setLocations(locationsData);
     };
 
     useEffect(() => {
         fetchPurchases();
+    }, [categoryId, supplierId, startDate, endDate]);
+
+    useEffect(() => {
         fetchLookups();
     }, []);
 
@@ -112,7 +132,7 @@ function Purchases() {
             return "-";
         }
 
-        return new Date(value).toLocaleDateString();
+        return new Date(value + "Z").toLocaleDateString();
     };
 
     return (
@@ -131,6 +151,24 @@ function Purchases() {
                     </Button>
                 </Box>
 
+                {hasFilters && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
+                        <Typography variant="body" color="text.secondary">
+                            Filtered{filterLabel ? ` to ${filterLabel}` : ""}
+                            {startDate || endDate
+                                ? ` (${startDate || "…"} to ${endDate || "…"})`
+                                : ""}:
+                        </Typography>
+
+                        <Chip
+                            label="Clear filters"
+                            size="small"
+                            onDelete={() => navigate("/purchases")}
+                            onClick={() => navigate("/purchases")}
+                        />
+                    </Box>
+                )}
+
                 <TableContainer component={Paper} sx={{ mt: 3 }}>
                     <Table size="small">
                         <TableHead
@@ -145,7 +183,9 @@ function Purchases() {
                                 <TableCell>Logged</TableCell>
                                 <TableCell>Doc Date</TableCell>
                                 <TableCell>Item</TableCell>
+                                <TableCell>Category</TableCell>
                                 <TableCell align="center">Qty</TableCell>
+                                <TableCell>Received Into</TableCell>
                                 <TableCell align="center">Unit Cost</TableCell>
                                 <TableCell>Supplier</TableCell>
                                 <TableCell>Doc #</TableCell>
@@ -163,7 +203,9 @@ function Purchases() {
                                     <TableCell>{formatDate(purchase.created_at)}</TableCell>
                                     <TableCell>{formatDate(purchase.document_date)}</TableCell>
                                     <TableCell>{purchase.item_name || "-"}</TableCell>
+                                    <TableCell>{purchase.category || "-"}</TableCell>
                                     <TableCell align="center">{purchase.quantity}</TableCell>
+                                    <TableCell>{purchase.location || "-"}</TableCell>
                                     <TableCell align="center">
                                         {purchase.unit_cost != null
                                             ? `€ ${Number(purchase.unit_cost).toFixed(2)}`
@@ -198,8 +240,8 @@ function Purchases() {
 
                             {purchases.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={user.role === "admin" ? 9 : 8} align="center">
-                                        No purchases logged yet.
+                                    <TableCell colSpan={user.role === "admin" ? 11 : 10} align="center">
+                                        {hasFilters ? "No purchases match this filter." : "No purchases logged yet."}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -214,6 +256,7 @@ function Purchases() {
                 items={items}
                 categories={categories}
                 suppliers={suppliers}
+                locations={locations}
                 onSaved={handleSaved}
             />
 

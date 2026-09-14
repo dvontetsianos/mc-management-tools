@@ -138,12 +138,16 @@ function Users() {
 
     const availablePermissions = [
         "assets_access",
+        "housekeeping_items_access",
         "categories_access",
         "locations_access",
         "suppliers_access",
         "view_excel_access",
         "lost_found_access",
-        "reports_access"
+        "reports_access",
+        "purchases_access",
+        "movements_access",
+        "requests_access"
     ];
 
     function handleInputChange(event) {

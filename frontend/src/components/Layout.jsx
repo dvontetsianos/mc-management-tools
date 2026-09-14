@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import FeedbackDialog from "../components/feedback/FeedbackDialog";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
+import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
 import PeopleIcon from "@mui/icons-material/People";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import FeedbackIcon from "@mui/icons-material/Feedback";
@@ -25,6 +26,7 @@ import FindInPageIcon from "@mui/icons-material/FindInPage";
 import { getPendingRequestCount } from "../services/requestService";
 import { API_URL } from "../config";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 
 function Layout() {
@@ -266,29 +268,31 @@ function Layout() {
                                 </ListItemButton>
                             </ListItem>
 
-                            <ListItem disablePadding>
-                                <ListItemButton
-                                    onClick={() => navigate("/requests")}
-                                    sx={{
-                                        justifyContent: sidebarOpen ? "initial" : "center",
-                                    }}
-                                >
-                                    <Badge
-                                        variant="dot"
-                                        color="error"
-                                        invisible={pendingRequestCount === 0}
+                            {(user?.role === "admin" || user?.permissions?.includes("requests_access")) && (
+                                <ListItem disablePadding>
+                                    <ListItemButton
+                                        onClick={() => navigate("/requests")}
+                                        sx={{
+                                            justifyContent: sidebarOpen ? "initial" : "center",
+                                        }}
                                     >
-                                        <AssignmentIcon />
-                                    </Badge>
+                                        <Badge
+                                            variant="dot"
+                                            color="error"
+                                            invisible={pendingRequestCount === 0}
+                                        >
+                                            <AssignmentIcon />
+                                        </Badge>
 
-                                    {sidebarOpen && (
-                                        <ListItemText
-                                            primary="Requests"
-                                            sx={{ ml: 2 }}
-                                        />
-                                    )}
-                                </ListItemButton>
-                            </ListItem>
+                                        {sidebarOpen && (
+                                            <ListItemText
+                                                primary="Requests"
+                                                sx={{ ml: 2 }}
+                                            />
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            )}
 
                             {(user?.role === "admin" || user?.permissions?.includes("assets_access")) && (
                                 <ListItem disablePadding>
@@ -303,7 +307,7 @@ function Layout() {
 
                                         {sidebarOpen && (
                                             <ListItemText
-                                            primary="F&B Assets"
+                                            primary="F&B Items"
                                             sx={{ ml: 2 }}
                                             />
                                         )}
@@ -311,7 +315,27 @@ function Layout() {
                                 </ListItem>
                             )}
 
-                            {(user?.role ==="admin" || user?.permissions?.includes("assets_access")) && (
+                            {(user?.role === "admin" || user?.permissions?.includes("housekeeping_items_access")) && (
+                                <ListItem disablePadding>
+                                    <ListItemButton
+                                        onClick={() => navigate("/housekeeping-items")}
+                                        sx={{
+                                            justifyContent: sidebarOpen ? "initial" :"center",
+                                        }}
+                                    >
+                                        <CleaningServicesIcon />
+
+                                        {sidebarOpen && (
+                                            <ListItemText
+                                                primary="Housekeeping Items"
+                                                sx={{ ml: 2 }}
+                                            />
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            )}
+
+                            {(user?.role ==="admin" || user?.permissions?.includes("purchases_access")) && (
                                 <ListItem disablePadding>
                                     <ListItemButton
                                         onClick={() => navigate("/purchases")}
@@ -324,6 +348,26 @@ function Layout() {
                                         {sidebarOpen && (
                                             <ListItemText
                                                 primary="Purchases"
+                                                sx={{ ml: 2 }}
+                                            />
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            )}
+
+                            {(user?.role === "admin" || user?.permissions?.includes("movements_access")) && (
+                                <ListItem disablePadding>
+                                    <ListItemButton
+                                        onClick={() => navigate("/movements")}
+                                        sx={{
+                                            justifyContent: sidebarOpen ? "initial" : "center",
+                                        }}
+                                    >
+                                        <SwapHorizIcon />
+
+                                        {sidebarOpen && (
+                                            <ListItemText
+                                                primary="Item Movements"
                                                 sx={{ ml: 2 }}
                                             />
                                         )}

@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
+import HousekeepingItems from "./pages/HousekeepingItems";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import PermissionRoute from "./components/PermissionRoute";
@@ -23,6 +24,8 @@ import ItemList from "./pages/quickcount/ItemList";
 import ItemQuantity from "./pages/quickcount/ItemQuantity";
 import Purchases from "./pages/Purchases";
 import ItemPurchaseHistory from "./pages/items/ItemPurchaseHistory";
+import ItemMovementHistory from "./pages/items/ItemMovementHistory";
+import Movements from "./pages/Movements";
 
 
 
@@ -82,7 +85,11 @@ function App() {
 
                 <Route
                     path="/requests"
-                    element={<Requests />}
+                    element={
+                        <PermissionRoute permission="requests_access">
+                            <Requests />
+                        </PermissionRoute>
+                    }
                 />
 
                 <Route
@@ -113,10 +120,28 @@ function App() {
                 />
 
                 <Route
+                    path="/housekeeping-items"
+                    element={
+                        <PermissionRoute permission="housekeeping_items_access">
+                            <HousekeepingItems />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
                     path="/purchases"
                     element={
-                        <PermissionRoute permission="assets_access">
+                        <PermissionRoute permission="purchases_access">
                             <Purchases />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
+                    path="/movements"
+                    element={
+                        <PermissionRoute permission="movements_access">
+                            <Movements />
                         </PermissionRoute>
                     }
                 />
@@ -196,8 +221,17 @@ function App() {
                 <Route
                     path="/items/:itemId/purchases"
                     element={
-                        <PermissionRoute permission="assets_access">
+                        <PermissionRoute permission="purchases_access">
                             <ItemPurchaseHistory />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
+                    path="/items/:itemId/movements"
+                    element={
+                        <PermissionRoute permission="movements_access">
+                            <ItemMovementHistory />
                         </PermissionRoute>
                     }
                 />

@@ -11,10 +11,14 @@ function getAuthHeaders() {
     };
 }
 
-export async function getCategories() {
+export async function getCategories(department_id) {
+
+    const url = department_id
+        ? `${API_URL}/categories?department_id=${department_id}`
+        : `${API_URL}/categories`;
 
     const response = await fetch(
-        `${API_URL}/categories`,
+        url,
         {
             method: "GET",
             headers: getAuthHeaders()
@@ -25,10 +29,10 @@ export async function getCategories() {
 
 }
 
-export async function createCategory(category_name) {
+export async function createCategory(category_name, department_id) {
 
     const response = await fetch(
-        `${API_URL}/categories?category_name=${encodeURIComponent(category_name)}`,
+        `${API_URL}/categories?category_name=${encodeURIComponent(category_name)}&department_id=${department_id}`,
         {
             method: "POST",
             headers: getAuthHeaders()

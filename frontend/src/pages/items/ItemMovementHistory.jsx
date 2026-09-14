@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
     Box,
@@ -14,38 +14,29 @@ import {
     CircularProgress
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { getPurchases } from "../../services/purchaseService";
+import { getItemMovements } from "../../services/movementService";
 
 
 
-const currencyFormatter = new Intl.NumberFormat(
-    "en-US",
-    {
-        style: "currency",
-        currency: "EUR"
-    }
-);
-
-
-function ItemPurchaseHistory() {
+function ItemMovementHistory() {
 
     const navigate = useNavigate();
     const { itemId } = useParams();
     const routerLocation = useLocation();
 
     const [itemName] = useState(routerLocation.state?.itemName || "");
-    const [purchases, setPurchases] = useState([]);
+    const [movements, setMovements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-
+    
     useEffect(() => {
 
         setLoading(true);
 
-        getPurchases({ itemId })
-            .then((data) => setPurchases(data))
-            .catch(() => setError("Couldn't load purchase history. Check your connection and try again."))
+        getItemMovements({ itemId })
+            .then((data) => setMovements(data))
+            .catch(() => setError("Couldn't load movement history. Check your connection and try again."))
             .finally(() => setLoading(false));
     }, [itemId]);
 
@@ -55,21 +46,8 @@ function ItemPurchaseHistory() {
             return "-";
         }
 
-        return new Date(value + "Z").toLocaleDateString();
+        return new Date(value + "Z").toLocaleString();
     };
-
-    //most recent purchase (by document date, falling back to when it was logged) first
-    const sortedPurchases = useMemo(() => {
-
-        return [...purchases].sort((a, b) => {
-
-            const dateA = new Date(a.document_date || a.created_at);
-            const dateB = new Date(b.document_date || b.created_at);
-
-            return dateB - dateA;
-        });
-    }, [purchases]);
-
 
 
     return (
@@ -81,7 +59,7 @@ function ItemPurchaseHistory() {
                 </IconButton>
 
                 <Typography variant="h4">
-                    {itemName ? `Purchase History: ${itemName}` : "Purchase History"}
+                    {itemName ? `Movement History: ${itemName}` : "Movement History"}
                 </Typography>
             </Box>
 
@@ -111,36 +89,32 @@ function ItemPurchaseHistory() {
                         >
                             <TableRow>
                                 <TableCell>Date</TableCell>
+                                <TableCell>From</TableCell>
+                                <TableCell>To</TableCell>
                                 <TableCell align="center">Qty</TableCell>
-                                <TableCell align="center">Unit Cost</TableCell>
-                                <TableCell>Supplier</TableCell>
-                                <TableCell>Doc #</TableCell>
-                                <TableCell>Notes</TableCell>
+                                <TableCell>Moved By</TableCell>
+                                <TableCell>Reason</TableCell>
                             </TableRow>
                         </TableHead>
 
                         <TableBody>
-                            {sortedPurchases.map((purchase, index) => (
-                                <TableRow key={purchase.id}>
+                            {movements.map((movement) => (
+                                <TableRow key={movement.id}>
                                     <TableCell>
-                                        {formatDate(purchase.document_date || purchase.created_at)}
+                                        {formatDate(movement.created_at)}
                                     </TableCell>
-                                    <TableCell align="center">{purchase.quantity}</TableCell>
-                                    <TableCell align="center">
-                                        {purchase.unit_cost != null
-                                            ? currencyFormatter.format(purchase.unit_cost)
-                                        : "-"}
-                                    </TableCell>
-                                    <TableCell>{purchase.supplier || "-"}</TableCell>
-                                    <TableCell>{purchase.document_number || "-"}</TableCell>
-                                    <TableCell>{purchase.notes || "-"}</TableCell>
+                                    <TableCell>{movement.from_location || "Initial Placement"}</TableCell>
+                                    <TableCell>{movement.to_location}</TableCell>
+                                    <TableCell align="center">{movement.quantity}</TableCell>
+                                    <TableCell>{movement.moved_by}</TableCell>
+                                    <TableCell>{movement.reason || "-"}</TableCell>
                                 </TableRow>
                             ))}
 
-                            {sortedPurchases.length === 0 && (
+                            {movements.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={6} align="center">
-                                        No purchase logged for this item yet.
+                                        No movements logged for this item yet.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -154,4 +128,4 @@ function ItemPurchaseHistory() {
 }
 
 
-export default ItemPurchaseHistory;
+export default ItemMovementHistory;

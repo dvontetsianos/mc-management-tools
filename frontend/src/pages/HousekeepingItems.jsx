@@ -31,12 +31,11 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 
 
-const FB_DEPARTMENT_ID = 7;
+const HOUSEKEEPING_DEPARTMENT_ID = 3;
 
-function Assets() {
+function HousekeepingItems() {
 
   const navigate = useNavigate();
 
@@ -91,7 +90,7 @@ function Assets() {
 
 
   const fetchItems = async () => {
-    const data = await getItems(FB_DEPARTMENT_ID);
+    const data = await getItems(HOUSEKEEPING_DEPARTMENT_ID);
     setItems(data);
   };
 
@@ -101,7 +100,7 @@ function Assets() {
   };
 
   const fetchCategories = async () => {
-    const data = await getCategories(FB_DEPARTMENT_ID);
+    const data = await getCategories(HOUSEKEEPING_DEPARTMENT_ID);
     setCategories(data);
   };
 
@@ -132,7 +131,7 @@ function Assets() {
       supplier_id: itemForm.supplier_id === "" ? null : itemForm.supplier_id,
       cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit,
       opening_quantity: itemForm.opening_quantity === "" ? 0 : itemForm.opening_quantity,
-      department_id: FB_DEPARTMENT_ID
+      department_id: HOUSEKEEPING_DEPARTMENT_ID
     };
 
     try {
@@ -395,25 +394,7 @@ function Assets() {
           mt: -5
         }}
       >
-        <h1>F&B Asset Management</h1>
-
-        <Button
-          variant="outlined"
-          component="a"
-          href="/quick-count"
-          target="_blank"
-          rel="noopener"
-          startIcon={<PhoneIphoneIcon />}
-          sx={{
-            position: "absolute",
-            right: 90,
-            minWidth: 0,
-            px: 1,
-            "& .MuiButton-startIcon": {
-              margin: 0
-            }
-          }}
-        />
+        <h1>Housekeeping Item Management</h1>
       </Box>
 
       {/* ITEMS TAB */}
@@ -555,29 +536,6 @@ function Assets() {
             >
               Add Item
             </Button>
-
-            {/* Old assign item to location button
-            <Button
-              variant="contained"
-              onClick={() => {
-
-                setIlEditingId(null);
-
-                setIlForm({
-                  item_id: "",
-                  location_id: "",
-                  total_quantity: "0",
-                  broken_quantity: "0",
-                  item_name: "",
-                  location_name: ""
-                });
-
-                setIlDialogOpen(true);
-              }}
-            >
-              Assign Item to Location
-            </Button>
-            */}
           </Box>
 
           <ItemsFilterPanel
@@ -697,4 +655,4 @@ function Assets() {
 }
 
 
-export default Assets;
+export default HousekeepingItems;
