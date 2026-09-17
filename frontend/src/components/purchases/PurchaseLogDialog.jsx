@@ -40,12 +40,16 @@ function PurchaseLogDialog({
     categories,
     suppliers,
     locations,
+    departments,
+    canSeeAllDepartments,
+    userDepartmentId,
     onSaved
 }) {
 
     const [selectedItem, setSelectedItem] = useState(null);
     const [newItemName, setNewItemName] = useState("");
     const [newItemCategoryId, setNewItemCategoryId] = useState("");
+    const [newItemDepartmentId, setNewItemDepartmentId] = useState("");
 
     const [form, setForm] = useState(emptyForm);
     const [locationId, setLocationId] = useState("");
@@ -68,6 +72,7 @@ function PurchaseLogDialog({
         setSelectedItem(null);
         setNewItemName("");
         setNewItemCategoryId("");
+        setNewItemDepartmentId("");
         setForm(emptyForm);
         setLocationId("");
         setError("");
@@ -85,6 +90,11 @@ function PurchaseLogDialog({
 
         if (isNewItem && !newItemCategoryId) {
             setError("Please choose a cateogry for the new item.");
+            return;
+        }
+
+        if (isNewItem && canSeeAllDepartments && !newItemDepartmentId) {
+            setError("Please choose a department for the new item.");
             return;
         }
 
@@ -110,7 +120,10 @@ function PurchaseLogDialog({
                     name: newItemName,
                     category_id: newItemCategoryId,
                     supplier_id: form.supplierId || null,
-                    cost_per_unit: form.unitCost ? Number(form.unitCost) : null
+                    cost_per_unit: form.unitCost ? Number(form.unitCost) : null,
+                    department_id: canSeeAllDepartments
+                        ? Number(newItemDepartmentId)
+                        : userDepartmentId
                 });
 
                 itemId = created.id;
@@ -213,6 +226,26 @@ function PurchaseLogDialog({
                                 {categories.map((cat) => (
                                     <MenuItem key={cat.id} value={cat.id}>
                                         {cat.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
+
+                    {isNewItem && canSeeAllDepartments && (
+                        <FormControl fullWidth>
+                            <InputLabel>Department (for new item)</InputLabel>
+
+                            <Select
+                                value={newItemDepartmentId}
+                                label="Department (for new item)"
+                                onChange={(e) =>
+                                    setNewItemDepartmentId(e.target.value)
+                                }
+                            >
+                                {(departments || []).map((dept) => (
+                                    <MenuItem key={dept.id} value={dept.id}>
+                                        {dept.name}
                                     </MenuItem>
                                 ))}
                             </Select>

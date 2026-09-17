@@ -194,6 +194,8 @@ class PurchaseResponse(BaseModel):
     item_name: str | None = None
     category_id: int | None = None
     category: str | None = None
+    department_id: int | None = None
+    department: str | None = None
     quantity: int
     location_id: int | None = None
     location: str | None = None

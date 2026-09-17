@@ -146,6 +146,7 @@ function Users() {
         "lost_found_access",
         "reports_access",
         "purchases_access",
+        "all_departments_access",
         "movements_access",
         "requests_access"
     ];

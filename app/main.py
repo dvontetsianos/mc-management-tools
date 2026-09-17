@@ -217,7 +217,8 @@ def create_default_permissions():
         "reports_access",
         "movements_access",
         "purchases_access",
-        "requests_access"
+        "requests_access",
+        "all_departments_access"
     ]
 
     for permission_name in permissions:
@@ -1477,10 +1478,10 @@ def export_items(
     sheet.append([
         "ID",
         "Name",
-        "Cateogry",
+        "Category",
         "Locations",
         "Total Quantity",
-        "Broken Quantity",
+        "Broken/Missing",
         "Supplier",
         "Cost per Unit"
     ])
@@ -1496,7 +1497,7 @@ def export_items(
             item.get("category"),
             location_names,
             item.get("assigned_quantity", item.get("total_quantity")),
-            item["broken_quantity"],
+            item.get("broken_missing", 0),
             item.get("supplier"),
             item.get("cost_per_unit")
         ])
@@ -1551,9 +1552,13 @@ def create_item(
                 detail="Supplier not found"
             )
 
+    can_choose_department = (
+        user["role"].lower() == "admin"
+        or "all_departments_access" in user.get("permissions", [])
+    )
 
     department_id_to_use = (
-        item.department_id if user["role"].lower() == "admin" else user.get("department_id")
+        item.department_id if can_choose_department else user.get("department_id")
     )
 
     if not department_id_to_use:
@@ -2206,7 +2211,6 @@ def create_item_movement(
             detail="Source location not found"
         )
 
-
     from_item_location = db.query(models.ItemLocation).filter(
         models.ItemLocation.item_id == movement.item_id,
         models.ItemLocation.location_id == movement.from_location_id
@@ -2223,6 +2227,10 @@ def create_item_movement(
     #move the stock: decrease the source, increase (or create) the destination
 
     from_item_location.total_quantity -= movement.quantity
+
+    if from_item_location.total_quantity <= 0 and from_item_location.broken_quantity <= 0:
+        db.delete(from_item_location)
+
 
     to_item_location = db.query(models.ItemLocation).filter(
         models.ItemLocation.item_id == movement.item_id,
@@ -2286,18 +2294,33 @@ def get_purchases(
     item_id: int | None = None,
     category_id: int | None = None,
     supplier_id: int | None = None,
+    department_id: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
     db: Session = Depends(get_db),
     user: dict = Depends(require_admin_or_purchases_access)
 ):
 
+    can_see_all_departments = (
+        user["role"].lower() == "admin"
+        or "all_departments_access" in user.get("permissions", [])
+    )
 
     query = db.query(models.Purchase).options(
         joinedload(models.Purchase.item).joinedload(models.Item.category),
         joinedload(models.Purchase.supplier),
+        joinedload(models.Purchase.department),
         joinedload(models.Purchase.movements).joinedload(models.ItemMovement.to_location)
     )
+
+    if can_see_all_departments:
+        if department_id is not None:
+            query = query.filter(models.Purchase.department_id == department_id)
+    else:
+        if user.get("department_id") is None:
+            return []
+
+        query = query.filter(models.Purchase.department_id == user["department_id"])
 
     if item_id is not None:
         query = query.filter(models.Purchase.item_id == item_id)
@@ -2332,6 +2355,8 @@ def get_purchases(
             "item_name": purchase.item.name if purchase.item else None,
             "category_id": purchase.item.category_id if purchase.item else None,
             "category": purchase.item.category.name if purchase.item and purchase.item.category else None,
+            "department_id": purchase.department_id,
+            "department": purchase.department.name if purchase.department else None,
             "quantity": purchase.quantity,
             "location_id": receiving_movement.to_location_id if receiving_movement else None,
             "location": receiving_movement.to_location.name if receiving_movement and receiving_movement.to_location else None,
@@ -2368,6 +2393,17 @@ def create_purchase(
             detail="Item not found"
         )
 
+    can_see_all_departments = (
+        user["role"].lower() == "admin"
+        or "all_departments_access" in user.get("permissions", [])
+    )
+
+    if not can_see_all_departments and item.department_id != user.get("department_id"):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only log purchases for your own department's items"
+        )
+
     location = db.query(models.Location).filter(
         models.Location.id == purchase.location_id
     ).first()
@@ -2401,6 +2437,7 @@ def create_purchase(
 
     new_purchase = models.Purchase(
         item_id=purchase.item_id,
+        department_id=item.department_id,
         quantity=purchase.quantity,
         unit_cost=purchase.unit_cost,
         supplier_id=purchase.supplier_id,
@@ -2461,6 +2498,8 @@ def create_purchase(
         "id": new_purchase.id,
         "item_id": new_purchase.item_id,
         "item_name": item.name,
+        "department_id": new_purchase.department_id,
+        "department": item.department.name if item.department else None,
         "quantity": new_purchase.quantity,
         "location_id": purchase.location_id,
         "location": location.name,

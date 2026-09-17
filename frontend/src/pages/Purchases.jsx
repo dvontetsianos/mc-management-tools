@@ -18,7 +18,11 @@ import {
     DialogActions,
     Snackbar,
     Alert,
-    Chip
+    Chip,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getPurchases, deletePurchase } from "../services/purchaseService";
@@ -26,6 +30,7 @@ import { getItems } from "../services/itemService";
 import { getCategories } from "../services/categoryService";
 import { getSuppliers } from "../services/supplierService";
 import { getLocations } from "../services/locationService";
+import { getDepartments } from "../services/departmentService";
 import { getUser } from "../services/auth";
 import PurchaseLogDialog from "../components/purchases/PurchaseLogDialog";
 
@@ -34,6 +39,10 @@ import PurchaseLogDialog from "../components/purchases/PurchaseLogDialog";
 function Purchases() {
 
     const user = getUser();
+
+    const canSeeAllDepartments =
+        user.role === "admin" || user.permissions?.includes("all_departments_access");
+
     const [searchParams] = useSearchParams();
     const routerLocation = useLocation();
     const navigate = useNavigate();
@@ -51,6 +60,9 @@ function Purchases() {
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [locations, setLocations] = useState([]);
+    const [departments, setDepartments] = useState([]);
+
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
 
     const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -62,28 +74,36 @@ function Purchases() {
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
     const fetchPurchases = async () => {
-        const data = await getPurchases({ categoryId, supplierId, startDate, endDate });
+        const data = await getPurchases({
+            categoryId,
+            supplierId,
+            startDate,
+            endDate,
+            departmentId: canSeeAllDepartments ? (selectedDepartmentId || null) : null
+        });
         setPurchases(data);
     };
 
     const fetchLookups = async () => {
 
-        const [itemsData, categoriesData, suppliersData, locationsData] = await Promise.all([
-            getItems(),
+        const [itemsData, categoriesData, suppliersData, locationsData, departmentsData] = await Promise.all([
+            getItems(canSeeAllDepartments ? undefined : user.department_id),
             getCategories(),
             getSuppliers(),
-            getLocations()
+            getLocations(),
+            getDepartments()
         ]);
 
         setItems(itemsData);
         setCategories(categoriesData);
         setSuppliers(suppliersData);
         setLocations(locationsData);
+        setDepartments(departmentsData);
     };
 
     useEffect(() => {
         fetchPurchases();
-    }, [categoryId, supplierId, startDate, endDate]);
+    }, [categoryId, supplierId, startDate, endDate, selectedDepartmentId]);
 
     useEffect(() => {
         fetchLookups();
@@ -135,6 +155,8 @@ function Purchases() {
         return new Date(value + "Z").toLocaleDateString();
     };
 
+    const columnCount = 10 + (canSeeAllDepartments ? 1 : 0) + (user.role === "admin" ? 1 : 0);
+
     return (
         <>
             <Box>
@@ -150,6 +172,30 @@ function Purchases() {
                         Log Purchase
                     </Button>
                 </Box>
+
+                {canSeeAllDepartments && (
+                    <Box sx={{ mt: 2, maxWidth: 260 }}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Department</InputLabel>
+
+                            <Select
+                                value={selectedDepartmentId}
+                                label="Department"
+                                onChange={(e) => setSelectedDepartmentId(e.target.value)}
+                            >
+                                <MenuItem value="">
+                                    <em>All Departments</em>
+                                </MenuItem>
+
+                                {departments.map((dept) => (
+                                    <MenuItem key={dept.id} value={dept.id}>
+                                        {dept.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Box>
+                )}
 
                 {hasFilters && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
@@ -184,6 +230,9 @@ function Purchases() {
                                 <TableCell>Doc Date</TableCell>
                                 <TableCell>Item</TableCell>
                                 <TableCell>Category</TableCell>
+                                {canSeeAllDepartments && (
+                                    <TableCell>Department</TableCell>
+                                )}
                                 <TableCell align="center">Qty</TableCell>
                                 <TableCell>Received Into</TableCell>
                                 <TableCell align="center">Unit Cost</TableCell>
@@ -204,6 +253,9 @@ function Purchases() {
                                     <TableCell>{formatDate(purchase.document_date)}</TableCell>
                                     <TableCell>{purchase.item_name || "-"}</TableCell>
                                     <TableCell>{purchase.category || "-"}</TableCell>
+                                    {canSeeAllDepartments && (
+                                        <TableCell>{purchase.department || "-"}</TableCell>
+                                    )}
                                     <TableCell align="center">{purchase.quantity}</TableCell>
                                     <TableCell>{purchase.location || "-"}</TableCell>
                                     <TableCell align="center">
@@ -240,7 +292,7 @@ function Purchases() {
 
                             {purchases.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={user.role === "admin" ? 11 : 10} align="center">
+                                    <TableCell colSpan={columnCount} align="center">
                                         {hasFilters ? "No purchases match this filter." : "No purchases logged yet."}
                                     </TableCell>
                                 </TableRow>
@@ -257,6 +309,9 @@ function Purchases() {
                 categories={categories}
                 suppliers={suppliers}
                 locations={locations}
+                departments={departments}
+                canSeeAllDepartments={canSeeAllDepartments}
+                userDepartmentId={user.department_id}
                 onSaved={handleSaved}
             />
 

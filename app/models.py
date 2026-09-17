@@ -220,6 +220,8 @@ class Purchase(Base):
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("items.id"))
     item = relationship("Item", back_populates="purchases")
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    department = relationship("Department")
     quantity = Column(Integer)
     unit_cost = Column(Float, nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)

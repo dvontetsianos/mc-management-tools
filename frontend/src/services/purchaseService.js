@@ -16,6 +16,7 @@ export async function getPurchases({
     itemId = null,
     categoryId = null,
     supplierId = null,
+    departmentId = null,
     startDate = null,
     endDate = null
 } = {}) {
@@ -25,6 +26,7 @@ export async function getPurchases({
     if (itemId) params.append("item_id", itemId);
     if (categoryId) params.append("category_id", categoryId);
     if (supplierId) params.append("supplier_id", supplierId);
+    if (departmentId) params.append("department_id", departmentId);
     if (startDate) params.append("start_date", startDate);
     if (endDate) params.append("end_date", endDate);
 
