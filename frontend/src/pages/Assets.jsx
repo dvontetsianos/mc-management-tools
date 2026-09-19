@@ -11,7 +11,8 @@ import {
   deleteItem,
   uploadItemImage,
   deleteItemImage,
-  exportItems
+  exportItems,
+  dismissItemLocationCount
 } from "../services/itemService";
 import { getCategories } from "../services/categoryService";
 import { getLocations } from "../services/locationService";
@@ -217,6 +218,20 @@ function Assets() {
     setMoveDialogOpen(true);
   };
 
+  const handleDismissCount = async (itemLocationId) => {
+
+  if (!itemLocationId) {
+    return;
+  }
+
+  try {
+    await dismissItemLocationCount(itemLocationId);
+    fetchItems();
+  } catch (error) {
+    alert(error.message);
+  }
+  };
+
   const toggleItemCategory = (name) => {
     setSelectedItemCategories((prev) =>
       prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]
@@ -371,11 +386,25 @@ function Assets() {
     const total = relevant.reduce((sum, loc) => sum + (loc.total_quantity || 0), 0);
     const broken = relevant.reduce((sum, loc) => sum + (loc.broken_quantity || 0), 0);
 
+    const countedLocs = relevant.filter(
+      (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
+    );
+
+    const staffCounted = countedLocs.length > 0
+      ? countedLocs.reduce((sum, loc) => sum + loc.staff_counted_quantity, 0)
+      : null;
+
+    const singleLocationId = selectedItemLocations.length === 1
+      ? relevant.find((loc) => loc.location === selectedItemLocations[0])?.id ?? null
+      : null;
+
     return {
       ...item,
       total_quantity: total,
       assigned_quantity: total,
-      broken_quantity: broken
+      broken_quantity: broken,
+      staff_counted_quantity: staffCounted,
+      countable_item_location_id: singleLocationId
     };
   });
 
@@ -395,7 +424,7 @@ function Assets() {
           mt: -5
         }}
       >
-        <h1>F&B Asset Management</h1>
+        <h1>F&B Items</h1>
 
         <Button
           variant="outlined"
@@ -455,7 +484,7 @@ function Assets() {
             <Box component="span" sx={{ color: "success.main", fontWeight: "bold" }}>
               green 
             </Box>
-              {" "}to let you know which locations the "Total Quantity" column is taking into account.
+              {" "}to let you know which locations the "Assigned Quantity" column is taking into account.
           </Typography>
 
           <ItemFormDialog
@@ -626,6 +655,7 @@ function Assets() {
             selectedLocations={selectedItemLocations}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
+            onDismissCount={handleDismissCount}
             onHistory={(item, type) =>
               navigate(`/items/${item.id}/${type}`, {
                 state: { itemName: item.name }

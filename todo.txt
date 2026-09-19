@@ -1,13 +1,12 @@
-τελικη απογραφη 2025, αγορες 2026, 
+Maintenance:
+	• ομαδαποιοηση των φθορων και αυτοματη δημιουργια δελτιου καταστροφης
 
-github push
+	•χειμερινη φυλαξη
 
-create suppliers in purchases
+F&B:
+	•Quickcount session reset?
+	
+	•rename page title and edit explanation text??????
 
-
-
-
-• ομαδαποιοηση των φθορων και αυτοματη δημιουργια δελτιου καταστροφης
-
-•χειμερινη φυλαξη
-
+Housekeeping:
+	•rename page title and add explanation text

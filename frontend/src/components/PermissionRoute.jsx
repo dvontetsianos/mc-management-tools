@@ -4,6 +4,7 @@ import { getUser } from "../services/auth";
 function PermissionRoute({
     children,
     permission,
+    permissions,
     adminOnly = false
 }) {
 
@@ -28,7 +29,13 @@ function PermissionRoute({
 
     }
 
-    if (!user.permissions?.includes(permission)) {
+    const requiredPermissions = permissions || (permission ? [permission] : []);
+
+    const hasAccess = requiredPermissions.some((p) =>
+        user.permissions?.includes(p)
+    );
+
+    if (!hasAccess) {
         return <Navigate to="/dashboard" />;
     }
 

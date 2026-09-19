@@ -1,21 +1,535 @@
-1. Install Python
-	Python 3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)] on 	win32
-	Type "help", "copyright", "credits" or "license" for more information.
-	Ctrl click to launch VS Code Native REPL
+MC MANAGEMENT TOOLS - SETUP & DEPLOYMENT GUIDE
+Last updated: 2026-09-17
 
-2. Create venv:
-	python -m venv .venv
+Repo:  https://github.com/dvontetsianos/mc-management-tools
+Stack: FastAPI (Python) backend + React/Vite frontend + SQLite database
 
-3. .venv has to be activated, either with running .venv\Scripts\activate or with VS Code it activates automatically once you open the App folder
-
-4. Install requirements:
-	pip install -r requirements.txt
-
-5. Starting the Server in dev mode:
-
-	backend: [uvicorn app.main:app --reload --host 0.0.0.0 --port 8000] in ../F&B_Assets
-
-	frontend: [npm run dev -- --host 0.0.0.0 ] in ../F&B_Assets/frontend
+Goal of this document: someone with general dev skills, with NO other
+help, should be able to follow this start to finish and end up with a
+working install. If you hit a step that doesn't work as written,
+that's a bug in this document - fix the step here once you solve it,
+don't just work around it and move on.
 
 
-6. 
+=====================================================================
+PART 1 - LOCAL DEVELOPMENT SETUP (Windows, fresh machine)
+=====================================================================
+
+1. Install prerequisites
+
+   - Git for Windows
+       https://git-scm.com/download/win
+       or:  winget install --id Git.Git -e --source winget
+     Keep the installer's default options - it bundles "Git Credential
+     Manager", which is what handles GitHub sign-in later (step 2).
+
+   - Python 3.14
+       winget install -e --id Python.Python.3.14
+     If you install it manually instead of with winget, make sure to
+     tick "Add python.exe to PATH" in the installer - otherwise
+     "python" won't be recognized in a new terminal and you'll need to
+     use the "py" launcher instead everywhere below.
+
+   - Node.js LTS (needed for the frontend - npm install / npm run
+     build won't work without it)
+       winget install -e --id OpenJS.NodeJS.LTS
+
+   - (Optional) VS Code
+       winget install -e --id Microsoft.VisualStudioCode
+     Opening the project folder in VS Code auto-activates the venv
+     created in step 3, in its integrated terminal.
+
+   After installing, close and reopen your terminal (PATH changes
+   don't apply to already-open windows), then confirm each tool works:
+       git --version
+       python --version
+       node --version
+       npm --version
+   Each should print a version number, not "not recognized as a
+   command".
+
+
+2. Clone the repo
+
+       cd Desktop
+       git clone https://github.com/dvontetsianos/mc-management-tools.git "MC Management Tools"
+       cd "MC Management Tools"
+
+   NOTE: if the repo is private, the first clone pops a browser window
+   asking you to sign in to GitHub. That's normal - it's Git Credential
+   Manager (bundled with Git for Windows). Approve it once; future
+   clones/pulls on this machine won't ask again.
+
+
+3. Create and activate the Python virtual environment
+
+       python -m venv .venv
+       .venv\Scripts\activate
+
+   Your terminal prompt should now start with "(.venv)". If it
+   doesn't, activation silently failed - don't continue to step 4
+   until you see it.
+
+   TROUBLESHOOTING: if activation fails with a red error mentioning
+   "execution of scripts is disabled on this system", PowerShell's
+   script policy is blocking it. Fix once, per Windows user account:
+
+       Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+   Then re-run the activate command. (Or just use Command Prompt
+   instead of PowerShell - ".venv\Scripts\activate.bat" - cmd doesn't
+   have this restriction.)
+
+
+4. Install backend dependencies
+
+       pip install -r requirements.txt
+
+   This should finish with no red "ERROR" lines. If a package fails to
+   build, it's almost always because Python 3.14 is very new and that
+   package hasn't published a precompiled wheel for it yet - try
+   installing the specific package Python's Python version, or fall
+   back to Python 3.12/3.11 for this project if 3.14 keeps causing
+   build failures.
+
+
+5. Create your own .env file - THIS DOES NOT COME FROM GIT
+
+   .env is deliberately excluded from the repo (see .gitignore), so
+   secrets never get pushed to GitHub. That means a fresh clone has NO
+   .env file, and the backend WILL crash on startup with:
+
+       KeyError: 'SECRET_KEY'
+
+   until you create one yourself.
+
+   Create a file named exactly ".env" (no ".txt" on the end - if
+   Windows Explorer is hiding file extensions, you may accidentally
+   save it as ".env.txt"; File Explorer > View > check "File name
+   extensions" to see and fix this) in the project root, next to
+   requirements.txt, containing one line:
+
+       SECRET_KEY=<a random string>
+
+   Generate a random value with:
+
+       python -c "import secrets; print(secrets.token_hex(32))"
+
+   Copy the output (a long string of hex characters) in as the value.
+   Do not wrap it in quotes. Never reuse a SECRET_KEY from a different
+   install unless you specifically want the two to trust each other's
+   login tokens.
+
+
+6. Create the folders the backend expects to already exist
+
+   Two more folders are gitignored (they hold runtime DATA, not code)
+   and also won't exist after a fresh clone: "uploads" and "logs",
+   both directly inside the project root. The backend mounts "uploads"
+   as a static file directory at startup and will crash immediately
+   ("Directory 'uploads' does not exist") if it's missing.
+
+       mkdir uploads
+       mkdir logs
+
+
+7. Install frontend dependencies
+
+       cd frontend
+       npm install
+       cd ..
+
+   This can take a few minutes and prints a lot of text - that's
+   normal. Warnings (yellow) are fine; errors (red, and the command
+   exiting with a non-zero status) are not - don't continue until this
+   finishes cleanly.
+
+
+8. Point the frontend at your backend
+
+   Open frontend/src/config.js and set API_URL to wherever the backend
+   will actually be reachable from your browser, e.g. for local dev:
+
+       export const API_URL = "http://localhost:8000";
+
+   or the machine's LAN IP + port if you're testing from another
+   device on the same network. This is a plain hardcoded value, and
+   Vite bakes it into the build - it must be correct for wherever this
+   copy of the frontend will run BEFORE you build/run it, and changing
+   it after a build has no effect until you rebuild.
+
+
+9. Create the first admin login
+
+   The database file (assets.db, SQLite) and all its tables/default
+   permissions are created automatically the first time the backend
+   starts - but no user account exists yet. With the venv activated
+   (prompt shows "(.venv)"), run this ONCE:
+
+       python create_admin.py
+
+   Expected output: "Admin user created successfully". This creates
+   username "admin", password "1234". These are hardcoded in
+   create_admin.py, not secret or random - log in once and change the
+   password immediately, especially before this ever touches a
+   network anyone else can reach.
+
+   If this fails with "no such table: users" or similar, the backend
+   hasn't been started yet to create the database - do step 10 first,
+   stop it, then come back and run this.
+
+
+10. Run the app (two terminals; run both from the PROJECT ROOT, with
+    the venv activated in the first one)
+
+    Terminal 1 - backend:
+        uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+    Terminal 2 - frontend:
+        cd frontend
+        npm run dev -- --host 0.0.0.0
+
+    IMPORTANT: always launch uvicorn from the project ROOT, never from
+    inside the "app" folder. Both the database path
+    ("sqlite:///./assets.db" in app/database.py) and the "uploads"
+    static folder (app/main.py) are relative paths, resolved against
+    whatever directory you were standing in when you ran the command.
+    Running from the wrong folder silently creates a second, empty
+    database, or fails to find "uploads" - not always an obvious
+    error.
+
+
+11. Open the app
+
+    Visit http://localhost:5173 (or whatever URL the "npm run dev"
+    output prints) and log in with the admin account from step 9.
+
+
+=====================================================================
+PART 2 - COMMON PROBLEMS AND WHAT THEY ACTUALLY MEAN
+=====================================================================
+
+- "KeyError: 'SECRET_KEY'" on startup
+    .env is missing, or exists but has no SECRET_KEY line (or got
+    saved as ".env.txt" - see step 5's note about file extensions).
+    -> Part 1, step 5.
+
+- Backend crashes on startup mentioning "uploads" (directory doesn't
+  exist)
+    -> Create "uploads" and "logs" in the project root (Part 1, step
+       6), and confirm you're running uvicorn FROM the project root.
+
+- Frontend loads fine, but every action fails / errors in the browser
+  console
+    Almost always one of two things:
+    a) frontend/src/config.js's API_URL doesn't match where the
+       backend is actually running right now.
+    b) The backend's CORS allow_origins list (top of app/main.py)
+       doesn't include the exact origin - scheme + host + port - the
+       frontend is being served from.
+    Open the browser's dev tools (F12) -> Console tab. A CORS problem
+    shows as a distinct red message mentioning "CORS policy" or
+    "blocked by CORS" - that's not a normal network error, it means
+    the browser refused to let the response through; add the missing
+    origin to allow_origins and restart the backend.
+
+- Can't log in / "invalid credentials" right after a fresh setup
+    -> Confirm you actually ran "python create_admin.py" (Part 1, step
+       9) - a brand-new database has zero user accounts until you do.
+
+- ".venv\Scripts\activate" fails with an execution-policy error
+    -> See the TROUBLESHOOTING note under Part 1, step 3.
+
+- "npm install" or "npm run dev"/"npm run build" fails with confusing
+  errors
+    -> Check your Node version with "node -v". This frontend depends
+       on very recent package versions (React 19, Vite 8) that need a
+       current Node LTS release, not whatever shipped years ago.
+
+- Need the Android app (Capacitor)
+    -> frontend/android/ is gitignored and regenerated, not committed.
+       After cloning, if the Android project is needed, run
+       "npx cap add android" inside frontend/ first.
+
+- (Production/Windows Service only) The service shows as "Running" in
+  services.msc but the site doesn't respond
+    -> Check the NSSM stdout/stderr log files (Part 3, step 4) - most
+       often this means .env or the uploads/logs folders are missing
+       in the production copy (they're gitignored and don't come from
+       git even here), or AppDirectory wasn't set so relative paths
+       resolved wrong.
+
+- (Production/Windows Service only) Frontend loads at "/" but
+  refreshing on any other page (like /purchases) shows a blank page or
+  404
+    -> The catch-all route from Part 3, step 2 is missing, or was
+       added somewhere other than the very end of app/main.py (it has
+       to be registered after every real API route, or it can shadow
+       them).
+
+- (Production/Windows Service only) Visiting "/" still shows the old
+  {"message": "F&B Asset System is running"} JSON, even though the
+  catch-all route and frontend/dist both exist
+    -> The original "@app.get(\"/\")" route (near line 241) hasn't
+       been renamed to /api/status yet - see Part 3, step 2. It's
+       registered before the catch-all and wins on an exact match for
+       "/", regardless of anything the catch-all does.
+
+
+=====================================================================
+PART 3 - PRODUCTION DEPLOYMENT (Windows machine, run as a service)
+=====================================================================
+
+NOTE: fully confirmed working end-to-end as of 2026-09-18, including
+the extra fix in step 2, the NSSM service (step 4), the firewall rule
+(step 5, tested by loading the app from a second, separate device on
+the network), AND a full PC restart - the app came back up and was
+reachable from another device with nobody logged into the server at
+all, which is exactly what a Windows Service (vs. e.g. a login-time
+startup script) is supposed to guarantee. Treat any step that turns
+out wrong as a bug in this document: fix the wording here once it's
+confirmed working, don't just remember the fix in your head.
+
+Applies whether this Windows machine is physical or a VM (e.g. under
+Proxmox/KVM on an Ubuntu host) - the steps inside Windows are the
+same either way. If this IS a VM, one thing outside this document's
+scope: whether the VM's network is bridged (gets its own LAN IP,
+reachable directly) or NAT'd (needs a port-forward rule on the Ubuntu
+host to expose the port below to the outside) - that's a property of
+the VM setup, not of this app, and needs to be sorted out separately.
+
+Architecture: ONE process (uvicorn/FastAPI) serves both the API and
+the built frontend, on a single port. No separate web server (no
+nginx, no IIS) is needed. It runs as a Windows Service via NSSM, which
+is the closest Windows equivalent to what systemd does on Linux -
+starts automatically on boot, restarts itself if it crashes, doesn't
+need anyone logged in or a terminal left open.
+
+
+1) Do the local setup steps, in build mode
+
+   Follow Part 1, steps 1 through 9, on this machine - same
+   prerequisites, same clone, same venv, same .env / uploads / logs /
+   admin user creation. Two differences from local dev:
+
+   - In step 8, set config.js's API_URL to this machine's actual
+     address, e.g.:
+         export const API_URL = "http://<this-machine's-IP>:8000";
+     (Same port as the backend - see below for why: there's no
+     separate frontend port in production.)
+
+   - Instead of Part 1 step 10/11 ("npm run dev"), build the frontend
+     for production instead:
+         cd frontend
+         npm run build
+         cd ..
+     This creates a "frontend/dist" folder of static files. There is
+     no frontend dev server in production - the backend serves this
+     folder directly (step 2 below).
+
+
+2) Add this code to app/main.py - THE VERY LAST THING IN THE FILE
+
+   Open app/main.py, scroll to the bottom, and add this AFTER every
+   other @app.get / @app.post / @app.put / @app.delete route already
+   in the file (if it goes anywhere earlier, it will intercept real
+   API calls before they reach their actual handlers, breaking the
+   app):
+
+       from fastapi.staticfiles import StaticFiles
+       from fastapi.responses import FileResponse
+
+       FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+
+       if FRONTEND_DIST.exists():
+           app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
+
+           @app.get("/{full_path:path}")
+           async def serve_frontend(full_path: str):
+               file_path = FRONTEND_DIST / full_path
+               if file_path.is_file():
+                   return FileResponse(file_path)
+               return FileResponse(FRONTEND_DIST / "index.html")
+
+   What this does: "/assets/..." serves the JS/CSS files Vite builds
+   (that's Vite's default output folder name - confirmed against this
+   project's vite.config.js, which uses Vite's defaults). Any other
+   URL that isn't a real file falls back to index.html, which is what
+   lets the frontend's own internal page routing (like /purchases)
+   work on a refresh, the same job nginx's "try_files" did in an
+   earlier (Ubuntu-based) version of this plan.
+
+   Checked against this file (2026-09-17): there is no existing route
+   named "/assets" to collide with (asset/inventory items live under
+   "/items", not "/assets") - this is safe to add as-is.
+
+   ONE MORE CHANGE IS ALSO REQUIRED, further up the file (confirmed by
+   testing - without this, the root URL keeps showing the old status
+   JSON forever, no matter how correct the block above is). Find this,
+   near the top of the routes (around line 241):
+
+       @app.get("/")
+       def home():
+           return {"message": "F&B Asset System is running"}
+
+   and change ONLY the path, to get it out of the way of "/":
+
+       @app.get("/api/status")
+       def home():
+           return {"message": "F&B Asset System is running"}
+
+   Why: that route is registered earlier in the file than the
+   catch-all above, and it's an exact match for "/" - in FastAPI, the
+   first registered route that matches wins, so it always intercepted
+   the root path before the catch-all ever got a chance, regardless of
+   whether frontend/dist existed. Moving it to /api/status frees up
+   "/" for the frontend.
+
+   Swagger UI (/docs), ReDoc (/redoc) and /openapi.json are NOT
+   affected by any of this and need no changes - FastAPI registers
+   those automatically the moment "app = FastAPI()" runs, near the top
+   of the file, which is earlier than every route above (including the
+   old "/" one), so they keep working exactly as before.
+
+   Save the file. If uvicorn is running with --reload, it picks this
+   up automatically; otherwise restart it.
+
+
+3) Quick manual test before installing the service
+
+   From the project root, with the venv activated:
+       uvicorn app.main:app --host 0.0.0.0 --port 8000
+   Visit http://localhost:8000 in a browser on this machine - you
+   should see the actual app UI (not just the old {"message": "F&B
+   Asset System is running"} JSON, and not a 404). Try logging in, and
+   try refreshing the page on an inner screen (e.g. after navigating
+   to Purchases) - it should reload the app, not 404 or blank-page.
+   Also check http://localhost:8000/docs still loads Swagger normally.
+   Once this works, Ctrl+C to stop it, and move on to installing it as
+   a service.
+
+
+4) Install NSSM and wrap the backend as a Windows Service
+
+   Download NSSM from https://nssm.cc/download (a small, free,
+   widely-used tool - not something you need to build or configure
+   beyond what's below). Unzip it; inside is a "win64" folder (use
+   this one for any modern 64-bit Windows) containing nssm.exe. Put it
+   under your Desktop, e.g. C:\Users\<you>\Desktop\nssm\nssm.exe (if
+   you delete or move this file later, the service breaks, since it's
+   the thing actually running as the service). Avoid C:\ root or other
+   system locations - Desktop is simple and requires no special
+   permissions to create.
+
+   Open Command Prompt AS ADMINISTRATOR (right-click, "Run as
+   administrator" - NSSM cannot install a service without this), then:
+
+       C:\Users\<you>\Desktop\nssm\nssm.exe install MCManagementBackend "C:\path\to\project\.venv\Scripts\uvicorn.exe" "app.main:app --host 0.0.0.0 --port 8000"
+
+   Replace C:\path\to\project with wherever you actually cloned the
+   repo on THIS machine (Part 3, step 1) - e.g.
+   C:\Users\<you>\Desktop\MC Management Tools. Get this exactly right;
+   a wrong path here is the single most common way this setup fails
+   silently (the service "runs" but does nothing useful).
+
+   Then configure the remaining settings:
+
+       C:\Users\<you>\Desktop\nssm\nssm.exe set MCManagementBackend AppDirectory "C:\path\to\project"
+       C:\Users\<you>\Desktop\nssm\nssm.exe set MCManagementBackend AppStdout "C:\path\to\project\logs\service-out.log"
+       C:\Users\<you>\Desktop\nssm\nssm.exe set MCManagementBackend AppStderr "C:\path\to\project\logs\service-err.log"
+       C:\Users\<you>\Desktop\nssm\nssm.exe set MCManagementBackend AppExit Default Restart
+
+   AppDirectory matters for the exact same reason as Part 1 step 10 -
+   assets.db and uploads/ are relative paths, resolved against
+   whatever directory the process considers "current". Without
+   setting this, NSSM's default working directory may not be the
+   project root, and the service will create/look for the database
+   and uploads in the wrong place.
+
+   Start it:
+
+       C:\Users\<you>\Desktop\nssm\nssm.exe start MCManagementBackend
+
+   Verify:
+
+       C:\Users\<you>\Desktop\nssm\nssm.exe status MCManagementBackend
+
+   should print "SERVICE_RUNNING". You can also open services.msc
+   (Start menu -> type "services") and look for "MCManagementBackend"
+   - Status "Running", Startup type "Automatic". Visit
+   http://<this-machine's-IP>:8000 from another device to confirm it's
+   actually reachable, not just running locally.
+
+   If something's wrong, check the two log files you pointed
+   AppStdout/AppStderr at - that's where uvicorn's own errors (missing
+   .env, wrong path, port already in use, etc.) will show up.
+
+   To make changes later (e.g. you edit main.py again): stop the
+   service, make your change, start it again -
+       C:\Users\<you>\Desktop\nssm\nssm.exe stop MCManagementBackend
+       (make your changes)
+       C:\Users\<you>\Desktop\nssm\nssm.exe start MCManagementBackend
+   To remove the service entirely (e.g. to redo the install command):
+       C:\Users\<you>\Desktop\nssm\nssm.exe stop MCManagementBackend
+       C:\Users\<you>\Desktop\nssm\nssm.exe remove MCManagementBackend confirm
+
+   CONFIRMED 2026-09-18: after a full PC restart, with nobody logged
+   into this machine at all, the service came back up on its own and
+   the app was reachable from a second device on the network - this is
+   the actual behavior that matters for production (a person restarting
+   the PC, or it rebooting unattended after a power blip, shouldn't
+   require anyone to log in and start anything by hand).
+
+
+5) Open the port in Windows Defender Firewall
+
+   From an elevated Command Prompt:
+
+       netsh advfirewall firewall add rule name="MC Management Tools" dir=in action=allow protocol=TCP localport=8000
+
+   Without this, the service works fine locally on the machine itself
+   but nothing else on the network can reach it - a very easy thing to
+   mistake for the app being broken when it's actually just the
+   firewall.
+
+
+6) If this is a VM: networking outside this document's scope
+
+   If the Windows machine above is a VM (e.g. under KVM/Proxmox on an
+   Ubuntu host), whether other devices can reach it depends on how
+   that VM's network is configured on the host side - bridged
+   networking gives it its own LAN-reachable IP and nothing further is
+   needed beyond step 5 above; NAT networking means the Ubuntu host
+   also needs a port-forward rule sending some port to this VM's
+   internal IP:8000. That configuration lives on the hypervisor side,
+   not in this app, and is intentionally not covered here - see the
+   separate notes on setting up KVM/the VM itself.
+
+
+7) Ongoing maintenance, once confirmed working
+
+   The Windows Service is named "MCManagementBackend" - that's the one
+   name that ties everything together: it's what shows up in
+   services.msc, what you pass to nssm status/start/stop/restart, and
+   what Event Viewer entries reference if you ever need Windows-level
+   (not application-level) logs for it.
+
+   Code changed (backend or frontend):
+       cd "C:\path\to\project"
+       git pull
+       (if frontend changed) cd frontend && npm run build && cd ..
+       C:\Users\<you>\Desktop\nssm\nssm.exe restart MCManagementBackend
+
+   Something looks broken - troubleshooting order:
+       1. services.msc -> find "MCManagementBackend" -> check its
+          Status (should be "Running") and Startup type (should be
+          "Automatic").
+       2. The two application log files under logs\ in the project
+          root: service-out.log and service-err.log - this is where
+          uvicorn/Python errors actually show up (missing .env, wrong
+          path, port conflicts, etc.), and the first place to check.
+       3. Only if those don't explain it: Windows Event Viewer ->
+          Windows Logs -> Application, filtered by source
+          "MCManagementBackend" - this is Windows-level information
+          (the service failing to start at all), not application
+          errors.

@@ -210,6 +210,9 @@ class ItemLocation(Base):
     location = relationship("Location", back_populates="item_locations")
     total_quantity = Column(Integer, default=0)
     broken_quantity = Column(Integer, default=0)
+    staff_counted_quantity = Column(Integer, nullable=True)
+    staff_counted_at = Column(DateTime, nullable=True)
+    staff_counted_by = Column(String, nullable=True)
 
 
 

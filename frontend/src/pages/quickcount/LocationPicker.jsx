@@ -102,7 +102,9 @@ function LocationPicker() {
                         pb: 4
                     }}
                 >
-                    {locations.map((location) => (
+                    {locations
+                        .filter((location) => location.name !== "Unassigned")
+                        .map((location) => (
                         <Card key={location.id} elevation={2}>
                             <CardActionArea
                                 onClick={() => handlePicker(location)}
@@ -115,7 +117,7 @@ function LocationPicker() {
                         </Card>
                     ))}
 
-                    {locations.length === 0 && (
+                    {locations.filter((location) => location.name !== "Unassigned").length === 0 && (
                         <Typography sx={{ color: "text.secondary" }}>
                             No locations found. Ask an admin to add one first.
                         </Typography>

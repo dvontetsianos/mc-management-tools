@@ -394,7 +394,7 @@ function HousekeepingItems() {
           mt: -5
         }}
       >
-        <h1>Housekeeping Item Management</h1>
+        <h1>Housekeeping Items</h1>
       </Box>
 
       {/* ITEMS TAB */}

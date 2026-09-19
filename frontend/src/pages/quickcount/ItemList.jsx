@@ -8,9 +8,11 @@ import {
     ListItemButton,
     ListItemText,
     CircularProgress,
-    IconButton
+    IconButton,
+    Chip
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { getItemLocations } from "../../services/itemService";
 import { getLocations } from "../../services/locationService";
 
@@ -144,22 +146,41 @@ function ItemList() {
 
             {!loading && !error && (
                 <List sx={{ px: 1, pb: 4 }}>
-                    {visibleItems.map((itemLocation) => (
-                        <ListItemButton
-                            key={itemLocation.id}
-                            onClick={() => handlePick(itemLocation)}
+                    {visibleItems.map((itemLocation) => {
+
+                        const isCounted =
+                            itemLocation.staff_counted_quantity !== null &&
+                            itemLocation.staff_counted_quantity !== undefined;
+
+                        return (
+                            <ListItemButton
+                                key={itemLocation.id}
+                                onClick={() => handlePick(itemLocation)}
                             sx={{
                                 mb: 1,
                                 borderRadius: 2,
-                                backgroundColor: "white"
+                                backgroundColor: isCounted ? "#e8f5e9" : "white",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center"
                             }}
-                        >
-                            <ListItemText
-                                primary={itemLocation.item_name}
-                                secondary={`Total: ${itemLocation.total_quantity} · Broken: ${itemLocation.broken_quantity}`}
-                            />
-                        </ListItemButton>
-                    ))}
+                            >
+                                <ListItemText
+                                    primary={itemLocation.item_name}
+                                />
+
+                                {isCounted && (
+                                    <Chip
+                                        icon={<CheckCircleIcon />}
+                                        label={`Counted: ${itemLocation.staff_counted_quantity}`}
+                                        size="small"
+                                        color="success"
+                                        variant="outlined"
+                                    />
+                                )}
+                            </ListItemButton>
+                        );
+                    })}
 
                     {visibleItems.length === 0 && (
                         <Typography sx={{ px: 1, color: "text.secondary" }}>

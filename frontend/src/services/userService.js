@@ -127,7 +127,7 @@ export async function updateUserPermissions(userId, permissions) {
 
 
 
-export async function updateUserDepartment(userId, departments) {
+export async function updateUserDepartment(userId, departmentId) {
 
     const token = getToken();
 

@@ -133,10 +133,16 @@ class ItemLocationResponse(BaseModel):
     location: str | None = None
     total_quantity: int
     broken_quantity: int
+    staff_counted_quantity: int | None = None
+    staff_counted_at: datetime | None = None
+    staff_counted_by: str | None = None
 
     class Config:
         from_attributes = True
 
+
+class ItemLocationCountSubmit(BaseModel):
+    counted_quantity: int
 
 
 class ItemResponse(BaseModel):
@@ -155,6 +161,7 @@ class ItemResponse(BaseModel):
     purchases_this_year: int = 0
     expected_total: int = 0
     broken_missing: int = 0
+    staff_counted_quantity: int | None = None
     locations: list[ItemLocationResponse] = []
     department_id: int | None = None
     department: str | None = None

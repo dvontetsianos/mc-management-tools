@@ -97,6 +97,18 @@ def require_admin_or_items_access(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin, Assets access, or Housekeeping Items access required")
 
     return user
+#------------------------------------------------------------------------
+#same as above, but also lets the quickcount mobile role though. Used only on the endpoint that role needs to submit a count, not on other item routes
+def require_admin_items_or_quickcount_access(user: dict = Depends(get_current_user)):
+    if (
+        user["role"].lower() != "admin"
+        and user["role"].lower() != "quickcount"
+        and "assets_access" not in user.get("permissions", [])
+        and "housekeeping_items_access" not in user.get("permissions", [])
+    ):
+        raise HTTPException(status_code=403, detail="Admin, Assets access, Housekeeping Items access, or Quickcount role required")
+
+    return user
 #---------------------------------------------------------------------------------
 def require_admin_or_categories_access(user: dict = Depends(get_current_user)):
     if user["role"].lower() != "admin" and "categories_access" not in user.get("permissions", []):
@@ -178,6 +190,15 @@ def log_action(db, user, action, entity_type, entity_name, entity_id=None, detai
     db.add(log_entry)
     db.commit()
 #---------------------------------------------------------------------------------------
+def clear_staff_count_if_matched(item_location):
+    if (
+        item_location.staff_counted_quantity is not None
+        and item_location.total_quantity == item_location.staff_counted_quantity
+    ):
+        item_location.staff_counted_quantity = None
+        item_location.staff_counted_at = None
+        item_location.staff_counted_by = None
+#---------------------------------------------------------------------
 app = FastAPI()
 
 app.mount(
@@ -194,7 +215,9 @@ app.add_middleware(
         "http://192.168.0.187:5173", #marbella: private
         "https://localhost",
         "http://localhost",
-        "http://192.168.21.113:5173"
+        "http://192.168.21.113:5173",
+        "http://10.14.0.42",
+        "http://10.14.0.42:5173"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -236,9 +259,9 @@ def create_default_permissions():
 
 create_default_permissions()
 
-@app.get("/")
+@app.get("/api/status")
 def home():
-    return {"message": "F&B Asset System is running"}
+    return {"message": "MC Management Tools is running"}
 
 
 #-----------------------------------------------------------------------------------
@@ -1190,13 +1213,25 @@ def login(user: schemas.UserLogin, request: Request, db: Session = Depends(get_d
 #--------------------------------------------------------------------------
 #refresh token
 @app.post("/refresh-token")
-def refresh_token(current_user: dict = Depends(get_current_user)):
+def refresh_token(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+
+    db_user = db.query(models.User).filter(
+        models.User.username == current_user["username"]
+    ).first()
+
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    permissions = []
+
+    for user_permission in db_user.permissions:
+        permissions.append(user_permission.permission.name)
 
     token = create_access_token({
-        "sub": current_user["username"],
-        "role": current_user["role"],
-        "permissions": current_user["permissions"],
-        "department_id": current_user.get("department_id")
+        "sub": db_user.username,
+        "role": db_user.role,
+        "permissions": permissions,
+        "department_id": db_user.department_id
     })
 
     return {
@@ -1411,6 +1446,8 @@ def get_items(
         total_quantity = 0
         broken_quantity = 0
         assigned_quantity = 0
+        staff_counted_total = 0
+        staff_counted_locations = 0
 
         for item_location in item.locations:
 
@@ -1423,7 +1460,10 @@ def get_items(
                 "location_id": item_location.location_id,
                 "location": item_location.location.name if item_location.location else None,
                 "total_quantity": item_location.total_quantity,
-                "broken_quantity": item_location.broken_quantity
+                "broken_quantity": item_location.broken_quantity,
+                "staff_counted_quantity": item_location.staff_counted_quantity,
+                "staff_counted_at": item_location.staff_counted_at,
+                "staff_counted_by": item_location.staff_counted_by
             })
 
             total_quantity += item_location.total_quantity
@@ -1431,6 +1471,10 @@ def get_items(
 
             if location_name != "Unassigned":
                 assigned_quantity += item_location.total_quantity
+
+                if item_location.staff_counted_quantity is not None:
+                    staff_counted_total += item_location.staff_counted_quantity
+                    staff_counted_locations += 1
 
 
         opening_quantity = item.opening_quantity or 0
@@ -1455,6 +1499,7 @@ def get_items(
             "purchases_this_year": purchases_this_year,
             "expected_total": expected_total,
             "broken_missing": broken_missing,
+            "staff_counted_quantity": staff_counted_total if staff_counted_locations > 0 else None,
             "locations": locations,
             "department_id": item.department_id,
             "department": item.department.name if item.department else None
@@ -1901,12 +1946,27 @@ def delete_item_image(
 #---------------------------------------------------------------------
 #get item-location assignments for locations tab
 @app.get("/item-locations", response_model=list[schemas.ItemLocationResponse])
-def get_item_locations(db: Session = Depends(get_db)):
+def get_item_locations(
+    department_id: int | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
 
-    item_locations = db.query(models.ItemLocation).options(
+    query = db.query(models.ItemLocation).options(
         joinedload(models.ItemLocation.item),
         joinedload(models.ItemLocation.location)
-    ).all()
+    )
+
+    if user["role"].lower() != "admin":
+        query = query.filter(
+            models.ItemLocation.item.has(department_id=user.get("department_id"))
+        )
+    elif department_id is not None:
+        query = query.filter(
+            models.ItemLocation.item.has(department_id=department_id)
+        )
+
+    item_locations = query.all()
 
 
     result = []
@@ -1921,7 +1981,10 @@ def get_item_locations(db: Session = Depends(get_db)):
             "location_id": item_location.location_id,
             "location": item_location.location.name if item_location.location else None,
             "total_quantity": item_location.total_quantity,
-            "broken_quantity": item_location.broken_quantity
+            "broken_quantity": item_location.broken_quantity,
+            "staff_counted_quantity": item_location.staff_counted_quantity,
+            "staff_counted_at": item_location.staff_counted_at,
+            "staff_counted_by": item_location.staff_counted_by
         })
 
 
@@ -2024,6 +2087,7 @@ def update_item_location(
     old_broken_quantity = db_item_location.broken_quantity
 
     db_item_location.total_quantity = item_location.total_quantity
+    clear_staff_count_if_matched(db_item_location)
     db_item_location.broken_quantity = item_location.broken_quantity
 
     db.commit()
@@ -2066,6 +2130,91 @@ def update_item_location(
 
 
 #----------------------------------------------------------------------------------
+#staff submits a physical count (does not touch real quantities)
+@app.put("/item-locations/{item_location_id}/count", response_model=schemas.ItemLocationResponse)
+def submit_item_location_count(
+    item_location_id: int,
+    count: schemas.ItemLocationCountSubmit,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_items_or_quickcount_access)
+):
+
+    db_item_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.id == item_location_id
+    ).first()
+
+    if db_item_location is None:
+        raise HTTPException(status_code=404, detail="Item location not found")
+
+    db_item_location.staff_counted_quantity = count.counted_quantity
+    db_item_location.staff_counted_at = datetime.utcnow()
+    db_item_location.staff_counted_by = user["username"]
+
+    db.commit()
+    db.refresh(db_item_location)
+
+    log_action(
+        db, user, "submitted a count for", "Item Location",
+        db_item_location.item.name if db_item_location.item else "Unknown item",
+        db_item_location.item_id,
+        details=f"At {db_item_location.location.name if db_item_location.location else 'Unknown location'}: counted {count.counted_quantity} (system shows {db_item_location.total_quantity})"
+    )
+
+    return {
+        "id": db_item_location.id,
+        "item_id": db_item_location.item_id,
+        "item_name": db_item_location.item.name if db_item_location.item else None,
+        "location_id": db_item_location.location_id,
+        "location": db_item_location.location.name if db_item_location.location else None,
+        "total_quantity": db_item_location.total_quantity,
+        "broken_quantity": db_item_location.broken_quantity,
+        "staff_counted_quantity": db_item_location.staff_counted_quantity,
+        "staff_counted_at": db_item_location.staff_counted_at,
+        "staff_counted_by": db_item_location.staff_counted_by
+    }
+#------------------------------------------------------------------
+#admin dismisses a submitted count without moving anything (e.g. staff error)
+@app.post("/item-locations/{item_location_id}/dismiss-count", response_model=schemas.ItemLocationResponse)
+def dismiss_item_location_count(
+    item_location_id: int,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_items_or_quickcount_access)
+):
+
+    db_item_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.id == item_location_id
+    ).first()
+
+    if db_item_location is None:
+        raise HTTPException(status_code=404, detail="Item location not found")
+
+    log_action(
+        db, user, "dismissed the count for", "Item Location",
+        db_item_location.item.name if db_item_location.item else "Unknown item",
+        db_item_location.item_id,
+        details=f"At {db_item_location.location.name if db_item_location.location else 'Unknown location'}: dismissed count of {db_item_location.staff_counted_quantity}"
+    )
+
+    db_item_location.staff_counted_quantity = None
+    db_item_location.staff_counted_at = None
+    db_item_location.staff_counted_by = None
+
+    db.commit()
+    db.refresh(db_item_location)
+
+    return {
+        "id": db_item_location.id,
+        "item_id": db_item_location.item_id,
+        "item_name": db_item_location.item.name if db_item_location.item else None,
+        "location_id": db_item_location.location_id,
+        "location": db_item_location.location.name if db_item_location.location else None,
+        "total_quantity": db_item_location.total_quantity,
+        "broken_quantity": db_item_location.broken_quantity,
+        "staff_counted_quantity": None,
+        "staff_counted_at": None,
+        "staff_counted_by": None
+    }
+#-------------------------------------------------------------------------------------
 #remove an item from a single location (stays assigned elsewhere)
 @app.delete("/item-locations/{item_location_id}")
 def delete_item_location(
@@ -2227,6 +2376,7 @@ def create_item_movement(
     #move the stock: decrease the source, increase (or create) the destination
 
     from_item_location.total_quantity -= movement.quantity
+    clear_staff_count_if_matched(from_item_location)
 
     if from_item_location.total_quantity <= 0 and from_item_location.broken_quantity <= 0:
         db.delete(from_item_location)
@@ -2239,6 +2389,7 @@ def create_item_movement(
 
     if to_item_location:
         to_item_location.total_quantity += movement.quantity
+        clear_staff_count_if_matched(to_item_location)
     else:
         to_item_location = models.ItemLocation(
             item_id=movement.item_id,
@@ -2459,6 +2610,7 @@ def create_purchase(
 
     if item_location:
         item_location.total_quantity += purchase.quantity
+        clear_staff_count_if_matched(item_location)
 
     else:
         item_location = models.ItemLocation(
@@ -2570,3 +2722,23 @@ def delete_purchase(
 
 
     return {"message": "Purchase deleted successfully"}
+
+#---------------------------------------------------------------------------------------------
+
+
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="frontend-assets")
+
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = FRONTEND_DIST / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIST / "index.html")

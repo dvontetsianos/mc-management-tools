@@ -7,12 +7,14 @@ import {
     Button,
     CircularProgress,
     TextField,
-    Paper
+    Paper,
+    Chip
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { getItemLocations, updateItemLocation } from "../../services/itemService";
+import { getItemLocations, submitItemLocationCount, dismissItemLocationCount } from "../../services/itemService";
+
 
 
 
@@ -28,15 +30,12 @@ function ItemQuantity() {
     const [locationName] = useState(routerLocation.state?.locationName || "");
 
     const [totalQuantity, setTotalQuantity] = useState(
-        routerLocation.state?.itemLocation?.total_quantity ?? 0
-    );
-
-    const [brokenQuantity, setBrokenQuantity] = useState(
-        routerLocation.state?.itemLocation?.broken_quantity ?? 0
+        () => routerLocation.state?.itemLocation?.staff_counted_quantity ?? 0
     );
 
     const [loading, setLoading] = useState(!routerLocation.state?.itemLocation);
     const [saving, setSaving] = useState(false);
+    const [resetting, setResetting] = useState(false);
     const [error, setError] = useState("");
 
 
@@ -49,19 +48,18 @@ function ItemQuantity() {
         getItemLocations()
             .then((data) => {
                 const match = data.find(
-                    (il) => String(il.id_ == String(itemLocationId))
+                    (il) => String(il.id) === String(itemLocationId)
                 );
 
                 if (match) {
                     setItemLocation(match);
-                    setTotalQuantity(match.total_quantity);
-                    setBrokenQuantity(match.broken_quantity);
+                    setTotalQuantity(match.staff_counted_quantity ?? 0);
                 } else {
                     setError("Couldn't find this item. Go back and try again.");
                 }
 
             })
-            .catch(() => setError("Couldn't loadthis item. Check your connection and try again."))
+            .catch(() => setError("Couldn't load this item. Check your connection and try again."))
             .finally(() => setLoading(false));
 
     }, [itemLocation, itemLocationId]);
@@ -73,10 +71,7 @@ function ItemQuantity() {
         setError("");
 
         try {
-            await updateItemLocation(itemLocationId, {
-                total_quantity: totalQuantity,
-                broken_quantity: brokenQuantity
-            });
+            await submitItemLocationCount(itemLocationId, totalQuantity);
 
             navigate(`/quick-count/${locationId}`, {
                 state: { locationName }
@@ -87,6 +82,25 @@ function ItemQuantity() {
             setSaving(false);
         }
 
+    }
+
+    async function handleResetCount() {
+
+        setResetting(true);
+        setError("");
+
+        try {
+            await dismissItemLocationCount(itemLocationId);
+
+            navigate(`/quick-count/${locationId}`, {
+                state: { locationName }
+            });
+
+        } catch (err) {
+            setError(err.message || "Failed to reset count. Try again.");
+        } finally {
+            setResetting(false);
+        }
     }
 
 
@@ -139,9 +153,15 @@ function ItemQuantity() {
             <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 3 }}>
 
                 <Paper sx={{ p: 3, borderRadius: 3 }}>
-                    <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
-                        Total on hand
-                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                            Total on hand
+                        </Typography>
+
+                        {(itemLocation?.staff_counted_quantity === null || itemLocation?.staff_counted_quantity === undefined) && (
+                            <Chip label="Not Counted" size="small" variant="outlined" />
+                        )}
+                    </Box>
 
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
                         <IconButton
@@ -183,38 +203,6 @@ function ItemQuantity() {
                     </Box>
                 </Paper>
 
-                {/*
-                <Paper sx={{ p: 3, borderRadius: 3 }}>
-                    <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
-                        Broken / out of service
-                    </Typography>
-
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap : 3 }}>
-                        <IconButton
-                            size="large"
-                            onClick={() => setBrokenQuantity((q) => Math.max(0, q - 1))}
-                            sx={{ border: "1px soled #ccc" }}
-                        >
-                            <RemoveIcon />
-                        </IconButton>
-
-                        <Typography
-                            variant="h3"
-                            sx={{ minWidth: 80, textAlign: "center", fontVariantNumeric: "tabular-nums" }}
-                        >
-                            {brokenQuantity}
-                        </Typography>
-
-                        <IconButton
-                            size="large"
-                            onClick={() => setBrokenQuantity((q) => q + 1)}
-                            sx={{ border: "1px solid #ccc" }}
-                        >
-                            <AddIcon />
-                        </IconButton>
-                    </Box>
-                </Paper>
-                */}
             </Box>
 
             <Box sx={{ px: 2, mt: 4, mb: 4 }}>
@@ -228,6 +216,19 @@ function ItemQuantity() {
                 >
                     {saving ? "Saving..." : "Save count"}
                 </Button>
+
+                {itemLocation?.staff_counted_quantity !== null && itemLocation?.staff_counted_quantity !== undefined && (
+                    <Button
+                        fullWidth
+                        variant="text"
+                        size="small"
+                        disabled={resetting}
+                        onClick={handleResetCount}
+                        sx={{ mt: 1 }}
+                    >
+                        {resetting ? "Resetting..." : "Actually, not counted yet"}
+                    </Button>
+                )}
             </Box>
         </Box>
     );

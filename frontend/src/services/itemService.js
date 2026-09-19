@@ -219,6 +219,42 @@ export async function updateItemLocation(id, itemLocation) {
 
 }
 
+export async function submitItemLocationCount(id, countedQuantity) {
+
+    const response = await fetch(`${API_URL}/item-locations/${id}/count`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ counted_quantity: countedQuantity })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to submit count");
+    }
+
+    return data;
+
+}
+
+
+export async function dismissItemLocationCount(id) {
+
+    const response = await fetch(`${API_URL}/item-locations/${id}/dismiss-count`, {
+        method: "POST",
+        headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to dismiss count");
+    }
+
+    return data;
+
+}
+
 
 export async function deleteItemLocation(id) {
 

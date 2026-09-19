@@ -26,6 +26,49 @@ import { API_URL } from "../../config";
 
 
 
+function getStaffCountStyle(staffCounted, expected) {
+
+    const target = expected || 0;
+
+    const GREEN = [46, 125, 50];
+    const RED = [211, 47, 47];
+    const WHITE = [255, 255, 255];
+    const YELLOW = [255, 202, 40];
+
+    let rgb;
+
+    if (target === 0) {
+        rgb = staffCounted === 0 ? GREEN : YELLOW;
+    } else {
+
+        const percentage = (staffCounted / target) * 100;
+
+        if (percentage === 100) {
+            rgb = GREEN;
+        } else if (percentage > 100) {
+            rgb = YELLOW;
+        } else {
+            const ratio = Math.max(0, Math.min(percentage, 100)) / 100;
+            rgb = RED.map((channel, i) =>
+                Math.round(channel + (WHITE[i] - channel) * ratio)
+            );
+        }
+    }
+
+    const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+    const textColor = luminance > 0.6 ? "#000000" : "#ffffff";
+
+    return {
+        backgroundColor: `rgb(${rgb.join(",")})`,
+        color: textColor
+    };
+
+}
+
+
+
+
+
 function ItemTable({
     items,
     selectedLocations,
@@ -121,7 +164,7 @@ function ItemTable({
                                 <TableCell
                                     align="center"
                                     onClick={() => onSort("assigned_quantity")}>
-                                        Total Quantity{getSortArrow("assigned_quantity")}
+                                        Assigned Quantity{getSortArrow("assigned_quantity")}
                                 </TableCell>
 
                                 <TableCell
@@ -130,6 +173,14 @@ function ItemTable({
                                     onClick={() => onSort("broken_missing")}
                                 >
                                     Broken/Missing{getSortArrow("broken_missing")}
+                                </TableCell>
+
+                                <TableCell
+                                    align="center"
+                                    sx={{ width: 140 }}
+                                    onClick={() => onSort("staff_counted_quantity")}
+                                >
+                                    Staff Count{getSortArrow("staff_counted_quantity")}
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 250 }}>
@@ -208,6 +259,21 @@ function ItemTable({
                                         sx={{ width:120 }}
                                     >
                                         {item.broken_missing}
+                                    </TableCell>
+
+                                    <TableCell align="center" sx={{ width: 140 }}>
+                                        {item.staff_counted_quantity === null || item.staff_counted_quantity === undefined ? (
+                                            <Chip label="Not Counted" size="small" variant="outlined" />
+                                        ) : (
+                                            <Chip
+                                                label={item.staff_counted_quantity}
+                                                size="small"
+                                                sx={{
+                                                    ...getStaffCountStyle(item.staff_counted_quantity, item.assigned_quantity),
+                                                    fontWeight: "bold"
+                                                }}
+                                            />
+                                        )}
                                     </TableCell>
 
                                     <TableCell align="center" sx={{ width: 250, maxWidth: 250 }}>
