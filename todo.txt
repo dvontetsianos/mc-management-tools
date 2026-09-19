@@ -8,5 +8,7 @@ F&B:
 	
 	•rename page title and edit explanation text??????
 
+	•remove cost/unit from items tab, useless
+
 Housekeeping:
 	•rename page title and add explanation text

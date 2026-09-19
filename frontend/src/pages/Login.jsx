@@ -11,7 +11,9 @@ function Login() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
 
-    const handleLogin = async () => {
+    const handleLogin = async (e) => {
+
+        e.preventDefault();
 
         setError("");
         
@@ -46,26 +48,30 @@ function Login() {
                 </p>
             )}
 
-            <input
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-            />
+            <form onSubmit={handleLogin}>
 
-            <br />
+                <input
+                    placeholder="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                />
 
-            <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
+                <br />
 
-            <br />
+                <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
 
-            <button onClick={handleLogin}>
-                Login
-            </button>
+                <br />
+
+                <button type="submit">
+                    Login
+                </button>
+
+            </form>
         </div>
     );
 }
