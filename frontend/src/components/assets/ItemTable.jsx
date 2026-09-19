@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { getUser } from "../../services/auth";
 import { API_URL } from "../../config";
+import { ZOOM_PRESETS } from "../../hooks/useTableZoom";
 
 
 
@@ -78,10 +79,12 @@ function ItemTable({
     onHistory,
     onSort,
     sortColumn,
-    sortDirection
+    sortDirection,
+    zoomLevel = "medium"
 }) {
 
     const user = getUser();
+    const zoom = (ZOOM_PRESETS[zoomLevel] || ZOOM_PRESETS.medium).zoom;
 
     const [historyMenuAnchor, setHistoryMenuAnchor] = useState(null);
     const [historyMenuItem, setHistoryMenuItem] = useState(null);
@@ -117,9 +120,9 @@ function ItemTable({
 
             <h2>Items</h2>
 
-                <TableContainer>
+                <TableContainer sx={{ zoom }}>
 
-                    <Table size="small">
+                    <Table size="small" sx={{ tableLayout: "fixed" }}>
 
                         <TableHead
                         sx={{
@@ -163,6 +166,7 @@ function ItemTable({
 
                                 <TableCell
                                     align="center"
+                                    sx={{ width: 140 }}
                                     onClick={() => onSort("assigned_quantity")}>
                                         Assigned Quantity{getSortArrow("assigned_quantity")}
                                 </TableCell>
@@ -220,15 +224,12 @@ function ItemTable({
                                         "&:nth-of-type(odd)": {
                                             backgroundColor: "#ddc9b6"
                                         },
-                                        "& .MuiTableCell-root": {
-                                            py: 0,
-                                            height: 120
-                                        }
+                                        
                                     }}
                                 >
 
                                     <TableCell sx={{ width: 30}}>{item.id}</TableCell>
-                                    <TableCell align="center">
+                                    <TableCell align="center" sx={{ p: 0, position: "relative" }}>
                                         <Avatar
                                             variant="rounded"
                                             src={
@@ -237,11 +238,14 @@ function ItemTable({
                                                 :undefined
                                             }
                                             sx={{
-                                                width: 120,
+                                                position: "relative",
+                                                inset: 0,
+                                                borderRadius: 0,
                                                 height: 120,
+                                                width: 120,
                                                 backgroundColor: "#f5f5f5",
                                                 "& img": {
-                                                    objectFit: "contain"
+                                                    objectFit: "cover"
                                                 }
                                             }}
                                         >

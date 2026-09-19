@@ -4,6 +4,8 @@ import ItemTable from "../components/assets/ItemTable";
 import ItemFormDialog from "../components/assets/ItemFormDialog";
 import ItemDeleteConfirmDialog from "../components/assets/ItemDeleteConfirmDialog";
 import MoveItemDialog from "../components/assets/MoveItemDialog";
+import { useTableZoom } from "../hooks/useTableZoom";
+import TableZoomToggle from "../components/TableZoomToggle";
 import {
   getItems,
   createItem,
@@ -60,6 +62,7 @@ function Assets() {
   const [itemSortDirection, setItemSortDirection] = useState("asc");
   const [itemPage, setItemPage] = useState(0);
   const [itemRowsPerPage, setItemRowsPerPage] = useState(25);
+  const [itemZoom, setItemZoom] = useTableZoom();
 
   const [itemForm, setItemForm] = useState({
     name: "",
@@ -560,6 +563,8 @@ function Assets() {
               Filters
             </Button>
 
+            <TableZoomToggle zoomLevel={itemZoom} onChange={setItemZoom} />
+
 
             <Button
               variant="contained"
@@ -653,6 +658,7 @@ function Assets() {
           <ItemTable
             items={displayItems}
             selectedLocations={selectedItemLocations}
+            zoomLevel={itemZoom}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
             onDismissCount={handleDismissCount}
