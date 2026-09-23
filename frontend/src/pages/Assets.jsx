@@ -19,6 +19,7 @@ import {
 import { getCategories } from "../services/categoryService";
 import { getLocations } from "../services/locationService";
 import { getSuppliers } from "../services/supplierService";
+import { getDepartments } from "../services/departmentService";
 import {
   Button,
   Box,
@@ -37,7 +38,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 
 
-const FB_DEPARTMENT_ID = 7;
+const FB_DEPARTMENT_NAME = "F&B";
 
 function Assets() {
 
@@ -49,6 +50,7 @@ function Assets() {
   const [locations, setLocations] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [fbDepartmentId, setFbDepartmentId] = useState(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -96,8 +98,11 @@ function Assets() {
 
 
   const fetchItems = async () => {
+    if (!fbDepartmentId) {
+      return;
+    }
     try {
-      const data = await getItems(FB_DEPARTMENT_ID);
+      const data = await getItems(fbDepartmentId);
       setItems(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -118,8 +123,11 @@ function Assets() {
   };
 
   const fetchCategories = async () => {
+    if (!fbDepartmentId) {
+      return;
+    }
     try {
-      const data = await getCategories(FB_DEPARTMENT_ID);
+      const data = await getCategories(fbDepartmentId);
       setCategories(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -139,12 +147,28 @@ function Assets() {
     }
   };
 
+  const resolveFbDepartment = async () => {
+    try {
+      const departments = await getDepartments();
+      const fbDept = departments.find((d) => d.name === FB_DEPARTMENT_NAME);
+      setFbDepartmentId(fbDept ? fbDept.id : null);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load departments");
+      setSnackbarOpen(true);
+    }
+  };
+
   useEffect(() => {
-    fetchItems();
+    resolveFbDepartment();
     fetchLocations();
-    fetchCategories();
     fetchSuppliers();
   }, []);
+
+  useEffect(() => {
+    fetchItems();
+    fetchCategories();
+  }, [fbDepartmentId]);
 
 
   //-----item handlers----------
@@ -161,7 +185,7 @@ function Assets() {
       supplier_id: itemForm.supplier_id === "" ? null : itemForm.supplier_id,
       cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit,
       opening_quantity: itemForm.opening_quantity === "" ? 0 : itemForm.opening_quantity,
-      department_id: FB_DEPARTMENT_ID
+      department_id: fbDepartmentId
     };
 
     try {

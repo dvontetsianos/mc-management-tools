@@ -1,0 +1,337 @@
+================================================================
+MC MANAGEMENT TOOLS - SERVER INSTALLATION GUIDE
+================================================================
+Based on the actual working deployment carried out on the
+Marbella Collection server laptop.
+
+This is written for setting the app up on a NEW Windows
+machine (a "server laptop" or similar always-on PC) from
+scratch. Follow the steps in order.
+
+Wherever you see "C:\MC Management Tools" below, that is the
+project folder used on the current server. Use a plain
+root-level folder like this (not under a personal user
+profile, e.g. not under Desktop) so the install isn't tied to
+one specific Windows account.
+
+Wherever you see an IP address like 192.168.0.84, replace it
+with the actual LAN IP of the machine you are installing on
+(find it by running "ipconfig" and looking for "IPv4 Address").
+
+
+----------------------------------------------------------------
+PART 1 - INSTALL REQUIRED SOFTWARE
+----------------------------------------------------------------
+
+Open PowerShell AS ADMINISTRATOR (right-click PowerShell ->
+"Run as administrator") and run each of these one at a time:
+
+    winget install -e --id Git.Git --scope machine
+    winget install -e --id Python.Python.3.14 --scope machine
+    winget install -e --id OpenJS.NodeJS.LTS --scope machine
+    winget install -e --id Microsoft.VisualStudioCode --scope machine
+
+Close and reopen PowerShell after these finish, so the newly
+installed programs are recognized on PATH.
+
+(VS Code is optional but recommended - it makes editing files,
+using git, and auto-activating the Python virtual environment
+much easier. If you install the "Python" extension inside VS
+Code, opening a new terminal from within the project folder
+will automatically activate the virtual environment for you.)
+
+
+----------------------------------------------------------------
+PART 2 - CLONE THE PROJECT
+----------------------------------------------------------------
+
+    cd C:\
+    git clone https://github.com/dvontetsianos/mc-management-tools.git "MC Management Tools"
+    cd "MC Management Tools"
+
+Log into GitHub through VS Code or the git credential prompt
+when asked.
+
+
+----------------------------------------------------------------
+PART 3 - PYTHON BACKEND SETUP
+----------------------------------------------------------------
+
+Create and activate a virtual environment:
+
+    python -m venv .venv
+    .venv\Scripts\activate
+
+You should see "(.venv)" appear at the start of your prompt.
+
+Install backend dependencies:
+
+    pip install -r requirements.txt
+
+Create the secret key file. Create a new file named exactly
+".env" (no other extension) in the project root
+(C:\MC Management Tools\.env) containing:
+
+    SECRET_KEY=<paste a freshly generated value here>
+
+To generate that value, run:
+
+    python -c "import secrets; print(secrets.token_hex(32))"
+
+IMPORTANT: generate a NEW secret for every separate
+installation. Never copy this value from another install.
+
+Create the two runtime folders the backend expects to exist
+(these are gitignored, so a fresh clone won't have them):
+
+    mkdir uploads
+    mkdir logs
+
+
+----------------------------------------------------------------
+PART 4 - FRONTEND SETUP
+----------------------------------------------------------------
+
+    cd frontend
+    npm install
+
+Create the frontend's own environment file. Create a new file
+at frontend\.env.local containing:
+
+    VITE_API_URL=http://<this-machine's-LAN-IP>:8000
+
+Example: VITE_API_URL=http://192.168.0.84:8000
+
+This file is gitignored and specific to this machine - every
+separate install needs its own copy with its own correct IP.
+(The app's code reads this automatically; you should never need
+to hardcode an IP address directly into any source file.)
+
+Build the production frontend bundle:
+
+    npm run build
+    cd ..
+
+This creates frontend\dist, which the backend serves directly -
+there is no separate frontend server needed in production.
+
+
+----------------------------------------------------------------
+PART 5 - DATABASE
+----------------------------------------------------------------
+
+Choose ONE of the following:
+
+  OPTION A - Brand new install, no existing data:
+
+    python create_admin.py
+
+  This creates a single admin account:
+      username: admin
+      password: 1234
+  CHANGE THIS PASSWORD IMMEDIATELY after your first login.
+
+  OPTION B - Migrating existing data from another install:
+
+  Copy the existing "assets.db" file directly into the project
+  root (C:\MC Management Tools\assets.db - same folder level as
+  requirements.txt). If the old install has files in its
+  "uploads" folder (item photos, etc.), copy those into this
+  install's "uploads" folder too, overwriting the empty one.
+
+  Skip create_admin.py entirely if using this option - the
+  copied database already has real accounts in it.
+
+NOTE ON DEPARTMENTS: two specific item pages in this app (F&B
+Items and Housekeeping Items) look up their department by exact
+name. When setting up departments for a brand-new install
+(Option A), make sure you create one named exactly "F&B" and
+one named exactly "Housekeeping" (matching is case-sensitive)
+so those two pages can find them correctly.
+
+
+----------------------------------------------------------------
+PART 6 - MANUAL TEST RUN (before installing as a service)
+----------------------------------------------------------------
+
+    uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+From a browser (this machine or another device on the same
+network), visit:
+
+    http://<this-machine's-LAN-IP>:8000
+
+Check:
+  - The real login page loads (not raw JSON text)
+  - You can log in
+  - Refreshing an inner page (e.g. /purchases) still works, no 404
+  - http://<ip>:8000/docs loads (this needs the viewing device to
+    have internet access, since it pulls its styling from an
+    external CDN - this is not required for the app itself to work
+    and can be safely ignored if it's blank on an offline device)
+
+Press Ctrl+C to stop the test server once confirmed.
+
+
+----------------------------------------------------------------
+PART 7 - INSTALL AS A WINDOWS SERVICE (NSSM)
+----------------------------------------------------------------
+
+Download NSSM from: https://nssm.cc/download
+
+Extract the zip to a STABLE, ACCOUNT-INDEPENDENT location - for
+example C:\nssm-2.24 (a plain folder at the drive root). Do NOT
+put it on a personal user's Desktop - the Windows Service will
+depend on this exact file location forever, and a personal
+profile folder can disappear if that account is ever removed.
+
+Open an ADMINISTRATOR PowerShell window and run each of the
+following ONE AT A TIME (paste and run a single line, wait for
+it to finish, then do the next one - pasting many lines as one
+block can cause PowerShell to execute them out of order):
+
+    & "C:\nssm-2.24\win64\nssm.exe" install MCManagementTools "C:\MC Management Tools\.venv\Scripts\uvicorn.exe" "app.main:app --host 0.0.0.0 --port 8000"
+
+    & "C:\nssm-2.24\win64\nssm.exe" set MCManagementTools AppDirectory "C:\MC Management Tools"
+
+    & "C:\nssm-2.24\win64\nssm.exe" set MCManagementTools AppStdout "C:\MC Management Tools\logs\service-out.log"
+
+    & "C:\nssm-2.24\win64\nssm.exe" set MCManagementTools AppStderr "C:\MC Management Tools\logs\service-err.log"
+
+    & "C:\nssm-2.24\win64\nssm.exe" set MCManagementTools AppExit Default Restart
+
+    & "C:\nssm-2.24\win64\nssm.exe" start MCManagementTools
+
+    & "C:\nssm-2.24\win64\nssm.exe" status MCManagementTools
+
+The last command should print SERVICE_RUNNING.
+
+(Adjust the paths above if your NSSM or project folder is
+somewhere different, and adjust "MCManagementTools" if you want
+a different service name - just keep it consistent across all
+seven commands.)
+
+This service runs as "Local System" by default (NSSM's
+default), which means it starts automatically on boot and keeps
+running regardless of who is logged in, or even with nobody
+logged in at all.
+
+
+----------------------------------------------------------------
+PART 8 - OPEN THE FIREWALL PORT
+----------------------------------------------------------------
+
+In the same Administrator PowerShell:
+
+    netsh advfirewall firewall add rule name="MC Management Tools" dir=in action=allow protocol=TCP localport=8000
+
+
+----------------------------------------------------------------
+PART 9 - FINAL VERIFICATION
+----------------------------------------------------------------
+
+  1. Visit http://<machine-IP>:8000 from the server itself.
+  2. Visit the same address from a second device on the network.
+  3. Restart the machine completely, wait at the Windows lock
+     screen WITHOUT logging in, and confirm the site is still
+     reachable from another device. This proves it is a true
+     always-on service, not dependent on any user session.
+
+
+----------------------------------------------------------------
+PART 10 - ONE-CLICK UPDATE SCRIPT (for future code updates)
+----------------------------------------------------------------
+
+Create a file named update.bat directly in the project root
+(C:\MC Management Tools\update.bat) containing:
+
+------------------------------------------------
+@echo off
+cd /d "C:\MC Management Tools"
+
+echo Pulling latest code...
+git pull
+
+echo Installing backend dependencies...
+call .venv\Scripts\pip install -r requirements.txt
+
+echo Installing and building frontend...
+cd frontend
+call npm install
+call npm run build
+cd ..
+
+echo Restarting service...
+"C:\nssm-2.24\win64\nssm.exe" restart MCManagementTools
+
+echo Done.
+pause
+------------------------------------------------
+
+(Adjust the nssm.exe path and service name to match what you
+used in Part 7.)
+
+From now on, whenever code changes need to be deployed to this
+server:
+  1. On the development machine: commit and push the changes
+     to GitHub as usual.
+  2. On this server: right-click update.bat -> "Run as
+     administrator". Wait for it to print "Done."
+
+This single script pulls the latest code, reinstalls any new
+dependencies, rebuilds the frontend, and restarts the service -
+no manual steps needed.
+
+
+----------------------------------------------------------------
+OPTIONAL - DB BROWSER FOR SQLITE (inspecting the database)
+----------------------------------------------------------------
+
+To look at the live database directly through a GUI:
+
+    winget install -e --id DBBrowserForSQLite.DBBrowserForSQLite --scope machine
+
+Open it, then File -> Open Database -> browse to
+C:\MC Management Tools\assets.db
+
+Safe to browse and run SELECT queries while the service is
+running. Avoid writing/editing data directly through this tool
+while the app is live - use the app itself for any changes, so
+its own validation logic is respected.
+
+
+----------------------------------------------------------------
+IMPORTANT GOTCHAS / LESSONS LEARNED
+----------------------------------------------------------------
+
+- Any command that controls the Windows Service or the firewall
+  MUST be run from an Administrator PowerShell (right-click ->
+  "Run as administrator"). Simply double-clicking a script, or
+  running PowerShell normally, will fail with "Access is
+  denied" on the service-related steps.
+
+- When running a quoted .exe path directly in PowerShell (like
+  nssm.exe), prefix it with "&" (the call operator), e.g.:
+      & "C:\path\to\nssm.exe" status MyService
+  Without it, PowerShell treats the quoted path as plain text
+  and errors out.
+
+- When pasting more than 2-3 PowerShell commands at once,
+  PowerShell can sometimes execute them out of order. If
+  something behaves unexpectedly after a multi-line paste
+  (e.g. "service already exists" or "does not exist" errors
+  in a confusing order), stop, run "stop" and "remove" on the
+  service to reset it, and redo the install commands one line
+  at a time instead.
+
+- Never hardcode a machine-specific value (like an IP address)
+  into a file that is tracked by git (such as config.js). Use a
+  gitignored .env / .env.local file instead, so each machine
+  keeps its own value and "git pull" never overwrites it.
+
+- If "git pull" ever refuses with "your local changes would be
+  overwritten," it means a tracked file was edited locally and
+  never committed. If that local edit is no longer needed
+  (e.g. it's about to be replaced by an incoming change),
+  discard it with "git checkout -- <path-to-file>" and then
+  pull again.

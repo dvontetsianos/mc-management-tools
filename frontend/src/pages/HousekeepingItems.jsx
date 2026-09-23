@@ -16,6 +16,7 @@ import {
 import { getCategories } from "../services/categoryService";
 import { getLocations } from "../services/locationService";
 import { getSuppliers } from "../services/supplierService";
+import { getDepartments } from "../services/departmentService";
 import {
   Button,
   Box,
@@ -33,7 +34,7 @@ import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
 
 
-const HOUSEKEEPING_DEPARTMENT_ID = 3;
+const HOUSEKEEPING_DEPARTMENT_NAME = "Housekeeping";
 
 function HousekeepingItems() {
 
@@ -45,6 +46,7 @@ function HousekeepingItems() {
   const [locations, setLocations] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [housekeepingDepartmentId, setHousekeepingDepartmentId] = useState(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -91,8 +93,11 @@ function HousekeepingItems() {
 
 
   const fetchItems = async () => {
+    if (!housekeepingDepartmentId) {
+      return;
+    }
     try {
-      const data = await getItems(HOUSEKEEPING_DEPARTMENT_ID);
+      const data = await getItems(housekeepingDepartmentId);
       setItems(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -113,8 +118,11 @@ function HousekeepingItems() {
   };
 
   const fetchCategories = async () => {
+    if (!housekeepingDepartmentId) {
+      return;
+    }
     try {
-      const data = await getCategories(HOUSEKEEPING_DEPARTMENT_ID);
+      const data = await getCategories(housekeepingDepartmentId);
       setCategories(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -134,12 +142,28 @@ function HousekeepingItems() {
     }
   };
 
+  const resolveHousekeepingDepartment = async () => {
+    try {
+      const departments = await getDepartments();
+      const hkDept = departments.find((d) => d.name === HOUSEKEEPING_DEPARTMENT_NAME);
+      setHousekeepingDepartmentId(hkDept ? hkDept.id : null);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load departments");
+      setSnackbarOpen(true);
+    }
+  };
+
   useEffect(() => {
-    fetchItems();
+    resolveHousekeepingDepartment();
     fetchLocations();
-    fetchCategories();
     fetchSuppliers();
   }, []);
+
+  useEffect(() => {
+    fetchItems();
+    fetchCategories();
+  }, [housekeepingDepartmentId]);
 
 
   //-----item handlers----------
@@ -156,7 +180,7 @@ function HousekeepingItems() {
       supplier_id: itemForm.supplier_id === "" ? null : itemForm.supplier_id,
       cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit,
       opening_quantity: itemForm.opening_quantity === "" ? 0 : itemForm.opening_quantity,
-      department_id: HOUSEKEEPING_DEPARTMENT_ID
+      department_id: housekeepingDepartmentId
     };
 
     try {
