@@ -29,7 +29,7 @@ function SystemMonitor() {
         </p>
 
         <p>
-            Memory Usage: {system.disk_percent}%
+            Memory Usage: {system.memory_percent}%
         </p>
 
         <p>

@@ -109,6 +109,29 @@ def require_admin_items_or_quickcount_access(user: dict = Depends(get_current_us
         raise HTTPException(status_code=403, detail="Admin, Assets access, Housekeeping Items access, or Quickcount role required")
 
     return user
+#-------------------------------------------------------------------------------
+#which permission grants access to a given department's items catalog, regardless of the viewer's own home department
+DEPARTMENT_ITEM_PERMISSIONS = {
+    3: "housekeeping_items_access",  # Housekeeping
+    7: "assets_access",              # F&B
+}
+
+def user_can_access_department_items(user: dict, department_id) -> bool:
+    if user["role"].lower() == "admin":
+        return True
+
+    if "all_departments_access" in user.get("permissions", []):
+        return True
+
+    if department_id is None:
+        return True
+
+    required_permission = DEPARTMENT_ITEM_PERMISSIONS.get(department_id)
+
+    if required_permission and required_permission in user.get("permissions", []):
+        return True
+
+    return department_id == user.get("department_id")
 #---------------------------------------------------------------------------------
 def require_admin_or_categories_access(user: dict = Depends(get_current_user)):
     if user["role"].lower() != "admin" and "categories_access" not in user.get("permissions", []):
@@ -121,10 +144,43 @@ def require_admin_or_locations_access(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin or Locations access required")
 
     return user
+#--------------------------------------------------------------------------
+def require_locations_read_access(user:dict = Depends(get_current_user)):
+    if (
+        user["role"].lower() != "admin"
+        and "locations_access" not in user.get("permissions", [])
+        and "assets_access" not in user.get("permissions", [])
+        and "housekeeping_items_access" not in user.get("permissions", [])
+    ):
+        raise HTTPException(status_code=403, detail="Admin, Locations access, F&B Items access, or Housekeeping Items access required")
+
+    return user
+#-------------------------------------------------------------------------------
+def require_categories_read_access(user: dict = Depends(get_current_user)):
+    if (
+        user["role"].lower() != "admin"
+        and "categories_access" not in user.get("permissions", [])
+        and "assets_access" not in user.get("permissions", [])
+        and "housekeeping_items_access" not in user.get("permissions", [])
+    ): 
+        raise HTTPException(status_code=403, detail="Admin, Categories access, F&B Items access, or Housekeeping Items access required")
+
+    return user
 #----------------------------------------------------------------------------------
 def require_admin_or_suppliers_access(user: dict = Depends(get_current_user)):
     if user["role"].lower() != "admin" and "suppliers_access" not in user.get("permissions", []):
         raise HTTPException(status_code=403, detail="Admin or Suppliers access required")
+
+    return user
+#----------------------------------------------------------------------
+def require_suppliers_read_access(user: dict = Depends(get_current_user)):
+    if (
+        user["role"].lower() != "admin"
+        and "suppliers_access" not in user.get("permissions", [])
+        and "assets_access" not in user.get("permissions", [])
+        and "housekeeping_items_access" not in user.get("permissions", [])
+    ):
+        raise HTTPException(status_code=403, detail="Admin, Suppliers access, F&B Items access, or Housekeeping Items access required")
 
     return user
 #-------------------------------------------------------------------------
@@ -436,7 +492,10 @@ def get_spend_report(
 #-----------------------------------------------------------------------------------------
 #get locations
 @app.get("/locations")
-def get_locations(db: Session = Depends(get_db)):
+def get_locations(
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_locations_read_access)
+):
     return db.query(models.Location).all()
 
 
@@ -509,12 +568,18 @@ def delete_location(
 def get_categories(
     department_id: int | None = None,
     db: Session = Depends(get_db),
-    user: dict = Depends(require_admin_or_categories_access)
+    user: dict = Depends(require_categories_read_access)
 ):
 
     query = db.query(models.Category)
 
     if department_id is not None:
+        if not user_can_access_department_items(user, department_id):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have access to this department's categories"
+            )
+        
         query = query.filter(models.Category.department_id == department_id)
 
     return query.all()
@@ -528,6 +593,12 @@ def create_category(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin_or_categories_access)
 ):
+
+    if not user_can_access_department_items(admin, department_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to create categories in this department"
+        )
 
     new_category = models.Category(
         name=category_name,
@@ -588,7 +659,10 @@ def delete_category(
 #---------------------------------------------------------------------------
 #get suppliers
 @app.get("/suppliers")
-def get_suppliers(db: Session = Depends(get_db)):
+def get_suppliers(
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_suppliers_read_access)
+):
     return db.query(models.Supplier).all()
 
 #-------------------------------------------------------------------------------
@@ -718,6 +792,36 @@ def delete_department(
         raise HTTPException(
             status_code=400,
             detail="Cannot delete department. Users are assigned to this department."
+        )
+
+    items_using_department = db.query(models.Item).filter(
+        models.Item.department_id == department_id
+    ).count()
+
+    if items_using_department > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete department. Items are assigned to this department."
+        )
+
+    categories_using_department = db.query(models.Category).filter(
+        models.Category.department_id == department_id
+    ).count()
+
+    if categories_using_department > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete department. Categories are assigned to this department."
+        )
+
+    purchases_using_department = db.query(models.Purchase).filter(
+        models.Purchase.department_id == department_id
+    ).count()
+
+    if purchases_using_department > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete department. Purchases are recorded for this department."
         )
 
     db.delete(department)
@@ -882,12 +986,13 @@ def update_request_status(
     is_target_department = (
         viewer.department_id is not None
         and request_obj.target_department_id == viewer.department_id
+        and "requests_access" in current_user.get("permissions", [])
     )
 
     if not (is_admin or is_target_department):
         raise HTTPException(
             status_code=403,
-            detail="Only the target department or an admin can update this request"
+            detail="Only the target department (with Requests access) or an admin can update this request"
         )
 
     request_obj.status = status_data.status
@@ -924,10 +1029,7 @@ def delete_request(
     return {
         "message": "Request deleted successfully"
     }
-#-------------------------------------------------------------------------------
-@app.get("/debug/users")
-def debug_users(db: Session = Depends(get_db)):
-    return db.query(models.User).all()
+
 #--------------------------------------------------------------------------
 #get users
 @app.get("/users", response_model=list[schemas.UserOut])
@@ -1424,10 +1526,20 @@ def get_items(
         joinedload(models.Item.locations).joinedload(models.ItemLocation.location)
     )
 
-    if user["role"].lower() != "admin":
-        query = query.filter(models.Item.department_id == user.get("department_id"))
-    elif department_id is not None:
+    if department_id is not None:
+        if not user_can_access_department_items(user, department_id):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have access to this department's items"
+            )
+
         query = query.filter(models.Item.department_id == department_id)
+
+    elif (
+        user["role"].lower() != "admin"
+        and "all_departments_access" not in user.get("permissions", [])
+    ):
+        query = query.filter(models.Item.department_id == user.get("department_id"))
 
     items = query.all()
 
@@ -1512,8 +1624,16 @@ def get_items(
 @app.post("/items/export")
 def export_items(
     items: list[dict],
-    db: Session = Depends(get_db)
+    user: dict = Depends(require_admin_or_items_access)
 ):
+
+    max_items = 5000
+
+    if len(items) > max_items:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot export more than {max_items} items at once."
+        )
 
     workbook = Workbook()
     sheet = workbook.active
@@ -1602,9 +1722,17 @@ def create_item(
         or "all_departments_access" in user.get("permissions", [])
     )
 
-    department_id_to_use = (
-        item.department_id if can_choose_department else user.get("department_id")
-    )
+    if can_choose_department:
+        department_id_to_use = item.department_id
+    elif item.department_id is not None:
+        if not user_can_access_department_items(user, item.department_id):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have access to create items in this department"
+            )
+        department_id_to_use = item.department_id
+    else:
+        department_id_to_use = user.get("department_id")
 
     if not department_id_to_use:
         raise HTTPException(
@@ -1674,6 +1802,12 @@ def update_item(
         raise HTTPException(
             status_code=404,
             detail="Item not found"
+        )
+
+    if not user_can_access_department_items(user, db_item.department_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to items in this department"
         )
 
     category = db.query(models.Category).filter(
@@ -1957,13 +2091,23 @@ def get_item_locations(
         joinedload(models.ItemLocation.location)
     )
 
-    if user["role"].lower() != "admin":
-        query = query.filter(
-            models.ItemLocation.item.has(department_id=user.get("department_id"))
-        )
-    elif department_id is not None:
+    if department_id is not None:
+        if not user_can_access_department_items(user, department_id):
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have access to this department's items"
+            )
+
         query = query.filter(
             models.ItemLocation.item.has(department_id=department_id)
+        )
+
+    elif (
+        user["role"].lower() != "admin"
+        and "all_departments_access" not in user.get("permissions", [])
+    ):
+        query = query.filter(
+            models.ItemLocation.item.has(department_id=user.get("department_id"))
         )
 
     item_locations = query.all()
@@ -1999,6 +2143,12 @@ def create_item_location(
     user: dict = Depends(require_admin_or_items_access)
 ):
 
+    if item_location.total_quantity < 0 or item_location.broken_quantity < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantities cannot be negative"
+        )
+
     item = db.query(models.Item).filter(
         models.Item.id == item_location.item_id
     ).first()
@@ -2008,6 +2158,12 @@ def create_item_location(
         raise HTTPException(
             status_code=404,
             detail="Item not found"
+        )
+
+    if not user_can_access_department_items(user, item.department_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to items in this department"
         )
 
     location = db.query(models.Location).filter(
@@ -2073,6 +2229,12 @@ def update_item_location(
     user: dict = Depends(require_admin_or_items_access)
 ):
 
+    if item_location.total_quantity < 0 or item_location.broken_quantity < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantities cannot be negative"
+        )
+
     db_item_location = db.query(models.ItemLocation).filter(
         models.ItemLocation.id == item_location_id
     ).first()
@@ -2081,6 +2243,14 @@ def update_item_location(
         raise HTTPException(
             status_code=404,
             detail="Item location not found"
+        )
+
+    if not db_item_location.item or not user_can_access_department_items(
+        user, db_item_location.item.department_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to item locations in this department"
         )
 
     old_total_quantity = db_item_location.total_quantity
@@ -2139,12 +2309,26 @@ def submit_item_location_count(
     user: dict = Depends(require_admin_items_or_quickcount_access)
 ):
 
+    if count.counted_quantity < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Counted quantity cannot be negative"
+        )
+
     db_item_location = db.query(models.ItemLocation).filter(
         models.ItemLocation.id == item_location_id
     ).first()
 
     if db_item_location is None:
         raise HTTPException(status_code=404, detail="Item location not found")
+
+    if not db_item_location.item or not user_can_access_department_items(
+        user, db_item_location.item.department_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to submit counts for this department"
+        )
 
     db_item_location.staff_counted_quantity = count.counted_quantity
     db_item_location.staff_counted_at = datetime.utcnow()
@@ -2187,6 +2371,14 @@ def dismiss_item_location_count(
 
     if db_item_location is None:
         raise HTTPException(status_code=404, detail="Item location not found")
+
+    if not db_item_location.item or not user_can_access_department_items(
+        user, db_item_location.item.department_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to dismiss counts for this department"
+        )
 
     log_action(
         db, user, "dismissed the count for", "Item Location",
@@ -2235,6 +2427,14 @@ def delete_item_location(
             detail="Item location not found"
         )
 
+    if not db_item_location.item or not user_can_access_department_items(
+        user, db_item_location.item.department_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to item locations in this department"
+        )
+
 
     item_name = db_item_location.item.name if db_item_location.item else "Unknown item"
     location_name = db_item_location.location.name if db_item_location.location else "Unknown location"
@@ -2267,6 +2467,16 @@ def get_item_movements(
         joinedload(models.ItemMovement.from_location),
         joinedload(models.ItemMovement.to_location)
     )
+
+    can_see_all_departments = (
+        user["role"].lower() == "admin"
+        or "all_departments_access" in user.get("permissions", [])
+    )
+
+    if not can_see_all_departments:
+        query = query.filter(
+            models.ItemMovement.item.has(department_id=user.get("department_id"))
+        )
 
     if item_id is not None:
         query = query.filter(models.ItemMovement.item_id == item_id)
@@ -2325,6 +2535,17 @@ def create_item_movement(
         raise HTTPException(
             status_code=404,
             detail="Item not found"
+        )
+
+    can_see_all_departments = (
+        user["role"].lower() == "admin"
+        or "all_departments_access" in user.get("permissions", [])
+    )
+
+    if not can_see_all_departments and item.department_id != user.get("department_id"):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only move items in your own department"
         )
 
     to_location = db.query(models.Location).filter(

@@ -21,7 +21,13 @@ export async function getLocations() {
         }
     );
 
-    return await response.json();
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load locations");
+    }
+
+    return data;
 
 }
 

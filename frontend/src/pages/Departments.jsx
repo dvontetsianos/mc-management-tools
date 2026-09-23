@@ -33,6 +33,8 @@ function Departments() {
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
+    const [creating, setCreating] = useState(false);
+
     const fetchDepartments = async () => {
 
         const data = await getDepartments();
@@ -46,6 +48,8 @@ function Departments() {
         if (!newDepartment.trim()) {
             return;
         }
+
+        setCreating(true);
 
         try {
 
@@ -68,6 +72,10 @@ function Departments() {
             setSnackbarSeverity("error");
 
             setSnackbarOpen(true);
+
+        } finally {
+
+            setCreating(false);
 
         }
 
@@ -137,8 +145,9 @@ function Departments() {
                     <Button
                         variant="contained"
                         onClick={handleCreate}
+                        disabled={creating}
                     >
-                        Add Department
+                        {creating ? "Adding..." : "Add Department"}
                     </Button>
                 </Box>
 

@@ -23,7 +23,13 @@ export async function getSuppliers() {
         }
     );
 
-    return await response.json();
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load suppliers");
+    }
+
+    return data;
 
 }
 

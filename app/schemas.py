@@ -70,6 +70,7 @@ class RequestResponse(BaseModel):
     created_at: datetime
     image_url: str | None = None
     sender_id: int
+    sender_department_id: int | None = None
     sender_username: str | None = None
     sender_department: str | None = None
     target_department_id: int

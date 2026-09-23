@@ -48,6 +48,7 @@ function Requests() {
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
     const [requestToDelete, setRequestToDelete] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [creating, setCreating] = useState(false);
 
     const [resolvedPage, setResolvedPage] = useState(0);
     const [resolvedRowsPerPage, setResolvedRowsPerPage] = useState(5);
@@ -86,6 +87,8 @@ function Requests() {
             return;
         }
 
+        setCreating(true);
+
         try {
 
             await createRequest(newRequest);
@@ -113,6 +116,9 @@ function Requests() {
             setSnackbarSeverity("error");
 
             setSnackbarOpen(true);
+        } finally {
+
+            setCreating(false);
         }
     };
 
@@ -429,8 +435,8 @@ function Requests() {
                             Cancel
                         </Button>
 
-                        <Button variant="contained" onClick={handleCreate}>
-                            Send
+                        <Button variant="contained" onClick={handleCreate} disabled={creating}>
+                            {creating ? "Sending..." : "Send"}
                         </Button>
                     </DialogActions>
                 </Dialog>

@@ -141,7 +141,7 @@ function ItemFormDialog({
                         fullWidth
                     />
 
-                    {user.role === "admin" && (
+                    {user?.role === "admin" && (
                         <TextField
                             label="Opening Quantity"
                             type="number"

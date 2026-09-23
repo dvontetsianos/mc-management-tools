@@ -52,6 +52,9 @@ function LostFound() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
 
+    const [adding, setAdding] = useState(false);
+    const [claiming, setClaiming] = useState(false);
+
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: "",
@@ -103,6 +106,8 @@ function LostFound() {
             return;
         }
 
+        setAdding(true);
+
         try {
 
             await createLostFoundItem({
@@ -124,6 +129,10 @@ function LostFound() {
 
             console.error(error);
 
+        } finally {
+
+            setAdding(false);
+
         }
 
     };
@@ -142,6 +151,8 @@ function LostFound() {
             return;
         }
 
+        setClaiming(true);
+
         try {
 
             await claimLostFoundItem(itemToClaim.id, claimedByInput.trim());
@@ -158,6 +169,10 @@ function LostFound() {
             showNotification("Failed to claim item.", "error");
 
             console.error(error);
+
+        } finally {
+
+            setClaiming(false);
 
         }
 
@@ -428,9 +443,9 @@ function LostFound() {
                         <Button
                             variant="contained"
                             onClick={handleAdd}
-                            disabled={!description.trim()}
+                            disabled={!description.trim() || adding}
                         >
-                            Add
+                            {adding ? "Adding..." : "Add"}
                         </Button>
 
                     </DialogActions>
@@ -470,9 +485,9 @@ function LostFound() {
                         <Button
                             variant="contained"
                             onClick={handleClaim}
-                            disabled={!claimedByInput.trim()}
+                            disabled={!claimedByInput.trim() || claiming}
                         >
-                            Confirm
+                            {claiming ? "Saving..." : "Confirm"}
                         </Button>
 
                     </DialogActions>

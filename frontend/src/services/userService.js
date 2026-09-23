@@ -63,11 +63,13 @@ export async function deleteUser(userId) {
     );
 
 
+    const data = await response.json();
+
     if (!response.ok) {
-        throw new Error("Failed to delete user");
+        throw new Error(data.detail || "Failed to delete user");
     }
 
-    return await response.json();
+    return data;
     
 }
 

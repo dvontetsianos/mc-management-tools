@@ -23,7 +23,13 @@ export async function getItems(department_id) {
         headers: getAuthHeaders()
     });
 
-    return await response.json();
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load items");
+    }
+
+    return data;
     
 }
 

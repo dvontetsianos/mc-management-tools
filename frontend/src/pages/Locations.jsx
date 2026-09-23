@@ -41,6 +41,8 @@ function Locations() {
 
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
+    const [creating, setCreating] = useState(false);
+
     const fetchLocations = async () => {
 
         const data = await getLocations();
@@ -54,6 +56,8 @@ function Locations() {
         if (!newLocation.trim()) {
             return;
         }
+
+        setCreating(true);
 
         try {
 
@@ -76,6 +80,10 @@ function Locations() {
             setSnackbarSeverity("error");
 
             setSnackbarOpen(true);
+
+        } finally {
+
+            setCreating(false);
 
         }
 
@@ -146,8 +154,9 @@ function Locations() {
                 <Button
                     variant="contained"
                     onClick={handleCreate}
+                    disabled={creating}
                 >
-                    Add Location
+                    {creating ? "Adding..." : "Add Location"}
                 </Button>
 
             </Box>

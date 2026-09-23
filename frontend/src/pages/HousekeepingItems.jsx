@@ -48,6 +48,7 @@ function HousekeepingItems() {
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
 
   // ---items tab state -----
 
@@ -90,23 +91,47 @@ function HousekeepingItems() {
 
 
   const fetchItems = async () => {
-    const data = await getItems(HOUSEKEEPING_DEPARTMENT_ID);
-    setItems(data);
+    try {
+      const data = await getItems(HOUSEKEEPING_DEPARTMENT_ID);
+      setItems(data);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load items");
+      setSnackbarOpen(true);
+    }
   };
 
   const fetchLocations = async () => {
-    const data = await getLocations();
-    setLocations(data);
+    try {
+      const data = await getLocations();
+      setLocations(data);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load locations");
+      setSnackbarOpen(true);
+    }
   };
 
   const fetchCategories = async () => {
-    const data = await getCategories(HOUSEKEEPING_DEPARTMENT_ID);
-    setCategories(data);
+    try {
+      const data = await getCategories(HOUSEKEEPING_DEPARTMENT_ID);
+      setCategories(data);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load categories");
+      setSnackbarOpen(true);
+    }
   };
 
   const fetchSuppliers = async () => {
-    const data = await getSuppliers();
-    setSuppliers(data);
+    try {
+      const data = await getSuppliers();
+      setSuppliers(data);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load suppliers");
+      setSnackbarOpen(true);
+    }
   };
 
   useEffect(() => {
@@ -203,6 +228,7 @@ function HousekeepingItems() {
 
     fetchItems();
 
+    setSnackbarSeverity("success");
     setSnackbarMessage("Item deleted successfully.");
     setSnackbarOpen(true);
 
@@ -404,7 +430,7 @@ function HousekeepingItems() {
             variant="outlined"
             onClick={async () => {
               try {
-                await exportItems(paginatedItems, itemSearch);
+                await exportItems(sortedItems, itemSearch);
               } catch (error) {
                 alert(error.message);
               }
@@ -643,7 +669,7 @@ function HousekeepingItems() {
       >
         <Alert
           onClose={() => setSnackbarOpen(false)}
-          severity="success"
+          severity={snackbarSeverity}
           variant="filled"
         >
           {snackbarMessage}

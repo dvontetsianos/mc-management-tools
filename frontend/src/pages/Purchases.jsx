@@ -41,7 +41,7 @@ function Purchases() {
     const user = getUser();
 
     const canSeeAllDepartments =
-        user.role === "admin" || user.permissions?.includes("all_departments_access");
+        user?.role === "admin" || user?.permissions?.includes("all_departments_access");
 
     const [searchParams] = useSearchParams();
     const routerLocation = useLocation();
@@ -87,7 +87,7 @@ function Purchases() {
     const fetchLookups = async () => {
 
         const [itemsData, categoriesData, suppliersData, locationsData, departmentsData] = await Promise.all([
-            getItems(canSeeAllDepartments ? undefined : user.department_id),
+            getItems(canSeeAllDepartments ? undefined : user?.department_id),
             getCategories(),
             getSuppliers(),
             getLocations(),
@@ -155,7 +155,7 @@ function Purchases() {
         return new Date(value + "Z").toLocaleDateString();
     };
 
-    const columnCount = 10 + (canSeeAllDepartments ? 1 : 0) + (user.role === "admin" ? 1 : 0);
+    const columnCount = 10 + (canSeeAllDepartments ? 1 : 0) + (user?.role === "admin" ? 1 : 0);
 
     return (
         <>
@@ -239,7 +239,7 @@ function Purchases() {
                                 <TableCell>Supplier</TableCell>
                                 <TableCell>Doc #</TableCell>
                                 <TableCell>Notes</TableCell>
-                                {user.role === "admin" && (
+                                {user?.role === "admin" && (
                                     <TableCell align="center">Delete</TableCell>
                                 )}
 
@@ -267,7 +267,7 @@ function Purchases() {
                                     <TableCell>{purchase.document_number || "-"}</TableCell>
                                     <TableCell>{purchase.notes || "-"}</TableCell>
 
-                                    {user.role === "admin" && (
+                                    {user?.role === "admin" && (
                                         <TableCell align="center">
                                             <IconButton
                                                 variant="contained"
@@ -311,7 +311,7 @@ function Purchases() {
                 locations={locations}
                 departments={departments}
                 canSeeAllDepartments={canSeeAllDepartments}
-                userDepartmentId={user.department_id}
+                userDepartmentId={user?.department_id}
                 onSaved={handleSaved}
             />
 

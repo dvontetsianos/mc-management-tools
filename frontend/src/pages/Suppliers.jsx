@@ -39,6 +39,8 @@ function Suppliers() {
 
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
+    const [creating, setCreating] = useState(false);
+
     const fetchSuppliers = async () => {
 
         const data = await getSuppliers();
@@ -52,6 +54,8 @@ function Suppliers() {
         if (!newSupplier.trim()) {
             return;
         }
+
+        setCreating(true);
 
         try {
 
@@ -74,6 +78,10 @@ function Suppliers() {
             setSnackbarSeverity("error");
 
             setSnackbarOpen(true);
+
+        } finally {
+
+            setCreating(false);
 
         }
     };
@@ -140,8 +148,9 @@ function Suppliers() {
                     <Button
                         variant="contained"
                         onClick={handleCreate}
+                        disabled={creating}
                     >
-                        Add Supplier
+                        {creating ? "Adding..." : "Add Supplier"}
                     </Button>
                 </Box>
 

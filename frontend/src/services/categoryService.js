@@ -25,7 +25,13 @@ export async function getCategories(department_id) {
         }
     );
 
-    return await response.json();
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load categories");
+    }
+
+    return data;
 
 }
 

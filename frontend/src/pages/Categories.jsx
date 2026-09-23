@@ -55,6 +55,8 @@ function Categories() {
 
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
+    const [creating, setCreating] = useState(false);
+
     const fetchCategories = async () => {
 
         const data = await getCategories();
@@ -152,6 +154,8 @@ function Categories() {
             return;
         }
 
+        setCreating(true);
+
         try {
 
             await createCategory(newCategory, departmentIdToUse);
@@ -165,7 +169,7 @@ function Categories() {
             setSnackbarSeverity("success");
 
             setSnackbarOpen(true);
-            
+
         } catch (error) {
 
             setSnackbarMessage(error.message);
@@ -173,6 +177,10 @@ function Categories() {
             setSnackbarSeverity("error");
 
             setSnackbarOpen(true);
+
+        } finally {
+
+            setCreating(false);
 
         }
 
@@ -276,8 +284,9 @@ function Categories() {
                     <Button
                         variant="contained"
                         onClick={handleCreate}
+                        disabled={creating}
                     >
-                        Add Category
+                        {creating ? "Adding..." : "Add Category"}
                     </Button>
                 </Box>
 

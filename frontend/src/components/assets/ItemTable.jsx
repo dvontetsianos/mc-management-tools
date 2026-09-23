@@ -86,6 +86,9 @@ function ItemTable({
     const user = getUser();
     const zoom = (ZOOM_PRESETS[zoomLevel] || ZOOM_PRESETS.medium).zoom;
 
+    const canViewPurchases = user?.role === "admin" || user?.permissions?.includes("purchases_access");
+    const canViewMovements = user?.role === "admin" || user?.permissions?.includes("movements_access");
+
     const [historyMenuAnchor, setHistoryMenuAnchor] = useState(null);
     const [historyMenuItem, setHistoryMenuItem] = useState(null);
 
@@ -208,7 +211,7 @@ function ItemTable({
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 180 }}>
-                                    Edit / Assign / History
+                                    Edit / Assign{(canViewPurchases || canViewMovements) ? " / History" : ""}
                                 </TableCell>
 
                             </TableRow>
@@ -326,15 +329,17 @@ function ItemTable({
                                             </IconButton>
                                         </Tooltip>
 
-                                        <Tooltip title="History">
-                                            <IconButton
-                                                onClick={(e) => handleHistoryMenuOpen(e, item)}
-                                            >
-                                                <HistoryIcon fontSize="large"/>
-                                            </IconButton>
-                                        </Tooltip>
+                                        {(canViewPurchases || canViewMovements) && (
+                                            <Tooltip title="History">
+                                                <IconButton
+                                                    onClick={(e) => handleHistoryMenuOpen(e, item)}
+                                                >
+                                                    <HistoryIcon fontSize="large"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
 
-                                        {user.role === "admin" && (
+                                        {user?.role === "admin" && (
                                             <Tooltip title="Delete (admin only)">
                                                 <Button
                                                     variant="contained"
@@ -367,13 +372,17 @@ function ItemTable({
                 open={Boolean(historyMenuAnchor)}
                 onClose={handleHistoryMenuClose}
             >
-                <MenuItem onClick={() => handleHistoryChoice("purchases")}>
-                    Purchases
-                </MenuItem>
+                {canViewPurchases && (
+                    <MenuItem onClick={() => handleHistoryChoice("purchases")}>
+                        Purchases
+                    </MenuItem>
+                )}
 
-                <MenuItem onClick={() => handleHistoryChoice("movements")}>
-                    Movements
-                </MenuItem>
+                {canViewMovements && (
+                    <MenuItem onClick={() => handleHistoryChoice("movements")}>
+                        Movements
+                    </MenuItem>
+                )}
             </Menu>
 
         </Paper>

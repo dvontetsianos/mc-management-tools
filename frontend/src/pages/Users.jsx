@@ -49,6 +49,8 @@ function Users() {
 
     const [open, setOpen] = useState(false);
 
+    const [creatingUser, setCreatingUser] = useState(false);
+
     const [newUser, setNewUser] = useState({
         username: "",
         password: "",
@@ -284,6 +286,8 @@ function Users() {
 
     async function handleCreateUser() {
 
+        setCreatingUser(true);
+
         try {
 
             await createUser({
@@ -292,6 +296,11 @@ function Users() {
             });
 
             setOpen(false);
+
+            const isUnderProvisionedQuickCount =
+                newUser.role === "quickcount" &&
+                !newUser.permissions.includes("assets_access") &&
+                !newUser.permissions.includes("housekeeping_items_access");
 
             setNewUser({
                 username: "",
@@ -303,8 +312,28 @@ function Users() {
 
             loadUsers();
 
+            if (isUnderProvisionedQuickCount) {
+                showNotification(
+                    "User created - but Quickcount staff need at least 1 Items access to use Quickcount",
+                    "warning"
+                );
+            } else {
+                showNotification(
+                    "User created successfully",
+                    "success"
+                );
+            }
+
         } catch (error) {
+            showNotification(
+                error.message || "Failed to create user",
+                "error"
+            );
+
             console.error(error);
+        } finally {
+
+            setCreatingUser(false);
         }
     }
 
@@ -334,7 +363,7 @@ function Users() {
 
         } catch (error) {
             showNotification(
-                "You cannot delete your own account",
+                error.message || "Failed to delete user",
                 "error"
             );
 
@@ -667,8 +696,9 @@ return (
                 <Button
                     variant="contained"
                     onClick={handleCreateUser}
+                    disabled={creatingUser}
                 >
-                    Create
+                    {creatingUser ? "Creating..." : "Create"}
                 </Button>
 
             </DialogActions>
