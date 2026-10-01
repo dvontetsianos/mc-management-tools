@@ -40,11 +40,13 @@ export async function createUser(userData) {
     });
 
 
+    const data = await response.json();
+
     if (!response.ok) {
-        throw new Error("Failed to create user");
+        throw new Error(data.detail || "Failed to create user");
     }
 
-    return await response.json();
+    return data;
     
 }
 
@@ -153,4 +155,32 @@ export async function updateUserDepartment(userId, departmentId) {
 
     return await response.json();
     
+}
+
+
+export async function updateUserHotels(userId, hotelIds) {
+
+    const token = getToken();
+
+    const response = await fetch(
+        `${API_URL}/users/${userId}/hotels`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                hotel_ids: hotelIds
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to update hotels");
+    }
+
+    return data;
 }

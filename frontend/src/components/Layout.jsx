@@ -6,6 +6,7 @@ import FeedbackDialog from "../components/feedback/FeedbackDialog";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
+import KitchenIcon from "@mui/icons-material/Kitchen";
 import PeopleIcon from "@mui/icons-material/People";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import FeedbackIcon from "@mui/icons-material/Feedback";
@@ -328,6 +329,26 @@ function Layout() {
                                         {sidebarOpen && (
                                             <ListItemText
                                                 primary="Housekeeping Items"
+                                                sx={{ ml: 2 }}
+                                            />
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            )}
+
+                            {(user?.role === "admin" || user?.permissions?.includes("kitchen_items_access")) && (
+                                <ListItem disablePadding>
+                                    <ListItemButton
+                                        onClick={() => navigate("/kitchen-items")}
+                                        sx={{
+                                            justifyContent: sidebarOpen ? "initial" :"center",
+                                        }}
+                                    >
+                                        <KitchenIcon />
+
+                                        {sidebarOpen && (
+                                            <ListItemText
+                                                primary="Kitchen Items"
                                                 sx={{ ml: 2 }}
                                             />
                                         )}

@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import HousekeepingItems from "./pages/HousekeepingItems";
+import KitchenItems from "./pages/KitchenItems";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import PermissionRoute from "./components/PermissionRoute";
@@ -124,6 +125,15 @@ function App() {
                     element={
                         <PermissionRoute permission="housekeeping_items_access">
                             <HousekeepingItems />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
+                    path="/kitchen-items"
+                    element={
+                        <PermissionRoute permission="kitchen_items_access">
+                            <KitchenItems />
                         </PermissionRoute>
                     }
                 />

@@ -26,6 +26,7 @@ function ItemList() {
     const [locationName, setLocationName] = useState(
         routerLocation.state?.locationName || ""
     );
+    const [hotelId, setHotelId] = useState(null);
     const [itemLocations, setItemLocations] = useState([]);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
@@ -52,11 +53,8 @@ function ItemList() {
     }, [locationId]);
 
 
+    //always look the location up, so we know its hotel for the back arrow
     useEffect(() => {
-
-        if (locationName) {
-            return;
-        }
 
         getLocations()
             .then((data) => {
@@ -66,11 +64,12 @@ function ItemList() {
 
                 if (match) {
                     setLocationName(match.name);
+                    setHotelId(match.hotel_id);
                 }
             })
             .catch(() => {});
 
-    }, [locationId, locationName]);
+    }, [locationId]);
 
 
     const visibleItems = useMemo(() => {
@@ -113,7 +112,7 @@ function ItemList() {
                     py: 2
                 }}
             >
-                <IconButton onClick={() => navigate("/quick-count")}>
+                <IconButton onClick={() => navigate(hotelId ? `/quick-count?hotel=${hotelId}` : "/quick-count")}>
                     <ArrowBackIcon />
                 </IconButton>
 

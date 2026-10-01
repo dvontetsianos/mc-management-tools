@@ -17,10 +17,14 @@ import {
 } from "@mui/material";
 import { createItem } from "../../services/itemService";
 import { createPurchase } from "../../services/purchaseService";
+import LocationLabel from "../LocationLabel";
 
 
 
 const filter = createFilterOptions();
+
+//only departments that have an items page, so a new item never ends up where nobody can see it
+const ITEM_PAGE_DEPARTMENTS = ["F&B", "Housekeeping", "Kitchen"];
 
 
 const emptyForm = {
@@ -59,14 +63,32 @@ function PurchaseLogDialog({
 
     const isNewItem = Boolean(newItemName) && !selectedItem;
 
-    //default the receiving location to Unassigned everytime the dialog opens
+    //receiving locations: only the chosen item's hotels (the backend requires that), sorted by hotel, then name
+    const receivingOptions = (locations || [])
+        .filter((loc) =>
+            !selectedItem
+            || !selectedItem.hotel_ids
+            || selectedItem.hotel_ids.includes(loc.hotel_id)
+        )
+        .sort((a, b) =>
+            (a.hotel_name || "").localeCompare(b.hotel_name || "")
+            || a.name.localeCompare(b.name)
+        );
+
+    //default the receiving location to Unassigned when the dialog opens or the item changes,
+    //but only when it's clear which hotel's Unassigned is meant (one hotel to choose from)
     useEffect(() => {
 
         if (open) {
-            const unassigned = (locations || []).find((loc) => loc.name === "Unassigned");
+            const hotelIds = [...new Set(receivingOptions.map((loc) => loc.hotel_id))];
+
+            const unassigned = hotelIds.length === 1
+                ? receivingOptions.find((loc) => loc.name === "Unassigned")
+                :null;
+
             setLocationId(unassigned ? unassigned.id : "");
         }
-    }, [open, locations]);
+    }, [open, locations, selectedItem]);
 
     const resetAndClose = () => {
         setSelectedItem(null);
@@ -98,6 +120,16 @@ function PurchaseLogDialog({
             return;
         }
 
+        //users who can't pick a department add new items to their own, which also needs an items page
+        if (isNewItem && !canSeeAllDepartments) {
+            const ownDepartment = (departments || []).find((dept) => dept.id === userDepartmentId);
+
+            if (!ownDepartment || !ITEM_PAGE_DEPARTMENTS.includes(ownDepartment.name)) {
+                setError("New items can only be added for F&B, Housekeeping or Kitchen.");
+                return;
+            }
+        }
+
         if (!form.quantity || Number(form.quantity) <= 0) {
             setError("Please enter a quantity greater than 0.");
             return;
@@ -116,8 +148,14 @@ function PurchaseLogDialog({
             let itemId = selectedItem ? selectedItem.id : null;
 
             if (isNewItem) {
+                //a new item belongs to the hotel it is received at
+                const receivingLocation = (locations || []).find(
+                    (loc) => loc.id === Number(locationId)
+                );
+
                 const created = await createItem({
                     name: newItemName,
+                    hotel_ids: receivingLocation ? [receivingLocation.hotel_id] : [],
                     category_id: newItemCategoryId,
                     supplier_id: form.supplierId || null,
                     cost_per_unit: form.unitCost ? Number(form.unitCost) : null,
@@ -174,9 +212,21 @@ function PurchaseLogDialog({
 
                     <Autocomplete
                         options={items}
-                        getOptionLabel={(option) => 
-                            typeof option === "string" ? option : option.name
-                        }
+                        getOptionLabel={(option) => {
+
+                            if (typeof option === "string") {
+                                return option;
+                            }
+
+                            if (option.isNew) {
+                                return option.name;
+                            }
+
+                            return option.department_id
+                                ? `${option.name} (${option.department})`
+                                : option.name;
+                        }}
+
                         filterOptions={(options, params) => {
 
                             const filtered = filter(options, params);
@@ -243,7 +293,9 @@ function PurchaseLogDialog({
                                     setNewItemDepartmentId(e.target.value)
                                 }
                             >
-                                {(departments || []).map((dept) => (
+                                {(departments || [])
+                                    .filter((dept) => ITEM_PAGE_DEPARTMENTS.includes(dept.name))
+                                    .map((dept) => (
                                     <MenuItem key={dept.id} value={dept.id}>
                                         {dept.name}
                                     </MenuItem>
@@ -271,9 +323,9 @@ function PurchaseLogDialog({
                             label="Receiving Location*"
                             onChange={(e) => setLocationId(e.target.value)}
                         >
-                            {(locations || []).map((loc) => (
+                            {receivingOptions.map((loc) => (
                                 <MenuItem key={loc.id} value={loc.id}>
-                                    {loc.name}
+                                    <LocationLabel name={loc.name} hotel={loc.hotel_name} />
                                 </MenuItem>
                             ))}
                         </Select>

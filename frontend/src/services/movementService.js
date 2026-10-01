@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { handleResponse } from "./api";
 
 
 function getAuthHeaders() {
@@ -35,7 +36,15 @@ export async function getItemMovements({
         headers: getAuthHeaders()
     });
 
-    return await response.json();
+    await handleResponse(response);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load movements");
+    }
+
+    return data;
 }
 
 

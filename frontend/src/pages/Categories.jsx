@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { getCategories, createCategory, deleteCategory } from "../services/categoryService";
+import { getSubcategories, createSubcategory, deleteSubcategory } from "../services/subcategoryService";
 import { getDepartments } from "../services/departmentService";
 import { getUser } from "../services/auth";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
 import {
     Box,
     Typography,
@@ -39,6 +43,7 @@ function Categories() {
 
     const [categories, setCategories] = useState([]);
     const [departments, setDepartments] = useState([]);
+    const [subcategories, setSubcategories] = useState([]);
 
     const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
 
@@ -57,6 +62,14 @@ function Categories() {
 
     const [creating, setCreating] = useState(false);
 
+    const [addSubcategoryDialogOpen, setAddSubcategoryDialogOpen] = useState(false);
+    const [categoryForNewSubcategory, setCategoryForNewSubcategory] = useState(null);
+    const [newSubcategoryName, setNewSubcategoryName] = useState("");
+    const [creatingSubcategory, setCreatingSubcategory] = useState(false);
+
+    const [subcategoryToDelete, setSubcategoryToDelete] = useState(null);
+    const [deleteSubcategoryDialogOpen, setDeleteSubcategoryDialogOpen] = useState(false);
+
     const fetchCategories = async () => {
 
         const data = await getCategories();
@@ -72,9 +85,17 @@ function Categories() {
         setDepartments(data);
     };
 
+    const fetchSubcategories = async () => {
+
+        const data = await getSubcategories();
+
+        setSubcategories(data);
+    };
+
     useEffect(() => {
         fetchCategories();
         fetchDepartments();
+        fetchSubcategories();
     }, []);
 
     //only departments that actually have at least one category get a tab
@@ -118,7 +139,10 @@ function Categories() {
         ? categories.filter((cat) => cat.department_id === activeDepartment.id)
         : [];
 
-    
+    const getSubcategoriesForCategory = (categoryId) =>
+        subcategories.filter((sub) => sub.category_id === categoryId);
+
+
     let emptyMessage = "No categories yet for this department.";
 
     if (isAdmin && tabDepartments.length === 0) {
@@ -220,6 +244,89 @@ function Categories() {
 
     };
 
+    const openAddSubcategoryDialog = (category) => {
+
+        setCategoryForNewSubcategory(category);
+        setNewSubcategoryName("");
+        setAddSubcategoryDialogOpen(true);
+    };
+
+    const handleCreateSubcategory = async () => {
+
+        if (!newSubcategoryName.trim() || !categoryForNewSubcategory) {
+            return;
+        }
+
+        setCreatingSubcategory(true);
+
+        try {
+
+            await createSubcategory(newSubcategoryName, categoryForNewSubcategory.id);
+
+            setNewSubcategoryName("");
+
+            await fetchSubcategories();
+
+            setSnackbarMessage("Subcategory created successfully");
+
+            setSnackbarSeverity("success");
+
+            setSnackbarOpen(true);
+
+            setAddSubcategoryDialogOpen(false);
+
+            setCategoryForNewSubcategory(null);
+
+        } catch (error) {
+
+            setSnackbarMessage(error.message);
+
+            setSnackbarSeverity("error");
+
+            setSnackbarOpen(true);
+
+        } finally {
+
+            setCreatingSubcategory(false);
+
+        }
+
+    };
+
+    const confirmDeleteSubcategory = async () => {
+
+        if (!subcategoryToDelete) {
+            return;
+        }
+
+        try {
+
+            await deleteSubcategory(subcategoryToDelete.id);
+
+            await fetchSubcategories();
+
+            setSnackbarMessage("Subcategory deleted successfully");
+
+            setSnackbarSeverity("success");
+
+            setSnackbarOpen(true);
+
+            setDeleteSubcategoryDialogOpen(false);
+
+            setSubcategoryToDelete(null);
+
+        } catch (error) {
+
+            setSnackbarMessage(error.message);
+
+            setSnackbarSeverity("error");
+
+            setSnackbarOpen(true);
+
+        }
+
+    };
+
 
     return (
         <>
@@ -244,14 +351,20 @@ function Categories() {
                     </Tabs>
                 )}
 
-                <Box
-                    sx={{
-                        display: "flex",
-                        gap: 2,
-                        mt: 3,
-                        alignItems: "center"
-                    }}
-                >
+                {!isAdmin && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        Only admins can add or delete categories and subcategories.
+                    </Typography>
+                )}
+                    {isAdmin &&(
+                    <Box
+                        sx={{
+                            display: "flex",
+                            gap: 2,
+                            mt: 3,
+                            alignItems: "center"
+                        }}
+                    >
 
                     <TextField
                         label="New Category"
@@ -289,6 +402,7 @@ function Categories() {
                         {creating ? "Adding..." : "Add Category"}
                     </Button>
                 </Box>
+                )}
 
                 <TableContainer
                     component={Paper}
@@ -313,8 +427,14 @@ function Categories() {
                                 </TableCell>
 
                                 <TableCell>
-                                    Actions
+                                    Subcategories
                                 </TableCell>
+
+                                {isAdmin && (
+                                    <TableCell>
+                                        Actions
+                                    </TableCell>
+                                )}
 
                             </TableRow>
                         </TableHead>
@@ -332,23 +452,57 @@ function Categories() {
                                     </TableCell>
 
                                     <TableCell>
-                                        <IconButton
-                                        color="error"
-                                            onClick={() => {
-                                                setCategoryToDelete(category);
-                                                setDeleteDialogOpen(true);
-                                            }}
+                                        <Stack
+                                            direction="row"
+                                            spacing={1}
+                                            flexWrap="wrap"
+                                            useFlexGap
+                                            alignItems="center"
                                         >
-                                            <DeleteIcon />
-                                        </IconButton>
+                                            {getSubcategoriesForCategory(category.id).map((sub) => (
+                                                <Chip
+                                                    key={sub.id}
+                                                    label={sub.name}
+                                                    size="small"
+                                                    onDelete={isAdmin ? () => {
+                                                        setSubcategoryToDelete(sub);
+                                                        setDeleteSubcategoryDialogOpen(true);
+                                                    } : undefined}
+                                                />
+                                            ))}
+
+                                            {isAdmin && (
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => openAddSubcategoryDialog(category)}
+                                                >
+                                                    <AddIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
+
+                                        </Stack>
                                     </TableCell>
+
+                                    {isAdmin && (
+                                        <TableCell>
+                                            <IconButton
+                                                color="error"
+                                                onClick={() => {
+                                                    setCategoryToDelete(category);
+                                                    setDeleteDialogOpen(true);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </TableCell>
+                                    )}
 
                                 </TableRow>
                             ))}
 
                             {visibleCategories.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={3} align="center">
+                                    <TableCell colSpan={isAdmin ? 4 : 3} align="center">
                                         {emptyMessage}
                                     </TableCell>
                                 </TableRow>
@@ -396,7 +550,86 @@ function Categories() {
                     </Button>
 
                 </DialogActions>
-            
+
+            </Dialog>
+
+            <Dialog
+                open={addSubcategoryDialogOpen}
+                onClose={() => setAddSubcategoryDialogOpen(false)}
+            >
+                <DialogTitle>
+                    Add Subcategory to {categoryForNewSubcategory?.name}
+                </DialogTitle>
+
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        label="Subcategory Name"
+                        value={newSubcategoryName}
+                        onChange={(e) =>
+                            setNewSubcategoryName(e.target.value)
+                        }
+                        fullWidth
+                        sx={{ mt: 1 }}
+                    />
+                </DialogContent>
+
+                <DialogActions>
+                    <Button
+                        onClick={() => setAddSubcategoryDialogOpen(false)}
+                    >
+                        Cancel
+                    </Button>
+
+                    <Button
+                        variant="contained"
+                        onClick={handleCreateSubcategory}
+                        disabled={creatingSubcategory}
+                    >
+                        {creatingSubcategory ? "Adding..." : "Add"}
+                    </Button>
+
+                </DialogActions>
+
+            </Dialog>
+
+            <Dialog
+                open={deleteSubcategoryDialogOpen}
+                onClose={() => setDeleteSubcategoryDialogOpen(false)}
+            >
+                <DialogTitle>
+                    Delete Subcategory
+                </DialogTitle>
+
+                <DialogContent>
+                    Are you sure you want to delete subcategory
+
+                    <b>
+                        {" "}
+                        {subcategoryToDelete?.name}
+                    </b>
+
+                    ?
+
+                </DialogContent>
+
+                <DialogActions>
+                    <Button
+                        onClick={() => setDeleteSubcategoryDialogOpen(false)}
+                    >
+                        Cancel
+                    </Button>
+
+                    <Button
+                        color="error"
+                        variant="contained"
+                        onClick={confirmDeleteSubcategory}
+                    >
+                        Delete
+                    </Button>
+
+                </DialogActions>
+
             </Dialog>
 
             <Snackbar

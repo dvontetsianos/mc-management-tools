@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     Box,
     Typography,
@@ -10,7 +10,8 @@ import {
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { getLocations } from "../../services/locationService";
-import { logout } from "../../services/auth";
+import { logout, getUser } from "../../services/auth";
+import { getHotels } from "../../services/hotelService";
 
 
 
@@ -19,15 +20,50 @@ function LocationPicker() {
     const navigate = useNavigate();
 
     const [locations, setLocations] = useState([]);
+    const [hotels, setHotels] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    //the chosen hotel lives in the address (?hotel=3), so going back from a location returns to that hotel
+    const [searchParams, setSearchParams] = useSearchParams();
+
     useEffect(() => {
-        getLocations()
-            .then((data) => setLocations(data))
+        Promise.all([getHotels(), getLocations()])
+            .then(([hotelsData, locationsData]) => {
+                setHotels(hotelsData);
+                setLocations(locationsData);
+            })
             .catch(() => setError("Couldn't load locations. Check your connection and try again"))
             .finally(() => setLoading(false));
     }, []);
+
+
+    //only the hotels the admin gave this user in Users (admins and all-hotel users get every hotel)
+    const user = getUser();
+    const hasAllHotels = user?.role === "admin" || user?.permissions?.includes("all_hotels_access");
+
+    const myHotels = hotels
+        .filter((hotel) => hasAllHotels || (user?.hotel_ids || []).includes(hotel.id))
+        .sort((a, b) => a.id - b.id);
+
+    const selectedHotel = myHotels.find(
+        (hotel) => String(hotel.id) === searchParams.get("hotel")
+    ) || null;
+
+    const hotelLocations = selectedHotel
+        ? locations.filter(
+            (location) => location.hotel_id === selectedHotel.id && location.name !== "Unassigned"
+        )
+        : [];
+
+
+    function handlePickHotel(hotel) {
+        setSearchParams({ hotel: String(hotel.id) });
+    }
+
+    function handleChangeHotel() {
+        setSearchParams({});
+    }
 
     
     function handlePicker(location) {
@@ -73,11 +109,31 @@ function LocationPicker() {
                 </Button>
             </Box>
 
+            {selectedHotel && (
+                <Box
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        px: 2,
+                        mb: 1
+                    }}
+                >
+                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                        {selectedHotel.name}
+                    </Typography>
+
+                    <Button size="small" onClick={handleChangeHotel}>
+                        Change Hotel
+                    </Button>
+                </Box>
+            )}
+
             <Typography
                 variant="body1"
                 sx={{ px: 2, mb: 2, color: "text.secondary" }}
             >
-                Where are you working right now?
+                {selectedHotel ? "Where are you working right now?" : "Which hotel are you counting?"}
             </Typography>
 
             {loading && (
@@ -92,7 +148,7 @@ function LocationPicker() {
                 </Typography>
             )}
 
-            {!loading && !error && (
+            {!loading && !error && !selectedHotel && (
                 <Box
                     sx={{
                         display: "flex",
@@ -102,24 +158,53 @@ function LocationPicker() {
                         pb: 4
                     }}
                 >
-                    {locations
-                        .filter((location) => location.name !== "Unassigned")
-                        .map((location) => (
-                        <Card key={location.id} elevation={2}>
+                    {myHotels.map((hotel) => (
+                        <Card key={hotel.id} elevation={2}>
                             <CardActionArea
-                                onClick={() => handlePicker(location)}
-                                sx={{ py: 3, px: 2 }}
+                                onClick={() => handlePickHotel(hotel)}
+                            sx={{ py: 3, px: 2 }}
                             >
                                 <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                                    {location.name}
+                                    {hotel.name}
                                 </Typography>
                             </CardActionArea>
                         </Card>
                     ))}
 
-                    {locations.filter((location) => location.name !== "Unassigned").length === 0 && (
+                    {myHotels.length === 0 && (
                         <Typography sx={{ color: "text.secondary" }}>
-                            No locations found. Ask an admin to add one first.
+                            You don't have anyhotels yet. Ask an admin to add one to your user.
+                        </Typography>
+                    )}
+                </Box>
+            )}
+
+            {!loading && !error && selectedHotel && (
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        px: 2,
+                        pb: 4
+                    }}
+                >
+                    {hotelLocations.map((location) => (
+                        <Card key={location.id} elevation={2}>
+                            <CardActionArea
+                                onClick={() => handlePicker(location)}
+                            sx={{ py: 3, px: 2 }}
+                        >
+                            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                                {location.name}
+                            </Typography>
+                        </CardActionArea>
+                    </Card>
+                    ))}
+
+                    {hotelLocations.length === 0 && (
+                        <Typography sx={{ color: "text.secondary" }}>
+                            No locations found for this hotel. Ask an admin to add one first.
                         </Typography>
                     )}
                 </Box>

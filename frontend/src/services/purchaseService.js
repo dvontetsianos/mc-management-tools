@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { handleResponse } from "./api";
 
 
 function getAuthHeaders() {
@@ -38,7 +39,16 @@ export async function getPurchases({
         headers: getAuthHeaders()
     });
 
-    return await response.json();
+    //an expired session sends you to the login page, any other error is shown instead of crashing the page
+    await handleResponse(response);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load purchases");
+    }
+
+    return data;
 }
 
 

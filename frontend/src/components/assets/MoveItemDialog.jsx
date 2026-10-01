@@ -15,6 +15,7 @@ import {
     Typography
 } from "@mui/material";
 import { createItemMovement } from "../../services/movementService";
+import LocationLabel from "../LocationLabel";
 
 
 
@@ -58,9 +59,13 @@ function MoveItemDialog({
         (loc) => String(loc.location_id) === String(fromLocationId)
     );
 
-    const destinationOptions = locations.filter(
-        (loc) => String(loc.id) !== String(fromLocationId)
-    );
+    //destinations sorted by hotel, then by name, so each hotel's locations sit together
+    const destinationOptions = locations
+        .filter((loc) => String(loc.id) !== String(fromLocationId))
+        .sort((a, b) =>
+            (a.hotel_name || "").localeCompare(b.hotel_name || "")
+            || a.name.localeCompare(b.name)
+        );
 
     const handleMove = async () => {
 
@@ -146,7 +151,8 @@ function MoveItemDialog({
                         >
                             {sourceOptions.map((loc) => (
                                 <MenuItem key={loc.location_id} value={loc.location_id}>
-                                    {loc.location} (Available: {loc.total_quantity})
+                                    <LocationLabel name={loc.location} hotel={loc.hotel_name} />
+                                    {" "}(Available: {loc.total_quantity})
                                 </MenuItem>
                             ))}
                         </Select>
@@ -162,7 +168,7 @@ function MoveItemDialog({
                         >
                             {destinationOptions.map((loc) => (
                                 <MenuItem key={loc.id} value={loc.id}>
-                                    {loc.name}
+                                    <LocationLabel name={loc.name} hotel={loc.hotel_name} />
                                 </MenuItem>
                             ))}
                         </Select>

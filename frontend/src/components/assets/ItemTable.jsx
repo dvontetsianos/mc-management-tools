@@ -24,6 +24,8 @@ import {
 import { getUser } from "../../services/auth";
 import { API_URL } from "../../config";
 import { ZOOM_PRESETS } from "../../hooks/useTableZoom";
+import LocationLabel from "../LocationLabel";
+import { formatCountedAt } from "../../utils/countedAt";
 
 
 
@@ -179,7 +181,7 @@ function ItemTable({
                                     sx={{ width: 120 }}
                                     onClick={() => onSort("broken_missing")}
                                 >
-                                    Broken/Missing{getSortArrow("broken_missing")}
+                                    Missing{getSortArrow("broken_missing")}
                                 </TableCell>
 
                                 <TableCell
@@ -272,14 +274,33 @@ function ItemTable({
                                         {item.staff_counted_quantity === null || item.staff_counted_quantity === undefined ? (
                                             <Chip label="Not Counted" size="small" variant="outlined" />
                                         ) : (
-                                            <Chip
-                                                label={item.staff_counted_quantity}
-                                                size="small"
-                                                sx={{
-                                                    ...getStaffCountStyle(item.staff_counted_quantity, item.assigned_quantity),
-                                                    fontWeight: "bold"
-                                                }}
-                                            />
+                                            <Tooltip
+                                                arrow
+                                                title={
+                                                    <Box>
+                                                        {(item.locations || [])
+                                                            .filter((loc) =>
+                                                                loc.location !== "Unassigned"
+                                                            && loc.staff_counted_quantity !== null
+                                                            && loc.staff_counted_quantity !== undefined
+                                                            )
+                                                            .map((loc) => (
+                                                                <div key={loc.id}>
+                                                                    {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: {loc.staff_counted_quantity}, by {loc.staff_counted_by || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
+                                                                </div>
+                                                            ))}
+                                                    </Box>
+                                                }
+                                            >
+                                                <Chip
+                                                    label={item.staff_counted_quantity}
+                                                    size="small"
+                                                    sx={{
+                                                        ...getStaffCountStyle(item.staff_counted_quantity, item.assigned_quantity),
+                                                        fontWeight: "bold"
+                                                    }}
+                                                />
+                                            </Tooltip>
                                         )}
                                     </TableCell>
 
@@ -289,7 +310,7 @@ function ItemTable({
                                                 {item.locations.filter((loc) => loc.total_quantity > 0).map((loc) => (
                                                     <Chip
                                                         key={loc.id}
-                                                        label={loc.location}
+                                                        label={<LocationLabel name={loc.location} hotel={loc.hotel_name} />}
                                                         size="small"
                                                         color={selectedLocations && selectedLocations.includes(loc.location) ? "success" : "default"}
                                                     />
@@ -320,14 +341,16 @@ function ItemTable({
                                             </IconButton>
                                         </Tooltip>
 
-                                        <Tooltip title="Move Item">
-                                            <IconButton
-                                                color="secondary"
-                                                onClick={() => onMove(item)}
-                                            >
-                                                <SwapHorizIcon fontSize="large"/>
-                                            </IconButton>
-                                        </Tooltip>
+                                        {canViewMovements && (
+                                            <Tooltip title="Move Item">
+                                                <IconButton
+                                                    color="secondary"
+                                                    onClick={() => onMove(item)}
+                                                >
+                                                    <SwapHorizIcon fontSize="large"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
 
                                         {(canViewPurchases || canViewMovements) && (
                                             <Tooltip title="History">

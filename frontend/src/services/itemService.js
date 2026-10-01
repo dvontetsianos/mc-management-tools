@@ -12,11 +12,25 @@ function getAuthHeaders() {
 }
 
 
-export async function getItems(department_id) {
+export async function getItems(department_id, hotel_ids = []) {
 
-    const url = department_id
-        ? `${API_URL}/items?department_id=${department_id}`
+    //department and hotel filter go in the address, e.g. /items?department_id=2&hotel_ids=1,3
+    const params = new URLSearchParams();
+
+    if (department_id) {
+        params.append("department_id", department_id);
+    }
+
+    if (hotel_ids.length > 0) {
+        params.append("hotel_ids", hotel_ids.join(","));
+    }
+
+    const query = params.toString();
+
+    const url = query
+        ? `${API_URL}/items?${query}`
         : `${API_URL}/items`;
+
 
     const response = await fetch(url, {
         method: "GET",
@@ -126,6 +140,23 @@ export async function deleteItem(id) {
     return await response.json();
 }
 
+//admin only: deletes the item and ALL its history (purchases, movements, stock per location, History lines)
+export async function deleteItemWithHistory(id) {
+
+    const response = await fetch(`${API_URL}/items/${id}/with-history`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to delete item");
+    }
+
+    return data;
+}
+
 
 export async function uploadItemImage(id, file) {
 
@@ -225,18 +256,25 @@ export async function updateItemLocation(id, itemLocation) {
 
 }
 
-export async function submitItemLocationCount(id, countedQuantity) {
+export async function submitItemLocationCount(id, countedQuantity, previousCountedAt = null) {
 
+    //previous_counted_at = the count time this page saw when it opened,
+    //so the backend can refuse if someone else saved in the meantime
     const response = await fetch(`${API_URL}/item-locations/${id}/count`, {
         method: "PUT",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ counted_quantity: countedQuantity })
+        body: JSON.stringify({
+            counted_quantity: countedQuantity,
+            previous_counted_at: previousCountedAt
+        })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.detail || "Failed to submit count");
+        const error = new Error(data.detail || "Failed to submit count");
+        error.status = response.status;
+        throw error;
     }
 
     return data;

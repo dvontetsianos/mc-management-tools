@@ -14,6 +14,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { getItemLocations, submitItemLocationCount, dismissItemLocationCount } from "../../services/itemService";
+import { formatCountedAt } from "../../utils/countedAt";
 
 
 
@@ -33,36 +34,39 @@ function ItemQuantity() {
         () => routerLocation.state?.itemLocation?.staff_counted_quantity ?? 0
     );
 
-    const [loading, setLoading] = useState(!routerLocation.state?.itemLocation);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [error, setError] = useState("");
 
 
+    //always get the latest count from the server, the list we came from can be minutes old
+    //updateNumber = false keeps what the person typed in the box
+    async function loadLatest(updateNumber) {
+
+        const data = await getItemLocations();
+
+        const match = data.find(
+            (il) => String(il.id) === String(itemLocationId)
+        );
+
+        if (match) {
+            setItemLocation(match);
+
+            if (updateNumber) {
+                setTotalQuantity(match.staff_counted_quantity ?? 0);
+            }
+        } else {
+            setError("Couldn't find this item. Go back and try again.");
+        }
+    }
+
     useEffect(() => {
 
-        if (itemLocation) {
-            return;
-        }
-
-        getItemLocations()
-            .then((data) => {
-                const match = data.find(
-                    (il) => String(il.id) === String(itemLocationId)
-                );
-
-                if (match) {
-                    setItemLocation(match);
-                    setTotalQuantity(match.staff_counted_quantity ?? 0);
-                } else {
-                    setError("Couldn't find this item. Go back and try again.");
-                }
-
-            })
+        loadLatest(true)
             .catch(() => setError("Couldn't load this item. Check your connection and try again."))
             .finally(() => setLoading(false));
-
-    }, [itemLocation, itemLocationId]);
+    }, [itemLocationId]);
 
 
     async function handleSave() {
@@ -71,13 +75,27 @@ function ItemQuantity() {
         setError("");
 
         try {
-            await submitItemLocationCount(itemLocationId, totalQuantity);
+            await submitItemLocationCount(
+                itemLocationId,
+                totalQuantity,
+                itemLocation?.staff_counted_at ?? null
+            );
 
             navigate(`/quick-count/${locationId}`, {
                 state: { locationName }
             });
 
         } catch (err) {
+
+            //someone else saved first: show their count, keep this person's number in the box
+            if (err.status === 409) {
+                try {
+                    await loadLatest(false);
+                } catch {
+                    //the message below still explains what happened
+                }
+            }
+
             setError(err.message || "Failed to save. Try again.");
             setSaving(false);
         }
@@ -201,6 +219,13 @@ function ItemQuantity() {
                             <AddIcon />
                         </IconButton>
                     </Box>
+
+                    {itemLocation?.staff_counted_by && (
+                        <Typography variant="body2" sx={{ mt: 2, textAlign: "center", color: "text.secondary" }}>
+                            Counted by {itemLocation.staff_counted_by}
+                            {itemLocation.staff_counted_at ? `, ${formatCountedAt(itemLocation.staff_counted_at)}` : ""}
+                        </Typography>
+                    )}
                 </Paper>
 
             </Box>

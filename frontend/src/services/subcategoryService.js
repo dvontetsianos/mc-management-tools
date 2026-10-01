@@ -1,5 +1,6 @@
 import { API_URL } from "../config";
 
+
 function getAuthHeaders() {
 
     const token = localStorage.getItem("token");
@@ -8,14 +9,13 @@ function getAuthHeaders() {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
     };
-    
 }
 
-export async function getLocations(hotelId) {
+export async function getSubcategories(category_id) {
 
-    const url = hotelId
-        ? `${API_URL}/locations?hotel_id=${hotelId}`
-        : `${API_URL}/locations`;
+    const url = category_id
+        ? `${API_URL}/subcategories?category_id=${category_id}`
+        : `${API_URL}/subcategories`;
 
     const response = await fetch(
         url,
@@ -28,23 +28,17 @@ export async function getLocations(hotelId) {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.detail || "Failed to load locations");
+        throw new Error(data.detail || "Failed to load subcategories");
     }
 
     return data;
-
 }
 
-export async function createLocation(locationName, hotelId) {
 
-    const params = new URLSearchParams({ location_name: locationName });
-
-    if (hotelId) {
-        params.append("hotel_id", hotelId);
-    }
+export async function createSubcategory(subcategory_name, category_id) {
 
     const response = await fetch(
-        `${API_URL}/locations?${params.toString()}`,
+        `${API_URL}/subcategories?subcategory_name=${encodeURIComponent(subcategory_name)}&category_id=${category_id}`,
         {
             method: "POST",
             headers: getAuthHeaders()
@@ -54,21 +48,17 @@ export async function createLocation(locationName, hotelId) {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(
-            data.detail || "Failed to create location"
-        );
-
+        throw new Error(data.detail || "Failed to create subcategory");
     }
 
     return data;
-
 }
 
 
-export async function deleteLocation(id) {
+export async function deleteSubcategory(id) {
 
     const response = await fetch(
-        `${API_URL}/locations/${id}`,
+        `${API_URL}/subcategories/${id}`,
         {
             method: "DELETE",
             headers: getAuthHeaders()
@@ -78,13 +68,8 @@ export async function deleteLocation(id) {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(
-            data.detail || "Failed to delete location"
-        );
-
+        throw new Error(data.detail || "Failed to delete subcategory");
     }
 
-
     return data;
-
 }

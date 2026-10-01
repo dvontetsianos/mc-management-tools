@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
     role: str
     department_id: int | None = None
     permissions: list[str] = []
+    hotel_ids: list[int] = []
 
 
 
@@ -19,6 +20,8 @@ class UserOut(BaseModel):
     department: str | None = None
     department_id: int | None = None
     permissions: list[str]
+    hotel_ids: list[int] = []
+    hotels: list[str] = []
 
     class Config:
         from_attributes = True
@@ -45,6 +48,8 @@ class UserDepartmentUpdate(BaseModel):
 class UserPermissionsUpdate(BaseModel):
     permissions: list[str] = []
 
+class UserHotelsUpdate(BaseModel):
+    hotel_ids: list[int] = []
 
 class DepartmentCreate(BaseModel):
     name: str
@@ -69,7 +74,7 @@ class RequestResponse(BaseModel):
     status: str
     created_at: datetime
     image_url: str | None = None
-    sender_id: int
+    sender_id: int | None = None
     sender_department_id: int | None = None
     sender_username: str | None = None
     sender_department: str | None = None
@@ -111,19 +116,25 @@ class LostFoundClaim(BaseModel):
 class ItemCreate(BaseModel):
     name: str
     category_id: int
+    subcategory_id: int | None = None
     supplier_id: int | None = None
     cost_per_unit: float | None = None
     opening_quantity: int = 0
+    opening_quantities: dict[int, int] | None = None
     department_id: int | None = None
+    hotel_ids: list[int] = []
 
 
 class ItemUpdate(BaseModel):
     name: str
     category_id: int
+    subcategory_id: int | None = None
     supplier_id: int | None = None
     cost_per_unit: float | None=None
     opening_quantity: int = 0
+    opening_quantities: dict[int, int] | None = None
     department_id: int | None = None
+    hotel_ids: list[int] | None = None
 
 
 class ItemLocationResponse(BaseModel):
@@ -132,6 +143,7 @@ class ItemLocationResponse(BaseModel):
     item_name: str | None = None
     location_id: int
     location: str | None = None
+    hotel_name: str | None = None
     total_quantity: int
     broken_quantity: int
     staff_counted_quantity: int | None = None
@@ -144,6 +156,7 @@ class ItemLocationResponse(BaseModel):
 
 class ItemLocationCountSubmit(BaseModel):
     counted_quantity: int
+    previous_counted_at: datetime | None = None
 
 
 class ItemResponse(BaseModel):
@@ -151,6 +164,8 @@ class ItemResponse(BaseModel):
     name: str
     category: str | None = None
     category_id: int | None = None
+    subcategory: str | None = None
+    subcategory_id: int | None = None
     supplier: str | None = None
     supplier_id: int | None = None
     cost_per_unit: float | None = None
@@ -159,13 +174,16 @@ class ItemResponse(BaseModel):
     assigned_quantity: int = 0
     broken_quantity: int
     opening_quantity: int = 0
-    purchases_this_year: int = 0
+    total_purchased_quantity: int = 0
     expected_total: int = 0
     broken_missing: int = 0
     staff_counted_quantity: int | None = None
     locations: list[ItemLocationResponse] = []
     department_id: int | None = None
     department: str | None = None
+    hotel_ids: list[int] = []
+    hotels: list[str] = []
+    opening_quantities: dict[int, int] = {}
 
     class Config:
         from_attributes = True
@@ -204,6 +222,8 @@ class PurchaseResponse(BaseModel):
     category: str | None = None
     department_id: int | None = None
     department: str | None = None
+    hotel_id: int | None = None
+    hotel: str | None = None
     quantity: int
     location_id: int | None = None
     location: str | None = None
@@ -237,6 +257,8 @@ class ItemMovementResponse(BaseModel):
     from_location: str | None = None
     to_location_id: int
     to_location: str | None = None
+    from_hotel_name: str | None = None
+    to_hotel_name: str | None = None
     quantity: int
     moved_by: str
     reason: str | None = None

@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { handleResponse } from "./api";
 
 
 function getAuthHeaders() {
@@ -22,7 +23,15 @@ export async function getLostFoundItems() {
         }
     );
 
-    return await response.json();
+    await handleResponse(response);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to load lost & found items")
+    }
+
+    return data;
 
 }
 

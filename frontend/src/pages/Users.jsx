@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { getUsers, createUser, deleteUser, updateUserPermissions, updateUserDepartment } from "../services/userService";
+import { getUsers, createUser, deleteUser, updateUserPermissions, updateUserDepartment, updateUserHotels } from "../services/userService";
 import { getDepartments } from "../services/departmentService";
+import { getHotels } from "../services/hotelService";
 import { getUser } from "../services/auth";
 import QuoteOfTheDay from "../components/QuoteOfTheDay";
 import {
@@ -33,6 +34,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import LockIcon from "@mui/icons-material/Lock";
 import BusinessIcon from "@mui/icons-material/Business";
 import DeleteIcon from "@mui/icons-material/Delete";
+import HotelIcon from "@mui/icons-material/Hotel";
 
 function Users() {
 
@@ -56,7 +58,8 @@ function Users() {
         password: "",
         role: "user",
         department_id: "",
-        permissions: []
+        permissions: [],
+        hotel_ids: []
     });
 
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -76,6 +79,14 @@ function Users() {
     const [userToEditDepartment, setUserToEditDepartment] = useState(null);
 
     const [editDepartmentId, setEditDepartmentId] = useState("");
+
+    const [hotels, setHotels] = useState([]);
+
+    const [hotelsDialogOpen, setHotelsDialogOpen] = useState(false);
+
+    const [userToEditHotels, setUserToEditHotels] = useState(null);
+
+    const [editHotelIds, setEditHotelIds] = useState([]);
 
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
@@ -97,6 +108,7 @@ function Users() {
     useEffect(() => {
         loadUsers();
         loadDepartments();
+        loadHotels();
     }, []);
 
     async function loadUsers() {
@@ -130,6 +142,34 @@ function Users() {
 
     }
 
+    async function loadHotels() {
+
+        try {
+
+            const data = await getHotels();
+
+            setHotels(data);
+
+        } catch (error) {
+
+            console.error(error);
+
+        }
+
+    }
+
+    //admins and all_hotels_access users cover every hotel, everyone else needs at least one
+    function needsHotel(role, permissions) {
+        return role !== "admin" && !permissions.includes("all_hotels_access");
+    }
+
+    function hotelNames(hotelIds) {
+        return hotels
+            .filter((hotel) => hotelIds.includes(hotel.id))
+            .map((hotel) => hotel.name)
+            .join(", ");
+    }
+
     function showNotification(message, severity = "success") {
         setNotification({
             open: true,
@@ -141,6 +181,7 @@ function Users() {
     const availablePermissions = [
         "assets_access",
         "housekeeping_items_access",
+        "kitchen_items_access",
         "categories_access",
         "locations_access",
         "suppliers_access",
@@ -149,6 +190,7 @@ function Users() {
         "reports_access",
         "purchases_access",
         "all_departments_access",
+        "all_hotels_access",
         "movements_access",
         "requests_access"
     ];
@@ -284,7 +326,72 @@ function Users() {
         }
     }
 
+    function openHotelsDialog(user) {
+
+        setUserToEditHotels(user);
+
+        setEditHotelIds([
+            ...(user.hotel_ids || [])
+        ]);
+
+        setHotelsDialogOpen(true);
+    }
+
+    async function handleUpdateHotels() {
+
+        if (
+            needsHotel(userToEditHotels.role, userToEditHotels.permissions) &&
+            editHotelIds.length === 0
+        ) {
+            showNotification(
+                "This user needs at least one hotel",
+                "error"
+            );
+            return;
+        }
+
+        try {
+
+            await updateUserHotels(
+                userToEditHotels.id,
+                editHotelIds
+            );
+
+            setHotelsDialogOpen(false);
+
+            setUserToEditHotels(null);
+
+            setEditHotelIds([]);
+
+            loadUsers();
+
+            showNotification(
+                "Hotels updated - the user sees the change the next time they log in",
+                "success"
+            );
+
+        } catch (error) {
+            showNotification(
+                error.message || "Failed to update hotels",
+                "error"
+            );
+
+            console.error(error);
+        }
+    }
+
     async function handleCreateUser() {
+
+        if (
+            needsHotel(newUser.role, newUser.permissions) &&
+            newUser.hotel_ids.length === 0
+        ) {
+            showNotification(
+                "Pick at least one hotel for this user",
+                "error"
+            );
+            return;
+        }
 
         setCreatingUser(true);
 
@@ -307,7 +414,8 @@ function Users() {
                 password: "",
                 role: "user",
                 department_id: "",
-                permissions: []
+                permissions: [],
+                hotel_ids: []
             });
 
             loadUsers();
@@ -458,6 +566,10 @@ return (
                         </TableCell>
 
                         <TableCell>
+                            Hotels
+                        </TableCell>
+
+                        <TableCell>
                             Permissions
                         </TableCell>
 
@@ -489,6 +601,36 @@ return (
 
                             <TableCell>
                                 {user.department || "-"}
+                            </TableCell>
+
+                            <TableCell>
+
+                                {!needsHotel(user.role, user.permissions) ? (
+
+                                    <Chip
+                                        label="All hotels"
+                                        color="primary"
+                                        sx={{ mr: 1 }}
+                                    />
+
+                                ) : (user.hotels || []).length === 0 ? (
+
+                                    "-"
+
+                                ) : (
+
+                                    user.hotels.map((hotelName) => (
+
+                                        <Chip
+                                            key={hotelName}
+                                            label={hotelName}
+                                            sx={{ mr: 1 }}
+                                        />
+
+                                    ))
+
+                                )}
+
                             </TableCell>
 
 
@@ -532,6 +674,15 @@ return (
                                     sx={{ mr: 1, color: "yellow", backgroundColor: "black" }}
                                 >
                                     Edit Department
+                                </Button>
+
+                                <Button
+                                    variant="contained"
+                                    startIcon={<HotelIcon />}
+                                    onClick={() => openHotelsDialog(user)}
+                                    sx={{ mr: 1, color: "orange", backgroundColor: "black" }}
+                                >
+                                    Edit Hotels
                                 </Button>
 
                                 <Button
@@ -652,6 +803,41 @@ return (
                                 value={department.id}
                             >
                                 {department.name}
+                            </MenuItem>
+                        ))}
+
+                    </Select>
+
+                </FormControl>
+
+                <FormControl
+                    fullWidth
+                    margin="dense"
+                >
+                    <InputLabel>
+                        Hotels
+                    </InputLabel>
+
+                    <Select
+                        multiple
+                        value={newUser.hotel_ids}
+                        label="Hotels"
+                        onChange={(e) =>
+                            setNewUser({
+                                ...newUser,
+                                hotel_ids: e.target.value
+                            })
+                        }
+                        renderValue={(selected) => hotelNames(selected)}
+                    >
+
+                        {hotels.map((hotel) => (
+                            <MenuItem
+                                key={hotel.id}
+                                value={hotel.id}
+                            >
+                                <Checkbox checked={newUser.hotel_ids.includes(hotel.id)} />
+                                {hotel.name}
                             </MenuItem>
                         ))}
 
@@ -859,6 +1045,69 @@ return (
                 <Button
                     variant="contained"
                     onClick={handleUpdateDepartment}
+                >
+                    Save
+                </Button>
+
+            </DialogActions>
+
+        </Dialog>
+
+        <Dialog
+            open={hotelsDialogOpen}
+            onClose={() => setHotelsDialogOpen(false)}
+            fullWidth
+            maxWidth="sm"
+        >
+
+            <DialogTitle>
+                Edit Hotels
+            </DialogTitle>
+
+            <DialogContent>
+
+                <h4>
+                    {userToEditHotels?.username}
+                </h4>
+
+                {userToEditHotels && !needsHotel(userToEditHotels.role, userToEditHotels.permissions) && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                        This user already covers every hotel (admin or all_hotels_access). The hotels ticked here only matter if that changes.
+                    </Alert>
+                )}
+
+                {hotels.map((hotel) => (
+
+                    <FormControlLabel
+                        key={hotel.id}
+                        control={
+                            <Checkbox
+                                checked={editHotelIds.includes(hotel.id)}
+                                onChange={() =>
+                                    setEditHotelIds((prev) =>
+                                        prev.includes(hotel.id)
+                                            ? prev.filter((id) => id !== hotel.id)
+                                            : [...prev, hotel.id]
+                                    )
+                                }
+                            />
+                        }
+                        label={hotel.name}
+                    />
+                ))}
+
+            </DialogContent>
+
+            <DialogActions>
+                <Button
+                    onClick={() => setHotelsDialogOpen(false)}
+                >
+                    Cancel
+                </Button>
+
+                <Button
+                    variant="contained"
+                    onClick={handleUpdateHotels}
                 >
                     Save
                 </Button>

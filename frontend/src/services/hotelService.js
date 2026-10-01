@@ -8,17 +8,13 @@ function getAuthHeaders() {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
     };
-    
+
 }
 
-export async function getLocations(hotelId) {
-
-    const url = hotelId
-        ? `${API_URL}/locations?hotel_id=${hotelId}`
-        : `${API_URL}/locations`;
+export async function getHotels() {
 
     const response = await fetch(
-        url,
+        `${API_URL}/hotels`,
         {
             method: "GET",
             headers: getAuthHeaders()
@@ -28,23 +24,17 @@ export async function getLocations(hotelId) {
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.detail || "Failed to load locations");
+        throw new Error(data.detail || "Failed to load hotels");
     }
 
     return data;
-
 }
 
-export async function createLocation(locationName, hotelId) {
 
-    const params = new URLSearchParams({ location_name: locationName });
-
-    if (hotelId) {
-        params.append("hotel_id", hotelId);
-    }
+export async function createHotel(hotelName) {
 
     const response = await fetch(
-        `${API_URL}/locations?${params.toString()}`,
+        `${API_URL}/hotels?hotel_name=${encodeURIComponent(hotelName)}`,
         {
             method: "POST",
             headers: getAuthHeaders()
@@ -55,20 +45,18 @@ export async function createLocation(locationName, hotelId) {
 
     if (!response.ok) {
         throw new Error(
-            data.detail || "Failed to create location"
+            data.detail || "Failed to create hotel"
         );
-
     }
 
     return data;
-
 }
 
 
-export async function deleteLocation(id) {
+export async function deleteHotel(id) {
 
     const response = await fetch(
-        `${API_URL}/locations/${id}`,
+        `${API_URL}/hotels/${id}`,
         {
             method: "DELETE",
             headers: getAuthHeaders()
@@ -79,12 +67,9 @@ export async function deleteLocation(id) {
 
     if (!response.ok) {
         throw new Error(
-            data.detail || "Failed to delete location"
+            data.detail || "Failed to delete hotel"
         );
-
     }
 
-
     return data;
-
 }

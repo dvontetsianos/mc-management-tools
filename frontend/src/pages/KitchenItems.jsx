@@ -4,8 +4,6 @@ import ItemTable from "../components/assets/ItemTable";
 import ItemFormDialog from "../components/assets/ItemFormDialog";
 import ItemDeleteConfirmDialog from "../components/assets/ItemDeleteConfirmDialog";
 import MoveItemDialog from "../components/assets/MoveItemDialog";
-import { useTableZoom } from "../hooks/useTableZoom";
-import TableZoomToggle from "../components/TableZoomToggle";
 import {
   getItems,
   createItem,
@@ -14,8 +12,7 @@ import {
   deleteItemWithHistory,
   uploadItemImage,
   deleteItemImage,
-  exportItems,
-  dismissItemLocationCount
+  exportItems
 } from "../services/itemService";
 import { getCategories } from "../services/categoryService";
 import { getLocations } from "../services/locationService";
@@ -39,12 +36,13 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
+import { useTableZoom } from "../hooks/useTableZoom";
+import TableZoomToggle from "../components/TableZoomToggle";
 
 
-const FB_DEPARTMENT_NAME = "F&B";
+const KITCHEN_DEPARTMENT_NAME = "Kitchen";
 
-function Assets() {
+function KitchenItems() {
 
   const navigate = useNavigate();
 
@@ -56,8 +54,7 @@ function Assets() {
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [hotels, setHotels] = useState([]);
-  const [fbDepartmentId, setFbDepartmentId] = useState(null);
-
+  const [kitchenDepartmentId, setKitchenDepartmentId] = useState(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -109,7 +106,7 @@ function Assets() {
 
 
   const fetchItems = async () => {
-    if (!fbDepartmentId) {
+    if (!kitchenDepartmentId) {
       return;
     }
     try {
@@ -118,7 +115,7 @@ function Assets() {
         .filter((hotel) => selectedItemHotels.includes(hotel.name))
         .map((hotel) => hotel.id);
 
-      const data = await getItems(fbDepartmentId, selectedHotelIds);
+      const data = await getItems(kitchenDepartmentId, selectedHotelIds);
       setItems(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -139,11 +136,11 @@ function Assets() {
   };
 
   const fetchCategories = async () => {
-    if (!fbDepartmentId) {
+    if (!kitchenDepartmentId) {
       return;
     }
     try {
-      const data = await getCategories(fbDepartmentId);
+      const data = await getCategories(kitchenDepartmentId);
       setCategories(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -185,11 +182,11 @@ function Assets() {
     }
   };
 
-  const resolveFbDepartment = async () => {
+  const resolveKitchenDepartment = async () => {
     try {
       const departments = await getDepartments();
-      const fbDept = departments.find((d) => d.name === FB_DEPARTMENT_NAME);
-      setFbDepartmentId(fbDept ? fbDept.id : null);
+      const kitchenDept = departments.find((d) => d.name === KITCHEN_DEPARTMENT_NAME);
+      setKitchenDepartmentId(kitchenDept ? kitchenDept.id : null);
     } catch (error) {
       setSnackbarSeverity("error");
       setSnackbarMessage(error.message || "Failed to load departments");
@@ -198,7 +195,7 @@ function Assets() {
   };
 
   useEffect(() => {
-    resolveFbDepartment();
+    resolveKitchenDepartment();
     fetchLocations();
     fetchSuppliers();
     fetchSubcategories();
@@ -208,7 +205,7 @@ function Assets() {
   useEffect(() => {
     fetchItems();
     fetchCategories();
-  }, [fbDepartmentId]);
+  }, [kitchenDepartmentId]);
 
   //reload the items when the hotel filter changes
   useEffect(() => {
@@ -231,7 +228,7 @@ function Assets() {
       supplier_id: itemForm.supplier_id === "" ? null : itemForm.supplier_id,
       cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit,
       opening_quantity: itemForm.opening_quantity === "" ? 0 : itemForm.opening_quantity,
-      department_id: fbDepartmentId
+      department_id: kitchenDepartmentId
     };
 
     try {
@@ -297,7 +294,7 @@ function Assets() {
     setItemDeleteDialogOpen(true);
   };
 
-  const confirmItemDelete = async () => {
+    const confirmItemDelete = async () => {
 
     if (!itemToDelete) return;
 
@@ -345,23 +342,10 @@ function Assets() {
     setItemToDelete(null);
   }
 
+
   const handleMoveClick = (item) => {
     setMovingItemId(item.id);
     setMoveDialogOpen(true);
-  };
-
-  const handleDismissCount = async (itemLocationId) => {
-
-  if (!itemLocationId) {
-    return;
-  }
-
-  try {
-    await dismissItemLocationCount(itemLocationId);
-    fetchItems();
-  } catch (error) {
-    alert(error.message);
-  }
   };
 
   const toggleItemCategory = (name) => {
@@ -416,7 +400,7 @@ function Assets() {
 
     const term = itemSearch.toLowerCase();
 
-    const matchesSearch = 
+    const matchesSearch =
       itemSearchField === "name"
         ? item.name.toLowerCase().includes(term)
         : itemSearchField === "category"
@@ -546,25 +530,11 @@ function Assets() {
     const total = relevant.reduce((sum, loc) => sum + (loc.total_quantity || 0), 0);
     const broken = relevant.reduce((sum, loc) => sum + (loc.broken_quantity || 0), 0);
 
-    const countedLocs = relevant.filter(
-      (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
-    );
-
-    const staffCounted = countedLocs.length > 0
-      ? countedLocs.reduce((sum, loc) => sum + loc.staff_counted_quantity, 0)
-      : null;
-
-    const singleLocationId = selectedItemLocations.length === 1
-      ? relevant.find((loc) => loc.location === selectedItemLocations[0])?.id ?? null
-      : null;
-
     return {
       ...item,
       total_quantity: total,
       assigned_quantity: total,
-      broken_quantity: broken,
-      staff_counted_quantity: staffCounted,
-      countable_item_location_id: singleLocationId
+      broken_quantity: broken
     };
   });
 
@@ -584,25 +554,7 @@ function Assets() {
           mt: -5
         }}
       >
-        <h1>F&B Items</h1>
-
-        <Button
-          variant="outlined"
-          component="a"
-          href="/quick-count"
-          target="_blank"
-          rel="noopener"
-          startIcon={<PhoneIphoneIcon />}
-          sx={{
-            position: "absolute",
-            right: 90,
-            minWidth: 0,
-            px: 1,
-            "& .MuiButton-startIcon": {
-              margin: 0
-            }
-          }}
-        />
+        <h1>Kitchen Items</h1>
       </Box>
 
       {/* ITEMS TAB */}
@@ -642,9 +594,9 @@ function Assets() {
           >
             Check the boxes in the filter section to filter for specific columns. If location filters are used, the corresponding locations in the table will turn {" "}
             <Box component="span" sx={{ color: "success.main", fontWeight: "bold" }}>
-              green 
+              green
             </Box>
-              {" "}to let you know which locations the "Assigned Quantity" column is taking into account.
+              {" "}to let you know which locations the "Total Quantity" column is taking into account.
           </Typography>
 
           <ItemFormDialog
@@ -750,29 +702,6 @@ function Assets() {
             >
               Add Item
             </Button>
-
-            {/* Old assign item to location button
-            <Button
-              variant="contained"
-              onClick={() => {
-
-                setIlEditingId(null);
-
-                setIlForm({
-                  item_id: "",
-                  location_id: "",
-                  total_quantity: "0",
-                  broken_quantity: "0",
-                  item_name: "",
-                  location_name: ""
-                });
-
-                setIlDialogOpen(true);
-              }}
-            >
-              Assign Item to Location
-            </Button>
-            */}
           </Box>
 
           <ItemsFilterPanel
@@ -830,7 +759,6 @@ function Assets() {
             zoomLevel={itemZoom}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
-            onDismissCount={handleDismissCount}
             onHistory={(item, type) =>
               navigate(`/items/${item.id}/${type}`, {
                 state: { itemName: item.name }
@@ -905,4 +833,4 @@ function Assets() {
 }
 
 
-export default Assets;
+export default KitchenItems;

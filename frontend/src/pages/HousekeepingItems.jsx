@@ -9,6 +9,7 @@ import {
   createItem,
   updateItem,
   deleteItem,
+  deleteItemWithHistory,
   uploadItemImage,
   deleteItemImage,
   exportItems
@@ -17,6 +18,9 @@ import { getCategories } from "../services/categoryService";
 import { getLocations } from "../services/locationService";
 import { getSuppliers } from "../services/supplierService";
 import { getDepartments } from "../services/departmentService";
+import { getSubcategories } from "../services/subcategoryService";
+import { getHotels } from "../services/hotelService";
+import { getUser } from "../services/auth";
 import {
   Button,
   Box,
@@ -32,6 +36,8 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import { useTableZoom } from "../hooks/useTableZoom";
+import TableZoomToggle from "../components/TableZoomToggle";
 
 
 const HOUSEKEEPING_DEPARTMENT_NAME = "Housekeeping";
@@ -46,6 +52,8 @@ function HousekeepingItems() {
   const [locations, setLocations] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [hotels, setHotels] = useState([]);
   const [housekeepingDepartmentId, setHousekeepingDepartmentId] = useState(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -61,13 +69,16 @@ function HousekeepingItems() {
   const [itemSortDirection, setItemSortDirection] = useState("asc");
   const [itemPage, setItemPage] = useState(0);
   const [itemRowsPerPage, setItemRowsPerPage] = useState(25);
+  const [itemZoom, setItemZoom] = useTableZoom();
 
   const [itemForm, setItemForm] = useState({
     name: "",
     category_id: "",
+    subcategory_id: "",
     supplier_id: "",
     cost_per_unit: "",
-    opening_quantity: "0"
+    opening_quantity: "0",
+    hotel_ids: []
   });
 
   const [itemEditingId, setItemEditingId] = useState(null);
@@ -84,8 +95,10 @@ function HousekeepingItems() {
   const [movingItemId, setMovingItemId] = useState(null);
 
   const [selectedItemCategories, setSelectedItemCategories] = useState([]);
+  const [selectedItemSubcategories, setSelectedItemSubcategories] = useState([]);
   const [selectedItemLocations, setSelectedItemLocations] = useState([]);
   const [selectedItemSuppliers, setSelectedItemSuppliers] = useState([]);
+  const [selectedItemHotels, setSelectedItemHotels] = useState([]);
   const [itemQtyAtLocation, setItemQtyAtLocation] = useState(true);
 
 
@@ -97,7 +110,12 @@ function HousekeepingItems() {
       return;
     }
     try {
-      const data = await getItems(housekeepingDepartmentId);
+      // the hotel filter goes to the backend, so the numbers only count those hotels
+      const selectedHotelIds = hotels
+        .filter((hotel) => selectedItemHotels.includes(hotel.name))
+        .map((hotel) => hotel.id);
+      
+      const data = await getItems(housekeepingDepartmentId, selectedHotelIds);
       setItems(data);
     } catch (error) {
       setSnackbarSeverity("error");
@@ -142,6 +160,28 @@ function HousekeepingItems() {
     }
   };
 
+  const fetchSubcategories = async () => {
+    try {
+      const data = await getSubcategories();
+      setSubcategories(data);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load subcategories");
+      setSnackbarOpen(true);
+    }
+  };
+
+  const fetchHotels = async () => {
+    try {
+      const data = await getHotels();
+      setHotels(data);
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to load hotels");
+      setSnackbarOpen(true);
+    }
+  };
+
   const resolveHousekeepingDepartment = async () => {
     try {
       const departments = await getDepartments();
@@ -158,12 +198,19 @@ function HousekeepingItems() {
     resolveHousekeepingDepartment();
     fetchLocations();
     fetchSuppliers();
+    fetchSubcategories();
+    fetchHotels();
   }, []);
 
   useEffect(() => {
     fetchItems();
     fetchCategories();
   }, [housekeepingDepartmentId]);
+
+  //reload the items when the hotel filter changes
+  useEffect(() => {
+    fetchItems();
+  }, [selectedItemHotels]);
 
 
   //-----item handlers----------
@@ -177,6 +224,7 @@ function HousekeepingItems() {
 
     const payload = {
       ...itemForm,
+      subcategory_id: itemForm.subcategory_id === "" ? null : itemForm.subcategory_id,
       supplier_id: itemForm.supplier_id === "" ? null : itemForm.supplier_id,
       cost_per_unit: itemForm.cost_per_unit === "" ? null : itemForm.cost_per_unit,
       opening_quantity: itemForm.opening_quantity === "" ? 0 : itemForm.opening_quantity,
@@ -208,9 +256,11 @@ function HousekeepingItems() {
       setItemForm({
         name: "",
         category_id: "",
+        subcategory_id: "",
         supplier_id: "",
         cost_per_unit: "",
-        opening_quantity: "0"
+        opening_quantity: "0",
+        hotel_ids: []
       });
 
 
@@ -244,17 +294,49 @@ function HousekeepingItems() {
     setItemDeleteDialogOpen(true);
   };
 
-  const confirmItemDelete = async () => {
+    const confirmItemDelete = async () => {
 
     if (!itemToDelete) return;
 
-    await deleteItem(itemToDelete.id);
+    try {
+      await deleteItem(itemToDelete.id);
 
-    fetchItems();
+      fetchItems();
 
-    setSnackbarSeverity("success");
-    setSnackbarMessage("Item deleted successfully.");
-    setSnackbarOpen(true);
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Item deleted successfully.");
+      setSnackbarOpen(true);
+
+    } catch (error) {
+      //e.g. "This item has purchase or movement history, so it can't be deleted."
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to delete item");
+      setSnackbarOpen(true);
+    }
+
+    setItemDeleteDialogOpen(false);
+    setItemToDelete(null);
+  }
+
+  //admin only: removes the item and all its history, as if it never existed
+  const confirmItemDeleteWithHistory = async () => {
+
+    if (!itemToDelete) return;
+
+    try {
+      await deleteItemWithHistory(itemToDelete.id);
+
+      fetchItems();
+
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Item and all its history deleted.");
+      setSnackbarOpen(true);
+
+    } catch (error) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(error.message || "Failed to delete item");
+      setSnackbarOpen(true);
+    }
 
     setItemDeleteDialogOpen(false);
     setItemToDelete(null);
@@ -273,6 +355,13 @@ function HousekeepingItems() {
     setItemPage(0);
   };
 
+  const toggleItemSubcategory = (name) => {
+    setSelectedItemSubcategories((prev) => 
+      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name]
+    );
+    setItemPage(0);
+  };
+
   const toggleItemLocationFilter = (name) => {
     setSelectedItemLocations((prev) =>
       prev.includes(name) ? prev.filter((l) => l !==name) : [...prev, name]
@@ -287,10 +376,19 @@ function HousekeepingItems() {
     setItemPage(0);
   };
 
+  const toggleItemHotel = (name) => {
+    setSelectedItemHotels((prev) =>
+      prev.includes(name) ? prev.filter((h) => h !== name) : [...prev, name]
+    );
+    setItemPage(0);
+  };
+
   const clearItemFilters = () => {
     setSelectedItemCategories([]);
+    setSelectedItemSubcategories([]);
     setSelectedItemLocations([]);
     setSelectedItemSuppliers([]);
+    setSelectedItemHotels([]);
     setItemPage(0);
   };
 
@@ -323,8 +421,20 @@ function HousekeepingItems() {
       return false;
     }
 
+    if (selectedItemSubcategories.length > 0 && !selectedItemSubcategories.includes(item.subcategory)) {
+      return false;
+    }
+
     if (selectedItemSuppliers.length > 0 && !selectedItemSuppliers.includes(item.supplier)) {
       return false;
+    }
+
+    if (selectedItemHotels.length > 0) {
+      const itemHotels = item.hotels || [];
+      const hasHotelMatch = itemHotels.some((h) => selectedItemHotels.includes(h));
+      if (!hasHotelMatch) {
+        return false;
+      }
     }
 
     if (selectedItemLocations.length > 0) {
@@ -500,6 +610,8 @@ function HousekeepingItems() {
             form={itemForm}
             setForm={setItemForm}
             categories={categories}
+            subcategories={subcategories}
+            hotels={hotels}
             suppliers={suppliers}
             editingId={itemEditingId}
             onSubmit={handleItemSubmit}
@@ -562,6 +674,8 @@ function HousekeepingItems() {
               Filters
             </Button>
 
+            <TableZoomToggle zoomLevel={itemZoom} onChange={setItemZoom} />
+
 
             <Button
               variant="contained"
@@ -573,9 +687,11 @@ function HousekeepingItems() {
                 setItemForm({
                   name: "",
                   category_id: "",
+                  subcategory_id: "",
                   supplier_id: "",
                   cost_per_unit: "",
-                  opening_quantity: "0"
+                  opening_quantity: "0",
+                  hotel_ids: []
                 });
 
                 setSelectedImage(null);
@@ -591,14 +707,20 @@ function HousekeepingItems() {
           <ItemsFilterPanel
             open={itemFiltersOpen}
             categories={categories.map((c) => c.name)}
+            subcategoriesList={subcategories.map((s) => s.name)}
             locationsList={locations.map((l) => l.name)}
             suppliersList={suppliers.map((s) => s.name)}
+            hotelsList={hotels.map((h) => h.name)}
             selectedCategories={selectedItemCategories}
+            selectedSubcategories={selectedItemSubcategories}
             selectedLocations={selectedItemLocations}
             selectedSuppliers={selectedItemSuppliers}
+            selectedHotels={selectedItemHotels}
             onToggleCategory={toggleItemCategory}
+            onToggleSubcategory={toggleItemSubcategory}
             onToggleLocation={toggleItemLocationFilter}
             onToggleSupplier={toggleItemSupplier}
+            onToggleHotel={toggleItemHotel}
             onClearAll={clearItemFilters}
             qtyAtLocation={itemQtyAtLocation}
             onQtyModeChange={setItemQtyAtLocation}
@@ -612,6 +734,8 @@ function HousekeepingItems() {
               setItemToDelete(null);
             }}
             onConfirm={confirmItemDelete}
+            onConfirmWithHistory={confirmItemDeleteWithHistory}
+            isAdmin={getUser()?.role === "admin"}
             itemName={itemToDelete?.name}
             itemLocations={itemToDelete?.locations}
           />
@@ -632,6 +756,7 @@ function HousekeepingItems() {
           <ItemTable
             items={displayItems}
             selectedLocations={selectedItemLocations}
+            zoomLevel={itemZoom}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
             onHistory={(item, type) =>
@@ -651,9 +776,12 @@ function HousekeepingItems() {
               setItemForm({
                 name: item.name,
                 category_id: item.category_id,
+                subcategory_id: item.subcategory_id || "",
                 supplier_id: item.supplier_id || "",
                 cost_per_unit: item.cost_per_unit || "",
-                opening_quantity: item.opening_quantity ?? 0
+                opening_quantity: item.opening_quantity ?? 0,
+                hotel_ids: item.hotel_ids || [],
+                opening_quantities: item.opening_quantities || {}
               });
 
               if (item.image_url) {

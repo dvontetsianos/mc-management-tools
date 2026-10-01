@@ -1,14 +1,36 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, DateTime, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, DateTime, Float, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
 
 
-class Location(Base):
-    __tablename__ = "locations"
+class Hotel(Base):
+    __tablename__ = "hotels"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+
+    locations = relationship("Location", back_populates="hotel")
+
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    #a location name only has to be unique within its hotel (every hotel has its own "Unassigned")
+    __table_args__ = (
+        UniqueConstraint(
+            "hotel_id",
+            "name",
+            name="unique_location_name_per_hotel"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    hotel_id = Column(Integer, ForeignKey("hotels.id"), nullable=True)
+    hotel = relationship("Hotel", back_populates="locations")
+    #False = archived: hidden everywhere, but kept so movement history still shows its name
+    is_active = Column(Boolean, default=True, nullable=False)
     item_locations = relationship("ItemLocation", back_populates="location")
     movements_from = relationship(
         "ItemMovement",
@@ -35,6 +57,30 @@ class Category(Base):
         back_populates="category"
     )
 
+    subcategories = relationship(
+        "Subcategory",
+        back_populates="category"
+    )
+
+
+class Subcategory(Base):
+    __tablename__ = "subcategories"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "category_id",
+            "name",
+            name="unique_subcategory_name_per_category"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    category_id = Column(Integer, ForeignKey("categories.id"))
+    category = relationship("Category", back_populates="subcategories")
+
+    items = relationship("Item", back_populates="subcategory")
+
 
 class Supplier(Base):
     __tablename__ = "suppliers"
@@ -46,6 +92,26 @@ class Supplier(Base):
         "Item",
         back_populates="supplier"
     )
+
+    hotel_links = relationship("SupplierHotel", back_populates="supplier")
+
+
+class SupplierHotel(Base):
+    __tablename__ = "supplier_hotels"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "supplier_id",
+            "hotel_id",
+            name="unique_supplier_per_hotel"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"))
+    supplier = relationship("Supplier", back_populates="hotel_links")
+    hotel_id = Column(Integer, ForeignKey("hotels.id"))
+    hotel = relationship("Hotel")
 
 class Department(Base):
     __tablename__ = "departments"
@@ -84,6 +150,25 @@ class User(Base):
         "UserPermission",
         back_populates="user"
     )
+    hotel_links = relationship("UserHotel", back_populates="user")
+
+
+class UserHotel(Base):
+    __tablename__ = "user_hotels"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "hotel_id",
+            name="unique_user_per_hotel"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    user = relationship("User", back_populates="hotel_links")
+    hotel_id = Column(Integer, ForeignKey("hotels.id"))
+    hotel = relationship("Hotel")
 
 
 class Permission(Base):
@@ -127,6 +212,7 @@ class Request(Base):
 
     sender_id = Column(Integer, ForeignKey("users.id"))
     sender = relationship("User")
+    sender_name = Column(String, nullable=True)
 
     sender_department_id = Column(Integer, ForeignKey("departments.id"))
     sender_department = relationship(
@@ -141,6 +227,9 @@ class Request(Base):
         foreign_keys=[target_department_id],
         back_populates="requests_received"
     )
+
+    hotel_id = Column(Integer, ForeignKey("hotels.id"), nullable=True)
+    hotel = relationship("Hotel")
 
 
 class ActionsLog(Base):
@@ -168,15 +257,27 @@ class LostFoundItem(Base):
     claimed_by = Column(String, nullable=True)
     claimed_date = Column(DateTime, nullable=True)
     notes = Column(String, nullable=True)
+    hotel_id = Column(Integer, ForeignKey("hotels.id"), nullable=True)
+    hotel = relationship("Hotel")
 
 
 class Item(Base):
     __tablename__ = "items"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "department_id",
+            "name",
+            name="unique_item_name_per_department"
+        ),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
+    name = Column(String, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("Category", back_populates="items")
+    subcategory_id = Column(Integer, ForeignKey("subcategories.id"), nullable=True)
+    subcategory = relationship("Subcategory", back_populates="items")
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
     supplier = relationship("Supplier", back_populates="items")
     cost_per_unit = Column(Float, nullable=True)
@@ -188,6 +289,28 @@ class Item(Base):
     locations = relationship("ItemLocation", back_populates="item")
     purchases = relationship("Purchase", back_populates="item", passive_deletes=True)
     movements = relationship("ItemMovement", back_populates="item", passive_deletes=True)
+    hotel_links = relationship("ItemHotel", back_populates="item")
+
+
+
+class ItemHotel(Base):
+    __tablename__ = "item_hotels"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "item_id",
+            "hotel_id",
+            name="unique_item_per_hotel"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("items.id"))
+    item = relationship("Item", back_populates="hotel_links")
+    hotel_id = Column(Integer, ForeignKey("hotels.id"))
+    hotel = relationship("Hotel")
+    #opening (baseline) stock of this item at this hotel
+    opening_quantity = Column(Integer, default=0)
 
 
 
@@ -225,6 +348,8 @@ class Purchase(Base):
     item = relationship("Item", back_populates="purchases")
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     department = relationship("Department")
+    hotel_id = Column(Integer, ForeignKey("hotels.id"), nullable=True)
+    hotel = relationship("Hotel")
     quantity = Column(Integer)
     unit_cost = Column(Float, nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)

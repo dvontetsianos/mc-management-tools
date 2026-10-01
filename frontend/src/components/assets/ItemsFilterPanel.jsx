@@ -10,24 +10,38 @@ import {
     Divider,
     Checkbox
 } from "@mui/material";
+import { getUser } from "../../services/auth";
 
 
 
 function ItemsFilterPanel({
     open,
     categories,
+    subcategoriesList,
     locationsList,
     suppliersList,
+    hotelsList,
     selectedCategories,
+    selectedSubcategories,
     selectedLocations,
     selectedSuppliers,
+    selectedHotels,
     onToggleCategory,
+    onToggleSubcategory,
     onToggleLocation,
     onToggleSupplier,
+    onToggleHotel,
     onClearAll,
     qtyAtLocation,
     onQtyModeChange
 }) {
+
+    //the hotel filter only makes sense for users who see more than one hotel
+    const user = getUser();
+    const showHotelFilter =
+        user?.role === "admin"
+        || user?.permissions?.includes("all_hotels_access")
+        || (user?.hotel_ids || []).length > 1;
 
     return (
         <Box sx={{ mb: 3 }}>
@@ -60,11 +74,32 @@ function ItemsFilterPanel({
 
                         <Box>
                             <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                Subcategory
+                            </Typography>
+
+                            <FormGroup>
+                                {(subcategoriesList || []).map((name) => (
+                                    <FormControlLabel
+                                        key={name}
+                                        control={
+                                            <Checkbox
+                                                checked={selectedSubcategories.includes(name)}
+                                                onChange={() => onToggleSubcategory(name)}
+                                            />
+                                        }
+                                        label={name}
+                                    />
+                                ))}
+                            </FormGroup>
+                        </Box>
+
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                 Location
                             </Typography>
 
                             <FormGroup>
-                                {locationsList.map((name) => (
+                                {[...new Set(locationsList)].map((name) => (
                                     <FormControlLabel
                                         key={name}
                                         control={
@@ -99,6 +134,29 @@ function ItemsFilterPanel({
                                 ))}
                             </FormGroup>
                         </Box>
+
+                        {showHotelFilter && (
+                            <Box>
+                                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                    Hotel
+                                </Typography>
+
+                                <FormGroup>
+                                    {(hotelsList || []).map((name) => (
+                                        <FormControlLabel
+                                            key={name}
+                                            control={
+                                                <Checkbox
+                                                    checked={selectedHotels.includes(name)}
+                                                    onChange={() => onToggleHotel(name)}
+                                                />
+                                            }
+                                            label={name}
+                                        />
+                                    ))}
+                                </FormGroup>
+                            </Box>
+                        )}
 
                     </Box>
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogTitle,
@@ -7,7 +8,9 @@ import {
     Button,
     List,
     ListItem,
-    ListItemText
+    ListItemText,
+    Box,
+    TextField
 } from "@mui/material";
 
 
@@ -17,8 +20,20 @@ function ItemDeleteConfirmDialog({
     onClose,
     onConfirm,
     itemName,
-    itemLocations
+    itemLocations,
+    isAdmin,
+    onConfirmWithHistory
 }) {
+
+    //the admin has to type the item's exact name before "Delete with history" works
+    const [confirmName, setConfirmName] = useState("");
+
+    useEffect(() => {
+        if (open) {
+            setConfirmName("");
+        }
+    }, [open]);
+
     return (
         <Dialog
             open={open}
@@ -32,7 +47,7 @@ function ItemDeleteConfirmDialog({
                 <DialogContentText>
                     Are you sure you want to delete {" "}
                     <strong>{itemName}</strong>? This will also delete its image (if any).
-                    <b>To proceed with the deletion, this Item should only by assigned to "Unassigned" location.</b>
+                    <b>To proceed with the deletion, this Item should only be assigned to "Unassigned" location and have no purchase or movement history.</b>
                 </DialogContentText>
 
                 {itemLocations && itemLocations.length > 0 ? (
@@ -60,6 +75,38 @@ function ItemDeleteConfirmDialog({
                 <DialogContentText sx={{ mt: 2 }}>
                     This action cannot be undone.
                 </DialogContentText>
+
+                {isAdmin && (
+                    <Box sx={{ mt: 3, p: 2, border: "1px solid", borderColor: "error.main", borderRadius: 1 }}>
+                        <DialogContentText sx={{ fontWeight: "bold", color: "error.main" }}>
+                            Admin: delete with all history
+                        </DialogContentText>
+
+                        <DialogContentText sx={{ mt: 1 }}>
+                            Deletes the item AND all its purchases, movements, stock and History lines, as if it never existed.
+                            Only for test items or mistakes. Type the item's name to confirm:
+                        </DialogContentText>
+
+                        <TextField
+                            size="small"
+                            fullWidth
+                            sx={{ mt: 1 }}
+                            placeholder={itemName}
+                            value={confirmName}
+                            onChange={(e) => setConfirmName(e.target.value)}
+                        />
+
+                        <Button
+                            sx={{ mt: 1 }}
+                            color="error"
+                            variant="outlined"
+                            disabled={!itemName || confirmName !== itemName}
+                            onClick={onConfirmWithHistory}
+                        >
+                            Delete with history
+                        </Button>
+                    </Box>
+                )}
             </DialogContent>
 
             <DialogActions>

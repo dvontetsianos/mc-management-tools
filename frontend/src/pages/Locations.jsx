@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { getLocations, createLocation, deleteLocation } from "../services/locationService";
+import { getHotels } from "../services/hotelService";
+import { getUser } from "../services/auth";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Snackbar from "@mui/material/Snackbar";
@@ -15,7 +17,11 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper
+    Paper,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from "@mui/material";
 import {
     Dialog,
@@ -28,8 +34,10 @@ import {
 function Locations() {
 
     const [locations, setLocations] = useState([]);
+    const [hotels, setHotels] = useState([]);
 
     const [newLocation, setNewLocation] = useState("");
+    const [newLocationHotelId, setNewLocationHotelId] = useState("");
 
     const [locationToDelete, setLocationToDelete] = useState(null);
 
@@ -43,6 +51,12 @@ function Locations() {
 
     const [creating, setCreating] = useState(false);
 
+    //admins and all-hotels users can add locations to every hotel, everyone else only to their own
+    const user = getUser();
+    const hasAllHotels = user?.role === "admin" || user?.permissions?.includes("all_hotels_access");
+    const canUseHotel = (hotelId) => hasAllHotels || (user?.hotel_ids || []).includes(hotelId);
+    const selectableHotels = hotels.filter((hotel) => canUseHotel(hotel.id));
+
     const fetchLocations = async () => {
 
         const data = await getLocations();
@@ -51,9 +65,42 @@ function Locations() {
 
     };
 
+    const fetchHotels = async () => {
+
+        const data = await getHotels();
+
+        setHotels(data);
+
+        //a user with only one hotel gets it pre-selected
+        const myHotels = data.filter((hotel) => canUseHotel(hotel.id));
+
+        if (myHotels.length === 1) {
+            setNewLocationHotelId(myHotels[0].id);
+        }
+
+    };
+
+    const getHotelName = (hotelId) => {
+
+        const hotel = hotels.find((h) => h.id === hotelId);
+
+        return hotel ? hotel.name : "-";
+    };
+
     const handleCreate = async () => {
 
         if (!newLocation.trim()) {
+            return;
+        }
+
+        if (!newLocationHotelId) {
+
+            setSnackbarMessage("Please choose a hotel.");
+
+            setSnackbarSeverity("error");
+
+            setSnackbarOpen(true);
+
             return;
         }
 
@@ -61,7 +108,7 @@ function Locations() {
 
         try {
 
-            await createLocation(newLocation);
+            await createLocation(newLocation, newLocationHotelId);
 
             setNewLocation("");
 
@@ -97,11 +144,11 @@ function Locations() {
 
         try {
 
-            await deleteLocation(locationToDelete.id);
+            const result = await deleteLocation(locationToDelete.id);
 
             await fetchLocations();
 
-            setSnackbarMessage("Location deleted successfully");
+            setSnackbarMessage(result.message || "Location deleted successfully");
 
             setSnackbarSeverity("success");
 
@@ -127,6 +174,7 @@ function Locations() {
 
     useEffect(() => {
         fetchLocations();
+        fetchHotels();
     }, []);
 
 
@@ -140,7 +188,8 @@ function Locations() {
                 sx={{
                     display: "flex",
                     gap: 2,
-                    mt: 3
+                    mt: 3,
+                    alignItems: "center"
                 }}
             >
                 <TextField
@@ -150,6 +199,24 @@ function Locations() {
                         setNewLocation(e.target.value)
                     }
                 />
+
+                <FormControl sx={{ minWidth: 200 }}>
+                    <InputLabel>Hotel</InputLabel>
+
+                    <Select
+                        value={newLocationHotelId}
+                        label="Hotel"
+                        onChange={(e) =>
+                            setNewLocationHotelId(e.target.value)
+                        }
+                    >
+                        {selectableHotels.map((hotel) => (
+                            <MenuItem key={hotel.id} value={hotel.id}>
+                                {hotel.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
 
                 <Button
                     variant="contained"
@@ -188,6 +255,10 @@ function Locations() {
                             </TableCell>
 
                             <TableCell>
+                                Hotel
+                            </TableCell>
+
+                            <TableCell>
                                 Actions
                             </TableCell>
 
@@ -204,6 +275,10 @@ function Locations() {
 
                                 <TableCell>
                                     {location.name}
+                                </TableCell>
+
+                                <TableCell>
+                                    {getHotelName(location.hotel_id)}
                                 </TableCell>
 
                                 <TableCell>
