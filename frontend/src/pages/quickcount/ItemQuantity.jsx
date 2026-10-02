@@ -8,13 +8,15 @@ import {
     CircularProgress,
     TextField,
     Paper,
-    Chip
+    Chip,
+    Dialog
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { getItemLocations, submitItemLocationCount, dismissItemLocationCount } from "../../services/itemService";
 import { formatCountedAt } from "../../utils/countedAt";
+import { API_URL } from "../../config";
 
 
 
@@ -38,6 +40,7 @@ function ItemQuantity() {
     const [saving, setSaving] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [error, setError] = useState("");
+    const [imageOpen, setImageOpen] = useState(false);
 
 
     //always get the latest count from the server, the list we came from can be minutes old
@@ -162,6 +165,40 @@ function ItemQuantity() {
                 </Box>
             </Box>
 
+            
+            {itemLocation?.item_image_url && (
+                <Box sx={{ px: 2 }}>
+                    <Box
+                        component="img"
+                        src={`${API_URL}/${itemLocation.item_image_url}`}
+                        alt={itemLocation.item_name || "Item"}
+                        onClick={() => setImageOpen(true)}
+                        sx={{
+                            display: "block",
+                            width: "100%",
+                            maxHeight: 200,
+                            objectFit: "contain",
+                            borderRadius: 3,
+                            backgroundColor: "white",
+                            cursor: "zoom-in"
+                        }}
+                    />
+                </Box>
+            )}
+
+            <Dialog open={imageOpen} onClose={() => setImageOpen(false)} maxWidth="md">
+                {itemLocation?.item_image_url && (
+                    <Box
+                        component="img"
+                        src={`${API_URL}/${itemLocation.item_image_url}`}
+                        alt={itemLocation.item_name || "Item"}
+                        onClick={() => setImageOpen(false)}
+                        sx={{ display: "block", width: "100%", height: "auto" }}
+                    />
+                )}
+            </Dialog>
+            
+            
             {error && (
                 <Typography sx={{ px: 2, mb: 1, color: "error.main" }}>
                     {error}

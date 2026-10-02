@@ -3013,6 +3013,7 @@ def get_item_locations(
             "id": item_location.id,
             "item_id": item_location.item_id,
             "item_name": item_location.item.name if item_location.item else None,
+            "item_image_url": item_location.item.image_url if item_location.item else None,
             "location_id": item_location.location_id,
             "location": item_location.location.name if item_location.location else None,
             "total_quantity": item_location.total_quantity,

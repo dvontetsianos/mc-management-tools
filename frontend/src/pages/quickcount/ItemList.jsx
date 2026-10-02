@@ -9,10 +9,13 @@ import {
     ListItemText,
     CircularProgress,
     IconButton,
-    Chip
+    Chip,
+    Avatar
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ImageNotSupportedIcon from "@mui/icons-material/ImageNotSupported";
+import { API_URL } from "../../config";
 import { getItemLocations } from "../../services/itemService";
 import { getLocations } from "../../services/locationService";
 
@@ -164,9 +167,21 @@ function ItemList() {
                                 alignItems: "center"
                             }}
                             >
-                                <ListItemText
-                                    primary={itemLocation.item_name}
-                                />
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                                    <Avatar
+                                        variant="rounded"
+                                        src={itemLocation.item_image_url ? `${API_URL}/${itemLocation.item_image_url}` : undefined}
+                                        alt={itemLocation.item_name || "Item"}
+                                        imgProps={{ loading: "lazy" }}
+                                        sx={{ width: 48, height: 48, backgroundColor: "#f5f5f5", color: "#9e9e9e" }}
+                                    >
+                                        <ImageNotSupportedIcon fontSize="small" />
+                                    </Avatar>
+
+                                    <ListItemText
+                                        primary={itemLocation.item_name}
+                                    />
+                                </Box>
 
                                 {isCounted && (
                                     <Chip

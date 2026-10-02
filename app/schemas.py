@@ -141,6 +141,7 @@ class ItemLocationResponse(BaseModel):
     id: int
     item_id: int
     item_name: str | None = None
+    item_image_url: str | None = None
     location_id: int
     location: str | None = None
     hotel_name: str | None = None
