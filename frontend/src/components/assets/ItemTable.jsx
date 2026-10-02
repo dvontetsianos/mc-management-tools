@@ -165,6 +165,14 @@ function ItemTable({
                                     Category{getSortArrow("category")}
                                 </TableCell>
 
+                                <TableCell
+                                    onClick={() => onSort("subcategory")}
+                                    align="center"
+                                    sx={{ width: 120 }}
+                                >
+                                    Subcategory{getSortArrow("subcategory")}
+                                </TableCell>
+
                                 <TableCell align="center" sx={{ width: 140 }}>
                                     Expected Total
                                 </TableCell>
@@ -194,22 +202,6 @@ function ItemTable({
 
                                 <TableCell align="center" sx={{ width: 250 }}>
                                     Locations
-                                </TableCell>
-
-                                <TableCell
-                                    onClick={() => onSort("supplier")}
-                                    align="center"
-                                    sx={{ width: 140, maxWidth: 140 }}
-                                >
-                                    Supplier{getSortArrow("supplier")}
-                                </TableCell>
-
-                                <TableCell
-                                    align="center"
-                                    sx={{ width: 140 }}
-                                    onClick={() => onSort("cost_per_unit")}
-                                >
-                                    Cost/Unit{getSortArrow("cost_per_unit")}
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 180 }}>
@@ -261,6 +253,7 @@ function ItemTable({
 
                                     <TableCell align="center">{item.name}</TableCell>
                                     <TableCell sx={{ width: 100}} align="center">{item.category}</TableCell>
+                                    <TableCell sx={{ width: 100 }} align="center">{item.subcategory || "-"}</TableCell>
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
                                     <TableCell align="center" sx={{ width: 140}}>{item.assigned_quantity}</TableCell>
                                     <TableCell
@@ -319,15 +312,6 @@ function ItemTable({
                                         ) : (
                                             "-"
                                         )}
-                                    </TableCell>
-
-                                    <TableCell align="center">
-                                        {item.supplier || "-"}
-                                    </TableCell>
-
-                                    <TableCell align="center">
-                                        {item.cost_per_unit != null
-                                        ? `€ ${Number(item.cost_per_unit).toFixed(2)}` : "-"}
                                     </TableCell>
 
                                     <TableCell align="center">
