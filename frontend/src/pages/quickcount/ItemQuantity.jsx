@@ -17,6 +17,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import { getItemLocations, submitItemLocationCount, dismissItemLocationCount } from "../../services/itemService";
 import { formatCountedAt } from "../../utils/countedAt";
 import { API_URL } from "../../config";
+import { renewSession } from "../../services/auth";
 
 
 
@@ -84,6 +85,9 @@ function ItemQuantity() {
                 itemLocation?.staff_counted_at ?? null
             );
 
+            //working counters stay logged in: every saved count gives another 15 minutes
+            await renewSession();
+
             navigate(`/quick-count/${locationId}`, {
                 state: { locationName }
             });
@@ -112,6 +116,8 @@ function ItemQuantity() {
 
         try {
             await dismissItemLocationCount(itemLocationId);
+
+            await renewSession();
 
             navigate(`/quick-count/${locationId}`, {
                 state: { locationName }

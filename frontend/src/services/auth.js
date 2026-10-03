@@ -73,3 +73,38 @@ export function hasPermission(permission) {
 
     return user.permissions?.includes(permission);
 }
+
+
+//gets a fresh token (another 15 minutes) after the user did something, e.g. saved a count.
+//if it fails (no connection, already expired) nothing changes: the normal expiry logs them out
+export async function renewSession() {
+
+    const token = getToken();
+
+    if (!token) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(`${API_URL}/refresh-token`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.access_token) {
+            localStorage.setItem("token", data.access_token);
+        }
+    } catch (error) {
+
+        console.error(error);
+    }
+}
