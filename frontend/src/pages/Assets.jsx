@@ -40,6 +40,7 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import ItemsHelpButton from "../components/assets/ItemsHelpButton";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 
 
@@ -588,6 +589,8 @@ function Assets() {
       >
         <h1>F&B Items</h1>
 
+        <ItemsHelpButton department="F&B" hasQuickCountButton />
+
         <Button
           variant="outlined"
           component="a"
@@ -638,16 +641,7 @@ function Assets() {
             .XLSX
           </Button>
 
-          <Typography
-            variant="body1"
-            sx={{ mb: 5, maxWidth: 900, mx: "auto", textAlign: "center", fontSize: "1.15rem", lineHeight: 1.4 }}
-          >
-            Check the boxes in the filter section to filter for specific columns. If location filters are used, the corresponding locations in the table will turn {" "}
-            <Box component="span" sx={{ color: "success.main", fontWeight: "bold" }}>
-              green 
-            </Box>
-              {" "}to let you know which locations the "Assigned Quantity" column is taking into account.
-          </Typography>
+          
 
           <ItemFormDialog
             open={itemDialogOpen}

@@ -37,6 +37,7 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import ItemsHelpButton from "../components/assets/ItemsHelpButton";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
 
@@ -557,6 +558,8 @@ function HousekeepingItems() {
         }}
       >
         <h1>Housekeeping Items</h1>
+
+        <ItemsHelpButton department="Housekeeping" />
       </Box>
 
       {/* ITEMS TAB */}

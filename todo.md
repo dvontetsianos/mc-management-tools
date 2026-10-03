@@ -10,15 +10,9 @@ Maintenance:
 
 F\&B:
 
-&#x09;•Quickcount session reset?
-
 &#x09;
 
 &#x09;•rename page title and edit explanation text??????
-
-
-
-&#x09;•remove cost/unit from items tab, useless
 
 
 
@@ -50,29 +44,97 @@ Requests:
 
 
 
-
-
-
-
-
-
-admin reset count button
-
-
-
-
-
-
-
-
-
-
-
-
-
 **migrate to MySQL????**
 
 
 
 
+
+\-------------------
+
+Make an info button in Items pages, that explains the functionality and remove the h2 text
+
+
+
+Dashboard buttons should navigate inside the app
+
+
+
+Change password accepts an empty password, and keeps typed text between users.
+
+
+
+Deleting a purchase leaves its movement behind.
+
+
+
+You can remove "all hotels" from a user who has no hotels assigned.
+
+
+
+Two people moving the same item at the same second can create stock.
+
+
+
+No "None" option for supplier.
+
+
+
+Categories in "+Add new item" aren't filtered by department.
+
+
+
+The Suppliers delete button shows to non-admins.
+
+
+
+The hotel filter lists hotels the user doesn't have.
+
+
+
+The Purchases page breaks for users with only purchases access.
+
+
+
+Category names have to be unique across all departments.
+
+
+
+A newly created hotel doesn't get its own "Unassigned".
+
+
+
+Lost \& Found create, claim and unclaim return an empty answer (the screen isn't affected).
+
+
+
+The Housekeeping Excel import script, when your Excel is ready.
+
+
+
+Full paths for uploads and the database, like we did for the logs.
+
+
+
+Excel export: hotel names, the "Assigned" wording, protection against formulas in cells.
+
+
+
+Reports: the spend report's department filter, and reports in general.
+
+
+
+Requests and Lost \& Found per hotel.
+
+
+
+Hotel names in two places: the Purchases table ("Received Into") and Quick Count locations.
+
+
+
+Quick Count for Kitchen.
+
+
+
+search for typos
 
