@@ -1,7 +1,6 @@
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"; {/* marbella: private */}
+//if .env.local sets an address (laptop / phone app), use it; otherwise use the address the page was opened from (server)
+export const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
-export const PRODUCT_NAME = "MC Management Tools";
+export const PRODUCT_NAME = "MC Management Tools"; 
 
-export const HOTEL_NAME = "Marbella"; 
-
-export const APP_TITLE = `${PRODUCT_NAME} - ${HOTEL_NAME}`;
+export const APP_TITLE = PRODUCT_NAME;
