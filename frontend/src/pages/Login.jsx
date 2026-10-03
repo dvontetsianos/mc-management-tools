@@ -32,7 +32,7 @@ function friendlyError(error) {
     }
 
     if (message.toLowerCase().includes("invalid credentials")) {
-        return "Wrong username or password.";
+        return "Invalid Credentials\n¯\\_( ͡° ͜ʖ ͡°)_/¯";
     }
 
     return message || "Login failed. Please try again.";
@@ -166,7 +166,7 @@ function LoginForm() {
             />
 
             {error && (
-                <Alert severity="error" sx={{ textAlign: "left" }}>
+                <Alert severity="error" sx={{ textAlign: "left", whiteSpace: "pre-line" }}>
                     {error}
                 </Alert>
             )}
