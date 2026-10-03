@@ -26,7 +26,6 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import FindInPageIcon from "@mui/icons-material/FindInPage";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
-import SystemStatusWidget from "../components/system/SystemStatusWidget";
 import { APP_TITLE } from "../config";
 import marbellaelixbg from "../assets/marbellaelixbg.jpg";
 

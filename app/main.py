@@ -15,6 +15,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pathlib import Path
 import psutil
 import socket
+import platform
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment
 from openpyxl.utils.exceptions import InvalidFileException
@@ -47,6 +48,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / "logs"
 LOG_FILE = LOGS_DIR / "user_feedback.txt"
 LOGIN_LOG_FILE = LOGS_DIR / "login_log.txt"
+
+#when this backend started, shown on System Monitor
+APP_STARTED_AT = datetime.now()
 
 #----------------------------------------------------------------------------
 
@@ -1857,16 +1861,68 @@ def save_feedback(
     return {"message": "Feedback saved"}
 
 #-----------------------------------------------------------------------
-#system status
+#system status for the System Monitor page (admin only)
 @app.get("/system/status")
-def system_status():
+def system_status(
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    #total size and number of files in a folder (and its subfolders)
+    def folder_size(folder):
+        total = 0
+        count = 0
+
+        if folder.exists():
+            for file in folder.rglob("*"):
+                if file.is_file():
+                    total += file.stat().st_size
+                    count += 1
+
+        return total, count
+
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage(BASE_DIR.anchor or str(BASE_DIR))
+
+    database_file = BASE_DIR / "assets.db"
+    uploads_size, uploads_count = folder_size(BASE_DIR / "uploads")
+    logs_size, _ = folder_size(LOGS_DIR)
+
+    #last 15 logins, newest first
+    recent_logins = []
+
+    if LOGIN_LOG_FILE.exists():
+        with open(LOGIN_LOG_FILE, "r", encoding="utf-8", errors="replace") as log_file:
+            last_lines = log_file.readlines()[-15:]
+
+        recent_logins = [line.strip() for line in reversed(last_lines) if line.strip()]
+
     return {
         "hostname": socket.gethostname(),
-        "cpu_percent": psutil.cpu_percent(interval=1),
-        "memory_percent": psutil.virtual_memory().percent,
-        "disk_percent": psutil.disk_usage("/").percent
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "cpu_percent": psutil.cpu_percent(interval=0.5),
+        "cpu_count": psutil.cpu_count(),
+        "memory_percent": memory.percent,
+        "memory_used": memory.used,
+        "memory_total": memory.total,
+        "disk_percent": disk.percent,
+        "disk_used": disk.used,
+        "disk_total": disk.total,
+        "server_started_at": datetime.fromtimestamp(psutil.boot_time()).isoformat(),
+        "app_started_at": APP_STARTED_AT.isoformat(),
+        "database_size": database_file.stat().st_size if database_file.exists() else None,
+        "uploads_size": uploads_size,
+        "uploads_count": uploads_count,
+        "logs_size": logs_size,
+        "counts": {
+            "hotels": db.query(models.Hotel).count(),
+            "locations": db.query(models.Location).filter(models.Location.is_active == True).count(),
+            "items": db.query(models.Item).count(),
+            "users": db.query(models.User).count()
+        },
+        "recent_logins": recent_logins
     }
-
 #------------------------------------------------------------------------
 #get lost and found items
 @app.get("/lost-found")
