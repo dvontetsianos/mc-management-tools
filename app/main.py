@@ -42,7 +42,11 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-LOG_FILE = BASE_DIR / "logs" / "user_feedback.txt"
+
+#full paths, so the logs always end up in the project's logs folder, wherever the service was started from
+LOGS_DIR = BASE_DIR / "logs"
+LOG_FILE = LOGS_DIR / "user_feedback.txt"
+LOGIN_LOG_FILE = LOGS_DIR / "login_log.txt"
 
 #----------------------------------------------------------------------------
 
@@ -1766,7 +1770,7 @@ def login(user: schemas.UserLogin, request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
 
     client_host = request.client.host if request.client else "unknown"
 
@@ -1776,7 +1780,7 @@ def login(user: schemas.UserLogin, request: Request, db: Session = Depends(get_d
         f"Time: {datetime.now().strftime('%H:%M:%S')}"
     )
 
-    with open("logs/login_log.txt", "a", encoding="utf-8") as log_file:
+    with open(LOGIN_LOG_FILE, "a", encoding="utf-8") as log_file:
         log_file.write(
             f"{datetime.now().strftime('%Y-%m-%d %H:%M')} | "
             f"User: {db_user.username} | "
@@ -1837,8 +1841,10 @@ def save_feedback(
     feedback: schemas.FeedbackCreate,
     current_user: dict = Depends(get_current_user)
 ):
+
+    os.makedirs(LOGS_DIR, exist_ok=True)
     
-    with open("logs/user_feedback.txt", "a", encoding="utf-8") as file:
+    with open(LOG_FILE, "a", encoding="utf-8") as file:
     
         file.write("=" * 50 + "\n")
         file.write(f"Date: {datetime.now()}\n")

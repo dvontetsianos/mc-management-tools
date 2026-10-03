@@ -1,7 +1,7 @@
 import { Drawer, List, ListItem, ListItemButton, ListItemText, Toolbar, Box, Button, Badge, Divider } from "@mui/material";
 import { Outlet, useNavigate } from "react-router-dom";
 import { logout, getUser, getToken } from "../services/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import FeedbackDialog from "../components/feedback/FeedbackDialog";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
@@ -16,7 +16,6 @@ import CategoryIcon from "@mui/icons-material/Category";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import TableChartIcon from "@mui/icons-material/TableChart";
-import SystemMonitor from "../pages/SystemMonitor";
 import Calculator from "../components/Calculator";
 import Clock from "../components/Clock";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -690,7 +689,9 @@ function Layout() {
                 }}
             >
 
-                <Outlet />
+                <Suspense fallback={<Box sx={{ p: 5, textAlign: "center" }}>Loading...</Box>}>
+                    <Outlet />
+                </Suspense>
 
             </main>
 

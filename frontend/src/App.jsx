@@ -1,32 +1,44 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Assets from "./pages/Assets";
-import HousekeepingItems from "./pages/HousekeepingItems";
-import KitchenItems from "./pages/KitchenItems";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Layout from "./components/Layout";
 import PermissionRoute from "./components/PermissionRoute";
-import Users from "./pages/Users";
-import SystemMonitor from "./pages/SystemMonitor";
-import Categories from "./pages/Categories";
-import Locations from "./pages/Locations";
-import Suppliers from "./pages/Suppliers";
-import Excel from "./pages/Excel";
-import Departments from "./pages/Departments";
-import Requests from "./pages/Requests";
-import History from "./pages/History";
-import Reports from "./pages/Reports";
-import SpendReport from "./pages/reports/SpendReport";
-import LostFound from "./pages/LostFound";
-import LocationPicker from "./pages/quickcount/LocationPicker";
-import ItemList from "./pages/quickcount/ItemList";
-import ItemQuantity from "./pages/quickcount/ItemQuantity";
-import Purchases from "./pages/Purchases";
-import ItemPurchaseHistory from "./pages/items/ItemPurchaseHistory";
-import ItemMovementHistory from "./pages/items/ItemMovementHistory";
-import Movements from "./pages/Movements";
+
+//pages are loaded only when they are opened, so e.g. Quick Count on a PDA
+//doesn't download the office pages (and the big chart library of System Monitor)
+const Layout = lazy(() => import("./components/Layout"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Assets = lazy(() => import("./pages/Assets"));
+const HousekeepingItems = lazy(() => import("./pages/HousekeepingItems"));
+const KitchenItems = lazy(() => import("./pages/KitchenItems"));
+const Users = lazy(() => import("./pages/Users"));
+const SystemMonitor = lazy(() => import("./pages/SystemMonitor"));
+const Categories = lazy(() => import("./pages/Categories"));
+const Locations = lazy(() => import("./pages/Locations"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const Excel = lazy(() => import("./pages/Excel"));
+const Departments = lazy(() => import("./pages/Departments"));
+const Requests = lazy(() => import("./pages/Requests"));
+const History = lazy(() => import("./pages/History"));
+const Reports = lazy(() => import("./pages/Reports"));
+const SpendReport = lazy(() => import("./pages/reports/SpendReport"));
+const LostFound = lazy(() => import("./pages/LostFound"));
+const LocationPicker = lazy(() => import("./pages/quickcount/LocationPicker"));
+const ItemList = lazy(() => import("./pages/quickcount/ItemList"));
+const ItemQuantity = lazy(() => import("./pages/quickcount/ItemQuantity"));
+const Purchases = lazy(() => import("./pages/Purchases"));
+const ItemPurchaseHistory = lazy(() => import("./pages/items/ItemPurchaseHistory"));
+const ItemMovementHistory = lazy(() => import("./pages/items/ItemMovementHistory"));
+const Movements = lazy(() => import("./pages/Movements"));
+
+
+//shown for a moment while a page is being downloaded
+const pageLoading = (
+    <div style={{ padding: 40, textAlign: "center" }}>
+        Loading...
+    </div>
+);
 
 
 
@@ -34,6 +46,7 @@ import Movements from "./pages/Movements";
 function App() {
 
     return (
+        <Suspense fallback={pageLoading}>
         <Routes>
 
             <Route path="/" element={<Login />} />
@@ -259,6 +272,7 @@ function App() {
 
 
         </Routes>
+        </Suspense>
     );
 }
 
