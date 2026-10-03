@@ -197,10 +197,10 @@ function PhotoStyle() {
     return (
         <Box
             sx={{
-                flex: 1,
-                minHeight: "100svh",
+                position: "fixed",
+                inset: 0,
+                overflowY: "auto",
                 display: "flex",
-                alignItems: "center",
                 justifyContent: "center",
                 p: 2,
                 backgroundImage: `linear-gradient(rgba(8,1,37,0.55), rgba(8,1,37,0.55)), url(${loginPhoto})`,
@@ -213,6 +213,7 @@ function PhotoStyle() {
                 sx={{
                     width: "100%",
                     maxWidth: 400,
+                    my: "auto",
                     p: { xs: 3, sm: 4 },
                     borderRadius: 3,
                     backgroundColor: "rgba(255,255,255,0.92)",
