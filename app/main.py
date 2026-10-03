@@ -330,15 +330,7 @@ def log_action(db, user, action, entity_type, entity_name, entity_id=None, detai
 
     db.add(log_entry)
     db.commit()
-#---------------------------------------------------------------------------------------
-def clear_staff_count_if_matched(item_location):
-    if (
-        item_location.staff_counted_quantity is not None
-        and item_location.total_quantity == item_location.staff_counted_quantity
-    ):
-        item_location.staff_counted_quantity = None
-        item_location.staff_counted_at = None
-        item_location.staff_counted_by = None
+
 #---------------------------------------------------------------------
 app = FastAPI()
 
@@ -3001,6 +2993,9 @@ def get_item_locations(
             models.ItemLocation.location.has(models.Location.hotel_id.in_(hotel_scope))
         )
 
+    #only items that are actually at the location (stock above 0) can be counted there
+    query = query.filter(models.ItemLocation.total_quantity > 0)
+    
     item_locations = query.all()
 
 
@@ -3181,7 +3176,6 @@ def update_item_location(
     old_broken_quantity = db_item_location.broken_quantity
 
     db_item_location.total_quantity = item_location.total_quantity
-    clear_staff_count_if_matched(db_item_location)
     db_item_location.broken_quantity = item_location.broken_quantity
 
     db.commit()
@@ -3244,7 +3238,7 @@ def submit_item_location_count(
     ).first()
 
     if db_item_location is None:
-        raise HTTPException(status_code=404, detail="Item location not found")
+        raise HTTPException(status_code=404, detail="This item isn't assigned to this location anymore, so it can't be counted here. Go back to the list.")
 
     if not db_item_location.item or not user_can_access_department_items(
         user, db_item_location.item.department_id
@@ -3260,6 +3254,15 @@ def submit_item_location_count(
             detail="Item location not found"
         )
 
+    
+    #the item was moved out of this location after the page was opened
+    if db_item_location.total_quantity <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="This item isn't assigned to this location anymore, so it can't be counted here. Go back to the list."
+        )
+    
+    
     #someone else saved (or reset) a count after this person opened the page:
     #refuse, so we don't silently overwrite their number
     if "previous_counted_at" in count.model_fields_set:
@@ -3368,6 +3371,78 @@ def dismiss_item_location_count(
         "staff_counted_at": None,
         "staff_counted_by": None
     }
+#--------------------------------------------------------------------------------------
+#admin: clear staff counts for a hotel / department / location / item (any combination, empty = all)
+#preview=True only says how many counts would be cleared, nothing changes
+@app.post("/counts/reset")
+def reset_counts(
+    reset: schemas.CountReset,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    query = db.query(models.ItemLocation).filter(
+        models.ItemLocation.staff_counted_quantity.isnot(None)
+    )
+
+    if reset.hotel_id is not None:
+        query = query.filter(
+            models.ItemLocation.location.has(models.Location.hotel_id == reset.hotel_id)
+        )
+
+    if reset.department_id is not None:
+        query = query.filter(
+            models.ItemLocation.item.has(models.Item.department_id == reset.department_id)
+        )
+
+    if reset.location_id is not None:
+        query = query.filter(models.ItemLocation.location_id == reset.location_id)
+
+    if reset.item_id is not None:
+        query = query.filter(models.ItemLocation.item_id == reset.item_id)
+
+    item_locations = query.all()
+    count = len(item_locations)
+
+    if reset.preview or count == 0:
+        return {"count": count}
+
+    for item_location in item_locations:
+        item_location.staff_counted_quantity = None
+        item_location.staff_counted_at = None
+        item_location.staff_counted_by = None
+
+        #a row with no stock only existed to keep its count, so it goes too
+        if (item_location.total_quantity or 0) <= 0 and (item_location.broken_quantity or 0) <= 0:
+            db.delete(item_location)
+
+
+    db.commit()
+
+    #what was reset, in words, for the History line
+    def name_or_all(model, row_id, label):
+        if row_id is None:
+            return f"all {label}"
+
+        row = db.query(model).filter(model.id == row_id).first()
+
+        return row.name if row else f"{label} #{row_id}"
+
+    scope = ", ".join([
+        name_or_all(models.Hotel, reset.hotel_id, "hotels"),
+        name_or_all(models.Department, reset.department_id, "departments"),
+        name_or_all(models.Location, reset.location_id, "locations"),
+        name_or_all(models.Item, reset.item_id, "items")
+    ])
+
+    log_action(
+        db, admin, "reset", "Item Location",
+        f"{count} count{'s' if count != 1 else ''}",
+        None,
+        details=f"Cleared staff counts for: {scope}"
+    )
+
+    return {"count": count}
 #-------------------------------------------------------------------------------------
 #remove an item from a single location (stays assigned elsewhere)
 @app.delete("/item-locations/{item_location_id}")
@@ -3610,9 +3685,13 @@ def create_item_movement(
     #move the stock: decrease the source, increase (or create) the destination
 
     from_item_location.total_quantity -= movement.quantity
-    clear_staff_count_if_matched(from_item_location)
 
-    if from_item_location.total_quantity <= 0 and from_item_location.broken_quantity <= 0:
+    #an empty stock row is removed, but not while it holds a staff count (the count must stay)
+    if (
+        from_item_location.total_quantity <= 0
+        and from_item_location.broken_quantity <= 0
+        and from_item_location.staff_counted_quantity is None
+    ):
         db.delete(from_item_location)
 
 
@@ -3623,7 +3702,6 @@ def create_item_movement(
 
     if to_item_location:
         to_item_location.total_quantity += movement.quantity
-        clear_staff_count_if_matched(to_item_location)
     else:
         to_item_location = models.ItemLocation(
             item_id=movement.item_id,
@@ -3882,7 +3960,6 @@ def create_purchase(
 
     if item_location:
         item_location.total_quantity += purchase.quantity
-        clear_staff_count_if_matched(item_location)
 
     else:
         item_location = models.ItemLocation(

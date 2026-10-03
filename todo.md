@@ -56,13 +56,7 @@ Requests:
 
 
 
-subcategory edit, split categories, new tab
-
-
-
-
-
-hotel\_locations table
+admin reset count button
 
 
 
@@ -74,5 +68,11 @@ hotel\_locations table
 
 
 
-**migrate to MySQL**
+
+
+**migrate to MySQL????**
+
+
+
+
 

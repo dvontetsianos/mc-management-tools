@@ -160,6 +160,15 @@ class ItemLocationCountSubmit(BaseModel):
     previous_counted_at: datetime | None = None
 
 
+#admin reset of staff counts: leave a field empty (None) to mean "all"
+class CountReset(BaseModel):
+    hotel_id: int | None = None
+    department_id: int | None = None
+    location_id: int | None = None
+    item_id: int | None = None
+    preview: bool = True
+
+
 class ItemResponse(BaseModel):
     id: int
     name: str

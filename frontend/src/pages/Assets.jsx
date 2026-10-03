@@ -4,6 +4,7 @@ import ItemTable from "../components/assets/ItemTable";
 import ItemFormDialog from "../components/assets/ItemFormDialog";
 import ItemDeleteConfirmDialog from "../components/assets/ItemDeleteConfirmDialog";
 import MoveItemDialog from "../components/assets/MoveItemDialog";
+import CountResetDialog from "../components/assets/CountResetDialog";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
 import {
@@ -96,6 +97,7 @@ function Assets() {
 
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [movingItemId, setMovingItemId] = useState(null);
+  const [countResetOpen, setCountResetOpen] = useState(false);
 
   const [selectedItemCategories, setSelectedItemCategories] = useState([]);
   const [selectedItemSubcategories, setSelectedItemSubcategories] = useState([]);
@@ -751,6 +753,16 @@ function Assets() {
               Add Item
             </Button>
 
+            {getUser()?.role === "admin" && (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => setCountResetOpen(true)}
+              >
+                Reset Counts
+              </Button>
+            )}
+
             {/* Old assign item to location button
             <Button
               variant="contained"
@@ -811,6 +823,18 @@ function Assets() {
             itemLocations={itemToDelete?.locations}
           />
 
+          <CountResetDialog
+            open={countResetOpen}
+            onClose={() => setCountResetOpen(false)}
+            defaultDepartmentId={fbDepartmentId}
+            onDone={(count) => {
+              fetchItems();
+              setSnackbarSeverity("success");
+              setSnackbarMessage(`${count} count${count !== 1 ? "s" : ""} reset`);
+              setSnackbarOpen(true);
+            }}
+          />
+          
           <MoveItemDialog
             open={moveDialogOpen}
             onClose={() => {

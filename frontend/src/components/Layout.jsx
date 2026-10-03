@@ -122,7 +122,8 @@ function Layout() {
 
         const checkPendingRequests = async () => {
 
-            if (!getToken()) {
+            //skip while the tab is in the background, nobody is looking at it
+            if (!getToken() || document.hidden) {
                 return;
             }
 
@@ -141,9 +142,15 @@ function Layout() {
         };
 
         checkPendingRequests();
-        const interval = setInterval(checkPendingRequests, 30000);
+        const interval = setInterval(checkPendingRequests, 300000);
 
-        return () => clearInterval(interval);
+        //check right away when the user comes back to the tab
+        document.addEventListener("visibilitychange", checkPendingRequests);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener("visibilitychange", checkPendingRequests);
+        };
 
     }, []);
 

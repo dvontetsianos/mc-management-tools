@@ -315,3 +315,23 @@ export async function deleteItemLocation(id) {
     return await response.json();
 
 }
+
+
+//admin: clear staff counts (filters: hotel_id, department_id, location_id, null = all)
+//preview = true only returns how many would be cleared
+export async function resetCounts(filters, preview = true) {
+
+    const response = await fetch(`${API_URL}/counts/reset`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ...filters, preview })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to reset counts");
+    }
+
+    return data;
+}

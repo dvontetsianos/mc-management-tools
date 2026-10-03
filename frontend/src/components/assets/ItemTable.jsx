@@ -69,6 +69,33 @@ function getStaffCountStyle(staffCounted, expected) {
 }
 
 
+//compares every counted location with its own system quantity (Unassigned is never counted)
+function getCountSummary(item) {
+
+    const locations = (item.locations || []).filter((loc) => loc.location !== "Unassigned");
+
+    const counted = locations.filter(
+        (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
+    );
+
+    const countedTotal = counted.reduce((sum, loc) => sum + loc.staff_counted_quantity, 0);
+    const systemTotal = counted.reduce((sum, loc) => sum + (loc.total_quantity || 0), 0);
+
+    //the total matches, but some locations have more and others less(items moved around)
+    const moved = countedTotal === systemTotal
+        && counted.some((loc) => loc.staff_counted_quantity !== (loc.total_quantity || 0));
+
+
+    //locations that have stock but no count yet
+    const uncounted = locations.filter(
+        (loc) => (loc.total_quantity || 0) > 0
+            && (loc.staff_counted_quantity === null || loc.staff_counted_quantity === undefined)
+    );
+
+    return { counted, countedTotal, systemTotal, moved, uncounted };
+}
+
+
 
 
 
@@ -264,37 +291,59 @@ function ItemTable({
                                     </TableCell>
 
                                     <TableCell align="center" sx={{ width: 140 }}>
-                                        {item.staff_counted_quantity === null || item.staff_counted_quantity === undefined ? (
-                                            <Chip label="Not Counted" size="small" variant="outlined" />
-                                        ) : (
-                                            <Tooltip
-                                                arrow
-                                                title={
-                                                    <Box>
-                                                        {(item.locations || [])
-                                                            .filter((loc) =>
-                                                                loc.location !== "Unassigned"
-                                                            && loc.staff_counted_quantity !== null
-                                                            && loc.staff_counted_quantity !== undefined
-                                                            )
-                                                            .map((loc) => (
+                                        {(() => {
+                                            const summary = getCountSummary(item);
+
+                                            if (summary.counted.length === 0) {
+                                                return <Chip label="Not Counted" size="small" variant="outlined" />;
+                                            }
+
+                                            return (
+                                                <Tooltip
+                                                    arrow
+                                                    title={
+                                                        <Box>
+                                                            {summary.counted.map((loc) => {
+                                                                const difference = loc.staff_counted_quantity - (loc.total_quantity || 0);
+
+                                                                return (
+                                                                    <div key={loc.id}>
+                                                                        {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: counted {loc.staff_counted_quantity}, assigned {loc.total_quantity || 0}{difference !== 0 ? ` (${difference > 0 ? "+" : ""}${difference})` : ""}, by {loc.staff_counted_by || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
+                                                                    </div>
+                                                                );
+                                                            })}
+
+                                                            {summary.uncounted.map((loc) => (
                                                                 <div key={loc.id}>
-                                                                    {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: {loc.staff_counted_quantity}, by {loc.staff_counted_by || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
+                                                                    {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: not counted, assigned {loc.total_quantity}
                                                                 </div>
                                                             ))}
+                                                        </Box>
+                                                    }
+                                                >
+                                                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                                                        <Chip
+                                                            label={summary.countedTotal}
+                                                            size="small"
+                                                            sx={{
+                                                                ...getStaffCountStyle(summary.countedTotal, summary.systemTotal),
+                                                                fontWeight: "bold"
+                                                            }}
+                                                        />
+
+                                                        {summary.moved && (
+                                                            <SwapHorizIcon fontSize="small" sx={{ color: "warning.main" }} />
+                                                        )}
+
+                                                        {summary.uncounted.length > 0 && (
+                                                            <Box component="span" sx={{ fontSize: "0.75em", opacity: 0.7 }}>
+                                                                partial
+                                                            </Box>
+                                                        )}
                                                     </Box>
-                                                }
-                                            >
-                                                <Chip
-                                                    label={item.staff_counted_quantity}
-                                                    size="small"
-                                                    sx={{
-                                                        ...getStaffCountStyle(item.staff_counted_quantity, item.assigned_quantity),
-                                                        fontWeight: "bold"
-                                                    }}
-                                                />
-                                            </Tooltip>
-                                        )}
+                                                </Tooltip>
+                                            );
+                                        })()}
                                     </TableCell>
 
                                     <TableCell align="center" sx={{ width: 250, maxWidth: 250 }}>
