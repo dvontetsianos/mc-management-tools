@@ -2287,28 +2287,42 @@ def export_items(
         "ID",
         "Name",
         "Category",
-        "Locations",
-        "Total Quantity",
-        "Broken/Missing",
-        "Supplier",
-        "Cost per Unit"
+        "Subcategory",
+        "Expected Total",
+        "Assigned Quantity",
+        "Staff Count",
+        "Missing",
+        "Locations"
     ])
 
     for item in items:
+
+        #like the Locations column: only locations with stock, with their hotel
         location_names = ", ".join(
-            loc["location"] for loc in item.get("locations", []) if loc.get("location")
+            f"{loc['location']} ({loc['hotel_name']})" if loc.get("hotel_name") else loc["location"]
+            for loc in item.get("locations", [])
+            if loc.get("location") and (loc.get("total_quantity") or 0) > 0
         )
+
+        staff_count = item.get("staff_counted_quantity")
+        missing = item.get("missing")
 
         sheet.append([
             item["id"],
             item["name"],
             item.get("category"),
-            location_names,
+            item.get("subcategory") or "-",
+            item.get("expected_total"),
             item.get("assigned_quantity", item.get("total_quantity")),
-            item.get("broken_missing", 0),
-            item.get("supplier"),
-            item.get("cost_per_unit")
+            staff_count if staff_count is not None else "Not Counted",
+            missing if missing is not None else "-",
+            location_names or "-"
         ])
+
+        #text that starts with "=" (e.g. an item name) must stay text, never become an Excel formula
+        for cell in sheet[sheet.max_row]:
+            if isinstance(cell.value, str) and cell.value.startswith("="):
+                cell.data_type = "s"
 
     for row in sheet.iter_rows(min_col=5, max_col=8):
         for cell in row:

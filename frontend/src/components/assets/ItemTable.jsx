@@ -218,18 +218,18 @@ function ItemTable({
 
                                 <TableCell
                                     align="center"
-                                    sx={{ width: 120 }}
-                                    onClick={() => onSort("broken_missing")}
-                                >
-                                    Missing{getSortArrow("broken_missing")}
-                                </TableCell>
-
-                                <TableCell
-                                    align="center"
                                     sx={{ width: 140 }}
                                     onClick={() => onSort("staff_counted_quantity")}
                                 >
                                     Staff Count{getSortArrow("staff_counted_quantity")}
+                                </TableCell>
+
+                                <TableCell
+                                    align="center"
+                                    sx={{ width: 120 }}
+                                    onClick={() => onSort("missing")}
+                                >
+                                    Missing{getSortArrow("missing")}
                                 </TableCell>
 
                                 <TableCell align="center" sx={{ width: 250 }}>
@@ -288,13 +288,6 @@ function ItemTable({
                                     <TableCell sx={{ width: 100 }} align="center">{item.subcategory || "-"}</TableCell>
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
                                     <TableCell align="center" sx={{ width: 140}}>{item.assigned_quantity}</TableCell>
-                                    <TableCell
-                                        align="center"
-                                        sx={{ width:120 }}
-                                    >
-                                        {item.broken_missing}
-                                    </TableCell>
-
                                     <TableCell align="center" sx={{ width: 140 }}>
                                         {(() => {
                                             const summary = getCountSummary(item);
@@ -349,6 +342,13 @@ function ItemTable({
                                                 </Tooltip>
                                             );
                                         })()}
+                                    </TableCell>
+
+                                    <TableCell
+                                        align="center"
+                                        sx={{ width:120 }}
+                                    >
+                                        {item.missing ?? "-"}
                                     </TableCell>
 
                                     <TableCell align="center" sx={{ width: 250, maxWidth: 250 }}>

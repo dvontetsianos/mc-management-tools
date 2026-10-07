@@ -465,12 +465,12 @@ function HousekeepingItems() {
       let valueA = a[column];
       let valueB = b[column];
 
-      if (valueA === null || valueA === undefined) {
-        valueA = "";
-      }
+      //empty values ("-", Not Counted, no subcategory) always go to the bottm, whichever way you sort
+      const emptyA = valueA === null || valueA === undefined || valueA === "";
+      const emptyB = valueB === null || valueB === undefined || valueB === "";
 
-      if (valueB === null || valueB === undefined) {
-        valueB = "";
+      if (emptyA || emptyB) {
+        return emptyA === emptyB ? 0 : (emptyA ? 1 : -1);
       }
 
       if (typeof valueA === "string" || typeof valueB === "string") {
@@ -512,8 +512,27 @@ function HousekeepingItems() {
 
   const displayItems = filteredItems.map((item) => {
 
-    if (!itemQtyAtLocation || selectedItemLocations.length === 0) {
-      return item;
+    //the locations in view: the checked ones ("Only at checked locations"), otherwise all of them
+    const locationFilterOn = itemQtyAtLocation && selectedItemLocations.length > 0;
+
+    const inView = (item.locations || []).filter((loc) =>
+      !locationFilterOn || selectedItemLocations.includes(loc.location)
+    );
+
+    //Missing = what the system has at the counted locations - what staff counted there
+    //only counted locations are compared; nothing counted yet = null, shown as "-"
+    const countedInView = inView.filter(
+      (loc) => loc.location !== "Unassigned"
+        && loc.staff_counted_quantity !== null
+        && loc.staff_counted_quantity !== undefined
+    );
+
+    const missing = countedInView.length > 0
+      ? countedInView.reduce((sum, loc) => sum + (loc.total_quantity || 0) - loc.staff_counted_quantity, 0)
+      : null;
+
+    if (!locationFilterOn) {
+      return { ...item, missing };
     }
 
     const relevant = (item.locations || []).filter((loc) =>
@@ -542,7 +561,8 @@ function HousekeepingItems() {
       broken_quantity: broken,
       staff_counted_quantity: staffCounted,
       countable_item_location_id: singleLocationId,
-      count_locations: relevant
+      count_locations: relevant,
+      missing
     };
   });
 

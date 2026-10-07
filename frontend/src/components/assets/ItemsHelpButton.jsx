@@ -68,13 +68,13 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["Name, Category, Subcategory", "Τι είναι το είδος. Η παύλα (-) σημαίνει ότι δεν έχει υποκατηγορία."],
                                 ["Expected Total", "Πόσα πρέπει να έχουμε: αρχική ποσότητα + αγορές + ό,τι ήρθε από άλλα ξενοδοχεία − ό,τι έφυγε προς άλλα ξενοδοχεία. Οι μετακινήσεις μέσα στο ίδιο ξενοδοχείο δεν το αλλάζουν."],
                                 ["Assigned Quantity", "Πόσα βρίσκονται αυτή τη στιγμή σε πραγματικές τοποθεσίες: το άθροισμα όλων των τοποθεσιών, εκτός από το Unassigned."],
-                                ["Missing", "Expected Total − Assigned Quantity. Πάνω από 0: τεμάχια που το σύστημα δεν βρίσκει σε καμία πραγματική τοποθεσία (χαμένα, σπασμένα ή ακόμα στο Unassigned). Κάτω από 0: στις τοποθεσίες υπάρχουν περισσότερα από τα αναμενόμενα. 0: όλα είναι καταγεγραμμένα σε τοποθεσίες."],
                                 ["Staff Count", "Τι μέτρησε το προσωπικό με το Quick Count. Δείτε την ενότητα «Το Staff Count»."],
+                                ["Missing", "Assigned Quantity − Staff Count, μόνο για τις τοποθεσίες που μετρήθηκαν (και που φαίνονται με τα φίλτρα). Πάνω από 0: το προσωπικό βρήκε λιγότερα από όσα έχει το σύστημα. Κάτω από 0: βρήκε περισσότερα. 0: όλα συμφωνούν. «-»: δεν έχει μετρηθεί ακόμα καμία τοποθεσία."],
                                 ["Locations", "Πού έχει απόθεμα το είδος αυτή τη στιγμή (μόνο τοποθεσίες με ποσότητα πάνω από 0), μαζί με το ξενοδοχείο. Με πράσινο είναι οι τοποθεσίες που έχετε επιλέξει στο φίλτρο Location."],
                                 ["Τελευταία στήλη", "Τα κουμπιά: επεξεργασία (μολύβι), μετακίνηση (⇄), ιστορικό (ρολόι) και, μόνο για admin, διαγραφή. Εξηγούνται παρακάτω."]
                             ]
                         },
-                        "Πατήστε τον τίτλο μιας στήλης για ταξινόμηση· πατήστε ξανά για αντίστροφη σειρά. Ταξινόμηση γίνεται στις ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Missing και Staff Count. Η ταξινόμηση χρησιμοποιεί τους αριθμούς που βλέπετε, μαζί με το φίλτρο τοποθεσίας."
+                        "Πατήστε τον τίτλο μιας στήλης για ταξινόμηση· πατήστε ξανά για αντίστροφη σειρά. Ταξινόμηση γίνεται στις ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Staff Count και Missing. Η ταξινόμηση χρησιμοποιεί τους αριθμούς που βλέπετε, μαζί με το φίλτρο τοποθεσίας. Είδη χωρίς αριθμό («-» ή Not Counted) μπαίνουν πάντα στο τέλος."
                     ]
                 },
                 {
@@ -112,10 +112,10 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["Filters", "Ανοίγει τα φίλτρα: Category, Subcategory, Location, Supplier και Hotel. Μέσα στην ίδια ομάδα αρκεί να ταιριάζει ένα από τα επιλεγμένα· ανάμεσα σε διαφορετικές ομάδες πρέπει να ταιριάζουν όλες. Το **Clear all filters** τα καθαρίζει όλα."],
                                 ["Φίλτρο Location", "Δείχνει τα είδη που έχουν απόθεμα σε κάποια από τις επιλεγμένες τοποθεσίες και τις χρωματίζει πράσινες στον πίνακα. Ένα όνομα όπως «Store» σημαίνει το Store όλων των ξενοδοχείων που βλέπετε· για ένα μόνο ξενοδοχείο, επιλέξτε το και στο φίλτρο Hotel."],
                                 ["Φίλτρο Hotel", "Μόνο για χρήστες με περισσότερα από ένα ξενοδοχεία. Τα Expected Total, Assigned Quantity και Missing υπολογίζονται ξανά μόνο για τα επιλεγμένα ξενοδοχεία."],
-                                ["Διακόπτης Quantity columns", "Στο κάτω μέρος των φίλτρων. **Only at checked locations** (προεπιλογή): όταν έχετε επιλέξει τοποθεσίες, το Assigned Quantity και το Staff Count δείχνουν μόνο αυτές τις τοποθεσίες, και η ταξινόμηση και το .XLSX χρησιμοποιούν τους ίδιους αριθμούς. **Hotel-wide total**: δείχνουν πάντα όλες τις τοποθεσίες. Τα Expected Total και Missing είναι πάντα συνολικά, οπότε με επιλεγμένες τοποθεσίες το Missing δεν ισούται με το Expected − Assigned που βλέπετε."],
+                                ["Διακόπτης Quantity columns", "Στο κάτω μέρος των φίλτρων. **Only at checked locations** (προεπιλογή): όταν έχετε επιλέξει τοποθεσίες, το Assigned Quantity και το Staff Count δείχνουν μόνο αυτές τις τοποθεσίες, και η ταξινόμηση και το .XLSX χρησιμοποιούν τους ίδιους αριθμούς. **Hotel-wide total**: δείχνουν πάντα όλες τις τοποθεσίες. Το Missing ακολουθεί τις ίδιες τοποθεσίες. Το Expected Total είναι πάντα συνολικό."],
                                 ["Small / Medium / Large", "Μικραίνει ή μεγαλώνει τον πίνακα. Ο browser θυμάται την επιλογή σας."],
                                 ["Rows per page", "Στο κάτω μέρος: 25, 50, 100 ή All (όλα)."],
-                                [".XLSX", "Κατεβάζει αρχείο Excel με όλα τα είδη που ταιριάζουν στην αναζήτηση και στα φίλτρα (όλες τις σελίδες, με την τρέχουσα ταξινόμηση). Στήλες: ID, Name, Category, Locations, Total Quantity (το Assigned Quantity όπως φαίνεται στην οθόνη, μαζί με το φίλτρο τοποθεσίας), Broken/Missing, Supplier, Cost per Unit. Οι μετρήσεις του προσωπικού δεν περιλαμβάνονται."],
+                                [".XLSX", "Κατεβάζει αρχείο Excel με όλα τα είδη που ταιριάζουν στην αναζήτηση και στα φίλτρα (όλες τις σελίδες, με την τρέχουσα ταξινόμηση). Έχει τις ίδιες στήλες και τους ίδιους αριθμούς με τον πίνακα, μαζί με το φίλτρο τοποθεσίας: ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Staff Count, Missing, Locations."],
                                 ...(hasQuickCountButton
                                     ? [["Κουμπί κινητού", "Ανοίγει το Quick Count σε νέα καρτέλα."]]
                                     : [])
@@ -165,7 +165,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             list: [
                                 "Το είδος πρέπει να ανήκει στο ξενοδοχείο προορισμού. Αν όχι, θα δείτε «This item isn't part of … yet»: προσθέστε πρώτα το ξενοδοχείο στο είδος με το μολύβι.",
                                 "Οι χρήστες ξενοδοχείων μετακινούν μόνο ανάμεσα σε τοποθεσίες των δικών τους ξενοδοχείων.",
-                                "Μετακίνηση από το Unassigned σε πραγματική τοποθεσία ανεβάζει το Assigned Quantity και κατεβάζει το Missing.",
+                                "Μετακίνηση από το Unassigned σε πραγματική τοποθεσία ανεβάζει το Assigned Quantity.",
                                 "Μετακίνηση σε άλλο ξενοδοχείο μειώνει το Expected Total του ενός ξενοδοχείου και αυξάνει του άλλου.",
                                 "Αν το είδος δεν έχει απόθεμα πουθενά, δεν μετακινείται. Το απόθεμα μπαίνει πρώτα σε τοποθεσία με αγορά (παραλαβή σε τοποθεσία από τη σελίδα Purchases).",
                                 "Κάθε μετακίνηση καταγράφεται και φαίνεται στο ιστορικό του είδους → Movements."
@@ -311,13 +311,13 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["Name, Category, Subcategory", "What the item is. A dash (-) means it has no subcategory."],
                             ["Expected Total", "How many we should have: opening quantity + purchases + stock moved in from other hotels − stock moved out to other hotels. Moves inside the same hotel don't change it."],
                             ["Assigned Quantity", "How many are in real locations right now: all locations added together, except Unassigned."],
-                            ["Missing", "Expected Total − Assigned Quantity. Above 0: units the system can't find in any real location (lost, broken, or still in Unassigned). Below 0: there are more in the locations than expected. 0: everything is accounted for."],
                             ["Staff Count", "What staff counted with Quick Count. See “The Staff Count chip”."],
+                            ["Missing", "Assigned Quantity − Staff Count, only for the locations that were counted (and that are in view with the filters). Above 0: staff found fewer than the system has. Below 0: they found more. 0: everything matches. “-”: no location has been counted yet."],
                             ["Locations", "Where the item has stock right now (only locations with more than 0), with the hotel name. Green locations are the ones you checked in the Location filter."],
                             ["Last column", "The buttons: edit (pencil), move (⇄), history (clock) and, for admins only, delete. Explained below."]
                         ]
                     },
-                    "Click a column title to sort by it; click again to reverse the order. You can sort by ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Missing and Staff Count. Sorting uses the numbers you see, including the location filter."
+                    "Click a column title to sort by it; click again to reverse the order. You can sort by ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Staff Count and Missing. Sorting uses the numbers you see, including the location filter. Items without a number (“-” or Not Counted) always go to the bottom."
                 ]
             },
             {
@@ -355,10 +355,10 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["Filters", "Opens the filter panel: Category, Subcategory, Location, Supplier and Hotel. Inside one group, an item needs to match any of the checked boxes; across groups it needs to match all of them. **Clear all filters** unchecks everything."],
                             ["Location filter", "Shows the items that have stock at any of the checked locations, and turns those locations green in the table. A name like “Store” means the Store of every hotel you see; to look at one hotel only, check it in the Hotel filter too."],
                             ["Hotel filter", "Only for users with more than one hotel. Expected Total, Assigned Quantity and Missing are calculated again for the checked hotels only."],
-                            ["Quantity columns switch", "At the bottom of the filter panel. **Only at checked locations** (the default): when locations are checked,   Assigned Quantity and Staff Count only show those locations, and sorting and the .XLSX use the same numbers. **Hotel-wide total**: they always show all locations. Expected Total and Missing are always hotel-wide, so with locations checked, Missing won't equal the Expected − Assigned you see on screen."],
+                            ["Quantity columns switch", "At the bottom of the filter panel. **Only at checked locations** (the default): when locations are checked,   Assigned Quantity and Staff Count only show those locations, and sorting and the .XLSX use the same numbers. **Hotel-wide total**: they always show all locations. Missing follows the same locations. Expected Total is always hotel-wide."],
                             ["Small / Medium / Large", "Makes the table smaller or bigger. Your browser remembers the choice."],
                             ["Rows per page", "At the bottom: 25, 50, 100 or All."],
-                            [".XLSX", "Downloads an Excel file with every item that matches the search and filters (all pages, in the current order). Columns: ID, Name, Category, Locations, Total Quantity   (the Assigned Quantity as shown on screen, including the location filter), Broken/Missing, Supplier, Cost per Unit. Staff counts are not included."],
+                            [".XLSX", "Downloads an Excel file with every item that matches the search and filters (all pages, in the current order). It has the same columns and numbers as the table, including the location filter: ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Staff Count, Missing, Locations."],
                             ...(hasQuickCountButton
                                 ? [["Phone button", "Opens Quick Count in a new tab."]]
                                 : [])
@@ -408,7 +408,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                         list: [
                             "The item must belong to the destination hotel. If it doesn't, you'll see “This item isn't part of … yet”: add the hotel to the item with the pencil first.",
                             "Hotel users can only move between their own hotels' locations.",
-                            "Moving out of Unassigned into a real location raises Assigned Quantity and lowers Missing.",
+                            "Moving out of Unassigned into a real location raises Assigned Quantity.",
                             "Moving to another hotel lowers one hotel's Expected Total and raises the other's.",
                             "If the item has no stock anywhere, it can't be moved. Stock first gets into a location through a purchase (received into a location on the Purchases page).",
                             "Every move is saved and shows in the item's history → Movements."
