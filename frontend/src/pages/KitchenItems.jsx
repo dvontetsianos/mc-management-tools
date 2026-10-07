@@ -610,17 +610,6 @@ function KitchenItems() {
             .XLSX
           </Button>
 
-          <Typography
-            variant="body1"
-            sx={{ mb: 5, maxWidth: 900, mx: "auto", textAlign: "center", fontSize: "1.15rem", lineHeight: 1.4 }}
-          >
-            Check the boxes in the filter section to filter for specific columns. If location filters are used, the corresponding locations in the table will turn {" "}
-            <Box component="span" sx={{ color: "success.main", fontWeight: "bold" }}>
-              green
-            </Box>
-              {" "}to let you know which locations the "Total Quantity" column is taking into account.
-          </Typography>
-
           <ItemFormDialog
             open={itemDialogOpen}
             onClose={() => {
