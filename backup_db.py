@@ -1,7 +1,7 @@
-#backup of the database (every run) and the item photos (once a week)
+#backup of the database (every run) and the item photos (first run of each day)
 #
 #run it from anywhere (it finds its own folder), the app can keep running:
-#   .venv\Scripts\python backup_db.py                    normal (nightly) backup
+#   .venv\Scripts\python backup_db.py                    normal backup (03:00 and 12:00)
 #   .venv\Scripts\python backup_db.py --before-update    backup made by update.bat
 #
 #settings in .env (next to this file):
@@ -12,10 +12,12 @@
 #
 #what the backup folder looks like:
 #   READ ME - backup status.txt     what happened last, and how to restore
-#   database\daily\                 one zip per run, kept 30 days
+#   database\daily\                 one zip per run (twice a day), kept 30 days
 #   database\monthly\               the first daily zip of each 30-day period, kept a year
 #   database\before update\         one zip per update.bat run, the newest 10 are kept
-#   photos\                         copy of the uploads folder, new photos only, nothing deleted
+#   photos\                         copy of the uploads folder, new photos only, nothing deleted.
+#                                   done by the first run of each day (normally the 03:00 one;
+#                                   if the server was off, by whichever run comes first that day)
 #
 #every run also writes to logs/backup_log.txt; exit code 0 = ok, 1 = something failed
 
@@ -41,7 +43,6 @@ LOG_FILE = BASE_DIR / "logs" / "backup_log.txt"
 KEEP_DAILY_DAYS = 30
 MONTHLY_PERIOD_DAYS = 30
 KEEP_MONTHLY_DAYS = 365
-PHOTOS_EVERY_DAYS = 7
 KEEP_NEWEST_DAILY = 10
 KEEP_BEFORE_UPDATE = 10
 
@@ -226,7 +227,13 @@ def read_last_photo_backup(root):
     return datetime.strptime(match.group(1), HUMAN_TIME)
 
 
+def day_number(moment, day_minutes):
+    #which day a moment falls on, counted in local time (days start at midnight)
+    return int((moment - datetime(2000, 1, 1)).total_seconds() // 60 // day_minutes)
+
+
 def photos_due(last, day_minutes):
+    #photos are backed up by the first run of each day
 
     if last is None:
         return True
@@ -235,7 +242,7 @@ def photos_due(last, day_minutes):
     if last > datetime.now():
         return True
 
-    return datetime.now() - last >= timedelta(minutes=PHOTOS_EVERY_DAYS * day_minutes)
+    return day_number(last, day_minutes) < day_number(datetime.now(), day_minutes)
 
 
 def backup_photos(root):
@@ -326,10 +333,10 @@ def write_status(root, run, day_minutes):
         "",
         "What is in this folder",
         "----------------------",
-        "database\\daily          one backup per night, kept for 30 days",
+        "database\\daily          two backups a day (03:00 and 12:00), kept for 30 days",
         "database\\monthly        the first backup of each month, kept for a year",
         "database\\before update  one backup each time the app was updated, the last 10",
-        "photos                  every item photo ever uploaded (nothing is deleted here)",
+        "photos                  every item photo ever uploaded, updated once a day (nothing is deleted here)",
         "",
         "How to restore",
         "--------------",
@@ -377,7 +384,7 @@ def backup_to(root, day_minutes, before_update, share_text, made_zip=None):
         photo_text = f"{datetime.now():{HUMAN_TIME}}  OK  ({new_photos} new)"
         photos_summary = f"photos backed up ({new_photos} new)"
     else:
-        photo_text = f"{last_photos:{HUMAN_TIME}}  OK  (next one due {last_photos + timedelta(minutes=PHOTOS_EVERY_DAYS * day_minutes):%d/%m/%Y %H:%M})"
+        photo_text = f"{last_photos:{HUMAN_TIME}}  OK  (next one with the first backup of the next day)"
         photos_summary = "photos not due yet"
 
     moved, deleted = clean_up(root, day_minutes)
