@@ -9,7 +9,7 @@ import PermissionRoute from "./components/PermissionRoute";
 //doesn't download the office pages (and the big chart library of System Monitor)
 const Layout = lazy(() => import("./components/Layout"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Assets = lazy(() => import("./pages/Assets"));
+const FnbItems = lazy(() => import("./pages/FnbItems"));
 const HousekeepingItems = lazy(() => import("./pages/HousekeepingItems"));
 const KitchenItems = lazy(() => import("./pages/KitchenItems"));
 const Users = lazy(() => import("./pages/Users"));
@@ -55,7 +55,7 @@ function App() {
                 path="/quick-count"
                 element={
                     <ProtectedRoute>
-                        <PermissionRoute permissions={["assets_access", "housekeeping_items_access"]}>
+                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access"]}>
                             <LocationPicker />
                         </PermissionRoute>
                     </ProtectedRoute>
@@ -66,7 +66,7 @@ function App() {
                 path="/quick-count/:locationId"
                 element={
                     <ProtectedRoute>
-                        <PermissionRoute permissions={["assets_access", "housekeeping_items_access"]}>
+                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access"]}>
                             <ItemList />
                         </PermissionRoute>
                     </ProtectedRoute>
@@ -77,7 +77,7 @@ function App() {
                 path="/quick-count/:locationId/item/:itemLocationId"
                 element={
                     <ProtectedRoute>
-                        <PermissionRoute permissions={["assets_access", "housekeeping_items_access"]}>
+                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access"]}>
                             <ItemQuantity />
                         </PermissionRoute>
                     </ProtectedRoute>
@@ -125,10 +125,10 @@ function App() {
                 />
 
                 <Route 
-                    path="/assets" 
+                    path="/fnb-items" 
                     element={
-                        <PermissionRoute permission="assets_access">
-                            <Assets />
+                        <PermissionRoute permission="fnb_items_access">
+                            <FnbItems />
                         </PermissionRoute>
                     } 
                 />

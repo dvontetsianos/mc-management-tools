@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import ItemTable from "../components/assets/ItemTable";
-import ItemFormDialog from "../components/assets/ItemFormDialog";
-import ItemDeleteConfirmDialog from "../components/assets/ItemDeleteConfirmDialog";
-import MoveItemDialog from "../components/assets/MoveItemDialog";
-import CountResetDialog from "../components/assets/CountResetDialog";
+import ItemTable from "../components/items/ItemTable";
+import ItemFormDialog from "../components/items/ItemFormDialog";
+import ItemDeleteConfirmDialog from "../components/items/ItemDeleteConfirmDialog";
+import MoveItemDialog from "../components/items/MoveItemDialog";
+import CountResetDialog from "../components/items/CountResetDialog";
 import {
   getItems,
   createItem,
@@ -35,9 +35,9 @@ import {
 } from "@mui/material";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import ItemsFilterPanel from "../components/assets/ItemsFilterPanel";
+import ItemsFilterPanel from "../components/items/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import ItemsHelpButton from "../components/assets/ItemsHelpButton";
+import ItemsHelpButton from "../components/items/ItemsHelpButton";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
 

@@ -301,10 +301,10 @@ function Layout() {
                                 </ListItem>
                             )}
 
-                            {(user?.role === "admin" || user?.permissions?.includes("assets_access")) && (
+                            {(user?.role === "admin" || user?.permissions?.includes("fnb_items_access")) && (
                                 <ListItem disablePadding>
                                     <ListItemButton
-                                        onClick={() => navigate("/assets")}
+                                        onClick={() => navigate("/fnb-items")}
                                         sx={{
                                             justifyContent: sidebarOpen ? "initial" :"center",
                                         }}

@@ -92,20 +92,20 @@ def require_admin(user: dict = Depends(get_current_user)):
     return user
 
 #-----------------------------------------------------------------------
-def require_admin_or_assets_access(user: dict = Depends(get_current_user)):
-    if user["role"].lower() != "admin" and "assets_access" not in user.get("permissions", []):
-        raise HTTPException(status_code=403, detail="Admin or Assets access required")
+def require_admin_or_fnb_items_access(user: dict = Depends(get_current_user)):
+    if user["role"].lower() != "admin" and "fnb_items_access" not in user.get("permissions", []):
+        raise HTTPException(status_code=403, detail="Admin or F&B Items access required")
 
     return user
 #----------------------------------------------------------------------
 def require_admin_or_items_access(user: dict = Depends(get_current_user)):
     if (
         user["role"].lower() != "admin"
-        and "assets_access" not in user.get("permissions", [])
+        and "fnb_items_access" not in user.get("permissions", [])
         and "housekeeping_items_access" not in user.get("permissions", [])
         and "kitchen_items_access" not in user.get("permissions", [])
     ):
-        raise HTTPException(status_code=403, detail="Admin, Assets access,Housekeeping Items or Kitchen Items access required")
+        raise HTTPException(status_code=403, detail="Admin, F&B Items access, Housekeeping Items or Kitchen Items access required")
 
     return user
 #------------------------------------------------------------------------
@@ -114,18 +114,18 @@ def require_admin_items_or_quickcount_access(user: dict = Depends(get_current_us
     if (
         user["role"].lower() != "admin"
         and user["role"].lower() != "quickcount"
-        and "assets_access" not in user.get("permissions", [])
+        and "fnb_items_access" not in user.get("permissions", [])
         and "housekeeping_items_access" not in user.get("permissions", [])
         and "kitchen_items_access" not in user.get("permissions", [])
     ):
-        raise HTTPException(status_code=403, detail="Admin, Assets access, Housekeeping Items access, Kitchen Items access or Quickcount role required")
+        raise HTTPException(status_code=403, detail="Admin, F&B Items access, Housekeeping Items access, Kitchen Items access or Quickcount role required")
 
     return user
 #-------------------------------------------------------------------------------
 #keyed by department NAME (not id), so a new department never needs a hardcoded id here
 DEPARTMENT_ITEM_PERMISSIONS = {
     "Housekeeping": "housekeeping_items_access",
-    "F&B": "assets_access",
+    "F&B": "fnb_items_access",
     "Kitchen": "kitchen_items_access",
 }
 
@@ -239,7 +239,7 @@ def require_locations_read_access(user:dict = Depends(get_current_user)):
     if (
         user["role"].lower() != "admin"
         and "locations_access" not in user.get("permissions", [])
-        and "assets_access" not in user.get("permissions", [])
+        and "fnb_items_access" not in user.get("permissions", [])
         and "housekeeping_items_access" not in user.get("permissions", [])
         and "kitchen_items_access" not in user.get("permissions", [])
     ):
@@ -251,7 +251,7 @@ def require_categories_read_access(user: dict = Depends(get_current_user)):
     if (
         user["role"].lower() != "admin"
         and "categories_access" not in user.get("permissions", [])
-        and "assets_access" not in user.get("permissions", [])
+        and "fnb_items_access" not in user.get("permissions", [])
         and "housekeeping_items_access" not in user.get("permissions", [])
         and "kitchen_items_access" not in user.get("permissions", [])
     ): 
@@ -269,7 +269,7 @@ def require_suppliers_read_access(user: dict = Depends(get_current_user)):
     if (
         user["role"].lower() != "admin"
         and "suppliers_access" not in user.get("permissions", [])
-        and "assets_access" not in user.get("permissions", [])
+        and "fnb_items_access" not in user.get("permissions", [])
         and "housekeeping_items_access" not in user.get("permissions", [])
         and "kitchen_items_access" not in user.get("permissions", [])
     ):
@@ -372,7 +372,7 @@ def create_default_permissions():
     db = SessionLocal()
 
     permissions = [
-        "assets_access",
+        "fnb_items_access",
         "housekeeping_items_access",
         "kitchen_items_access",
         "categories_access",

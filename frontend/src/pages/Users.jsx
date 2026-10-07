@@ -179,7 +179,7 @@ function Users() {
     }
 
     const availablePermissions = [
-        "assets_access",
+        "fnb_items_access",
         "housekeeping_items_access",
         "kitchen_items_access",
         "categories_access",
@@ -406,7 +406,7 @@ function Users() {
 
             const isUnderProvisionedQuickCount =
                 newUser.role === "quickcount" &&
-                !newUser.permissions.includes("assets_access") &&
+                !newUser.permissions.includes("fnb_items_access") &&
                 !newUser.permissions.includes("housekeeping_items_access");
 
             setNewUser({

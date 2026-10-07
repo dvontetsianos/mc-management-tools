@@ -106,7 +106,7 @@ function Dashboard() {
 
             <Grid container spacing={3} sx={{ mb: 5 }}>
 
-                {hasPermission("assets_access") && (
+                {hasPermission("fnb_items_access") && (
 
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
 
@@ -127,7 +127,7 @@ function Dashboard() {
                                 <Button
                                     variant="contained"
                                     sx={{ mt: 2 }}
-                                    href="/assets"
+                                    href="/fnb-items"
                                 >
                                     GO
                                 </Button>
