@@ -214,7 +214,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 "Το **Actually, not counted yet** σβήνει τη μέτρηση του είδους σε αυτή την τοποθεσία (π.χ. μετά από λάθος). Το προσωπικό καταμέτρησης μπορεί να σβήσει μόνο δικές του μετρήσεις.",
                                 "Είδος που βρίσκεται στην τοποθεσία αλλά δεν είναι στη λίστα δεν είναι καταχωρημένο εκεί στο σύστημα. Μην το προσπεράσετε: ενημερώστε έναν manager να το μετακινήσει εκεί με το ⇄, ώστε να εμφανιστεί.",
                                 "Βλέπετε μόνο τα είδη του δικού σας τμήματος (ο admin βλέπει όλα).",
-                                "Μετά από 15 λεπτά χωρίς αποθήκευση γίνεται αυτόματη αποσύνδεση. Κάθε αποθήκευση ή αναίρεση δίνει άλλα 15 λεπτά. Στα κοινόχρηστα PDA πατάτε πάντα **Log out** (πάνω δεξιά, στην οθόνη ξενοδοχείου/τοποθεσίας) όταν τελειώσετε."
+                                "Μετά από 60 λεπτά χωρίς αποθήκευση γίνεται αυτόματη αποσύνδεση. Κάθε αποθήκευση ή αναίρεση δίνει άλλα 15 λεπτά. Στα κοινόχρηστα PDA πατάτε πάντα **Log out** (πάνω δεξιά, στην οθόνη ξενοδοχείου/τοποθεσίας) όταν τελειώσετε."
                             ]
                         }
                     ]
@@ -457,7 +457,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             "**Actually, not counted yet** removes the count of this item at this location (for example after a mistake). Counting staff can only undo their own counts.",
                             "An item that is physically there but isn't in the list isn't assigned to this location in the system. Don't skip it: tell a manager, who can move it there with ⇄ so it appears.",
                             "You only see the items of your own department (admins see all).",
-                            "After 15 minutes without saving anything, you are logged out. Every save or undo gives another 15 minutes. On shared PDAs, always press **Log out** (top right of the hotel / location screen) when you finish."
+                            "After 60 minutes without saving anything, you are logged out. Every save or undo gives another 15 minutes. On shared PDAs, always press **Log out** (top right of the hotel / location screen) when you finish."
                         ]
                     }
                 ]

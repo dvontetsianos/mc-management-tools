@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatDateTime } from "../utils/formatDate";
 import {
     Box,
     Typography,
@@ -34,7 +35,7 @@ function Movements() {
             return "-";
         }
 
-        return new Date(value + "Z").toLocaleString();
+        return formatDateTime(value);
     };
 
     return (

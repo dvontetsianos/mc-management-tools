@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatDateTime } from "../utils/formatDate";
 import { getHistory } from "../services/historyService";
 import {
     Box,
@@ -154,7 +155,7 @@ function History() {
                                     }}
                             >
                                     <TableCell>
-                                        {new Date(log.timestamp + "Z").toLocaleString()}
+                                        {formatDateTime(log.timestamp)}
                                     </TableCell>
 
                                     <TableCell>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatDateTime } from "../../utils/formatDate";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
     Box,
@@ -47,7 +48,7 @@ function ItemMovementHistory() {
             return "-";
         }
 
-        return new Date(value + "Z").toLocaleString();
+        return formatDateTime(value);
     };
 
 

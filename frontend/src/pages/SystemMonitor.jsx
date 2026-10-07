@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatLocalDateTime } from "../utils/formatDate";
 import {
     Box,
     Paper,
@@ -86,12 +87,7 @@ function formatDateTime(iso) {
         return "-";
     }
 
-    return new Date(iso).toLocaleString("en-GB", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+    return formatLocalDateTime(iso);
 }
 
 
@@ -453,7 +449,7 @@ function SystemMonitor() {
                                     <TableBody>
                                         {logins.map((login, index) => (
                                             <TableRow key={`${login.time}-${index}`}>
-                                                <TableCell sx={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{login.time}</TableCell>
+                                                <TableCell sx={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{formatLocalDateTime(login.time)}</TableCell>
                                                 <TableCell>{login.user}</TableCell>
                                                 <TableCell sx={{ fontVariantNumeric: "tabular-nums" }}>{login.ip}</TableCell>
                                             </TableRow>

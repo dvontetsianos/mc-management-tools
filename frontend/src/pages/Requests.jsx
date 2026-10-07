@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatDateTime } from "../utils/formatDate";
 import { getRequests, createRequest, updateRequestStatus, deleteRequest } from "../services/requestService";
 import { getDepartments } from "../services/departmentService";
 import { getUser } from "../services/auth";
@@ -291,7 +292,7 @@ function Requests() {
                                         </TableCell>
 
                                         <TableCell><b>{req.target_department}</b></TableCell>
-                                        <TableCell>{new Date(req.created_at + "Z").toLocaleString()}</TableCell>
+                                        <TableCell>{formatDateTime(req.created_at)}</TableCell>
                                         <TableCell>
                                             {canResolve(req) && (
                                                 <Button
@@ -352,7 +353,7 @@ function Requests() {
                                         </TableCell>
 
                                         <TableCell>{req.target_department}</TableCell>
-                                        <TableCell>{new Date(req.created_at + "Z").toLocaleString()}</TableCell>
+                                        <TableCell>{formatDateTime(req.created_at)}</TableCell>
                                         <TableCell>
                                             {user?.role === "admin" && (
                                                 <IconButton

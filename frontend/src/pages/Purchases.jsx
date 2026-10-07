@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatDateOnly } from "../utils/formatDate";
 import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import {
     Box,
@@ -152,7 +153,7 @@ function Purchases() {
             return "-";
         }
 
-        return new Date(value + "Z").toLocaleDateString();
+        return formatDateOnly(value);
     };
 
     const columnCount = 10 + (canSeeAllDepartments ? 1 : 0) + (user?.role === "admin" ? 1 : 0);

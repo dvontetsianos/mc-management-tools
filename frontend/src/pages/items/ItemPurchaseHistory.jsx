@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { formatDateOnly } from "../../utils/formatDate";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
     Box,
@@ -55,7 +56,7 @@ function ItemPurchaseHistory() {
             return "-";
         }
 
-        return new Date(value + "Z").toLocaleDateString();
+        return formatDateOnly(value);
     };
 
     //most recent purchase (by document date, falling back to when it was logged) first

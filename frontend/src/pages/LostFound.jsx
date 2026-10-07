@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatDateTime } from "../utils/formatDate";
 import {
     getLostFoundItems,
     createLostFoundItem,
@@ -312,7 +313,7 @@ function LostFound() {
                                 <TableRow key={item.id}>
 
                                     <TableCell>
-                                       {new Date(item.date_found + "Z").toLocaleString()} 
+                                       {formatDateTime(item.date_found)}
                                     </TableCell>
 
                                     <TableCell>
