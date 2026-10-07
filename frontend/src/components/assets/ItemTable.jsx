@@ -72,7 +72,8 @@ function getStaffCountStyle(staffCounted, expected) {
 //compares every counted location with its own system quantity (Unassigned is never counted)
 function getCountSummary(item) {
 
-    const locations = (item.locations || []).filter((loc) => loc.location !== "Unassigned");
+    //count_locations = the locations in the current location filter (set by the page), otherwise all of them
+    const locations = (item.count_locations || item.locations || []).filter((loc) => loc.location !== "Unassigned");
 
     const counted = locations.filter(
         (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
@@ -200,8 +201,12 @@ function ItemTable({
                                     Subcategory{getSortArrow("subcategory")}
                                 </TableCell>
 
-                                <TableCell align="center" sx={{ width: 140 }}>
-                                    Expected Total
+                                <TableCell
+                                    align="center"
+                                    sx={{ width: 140 }}
+                                    onClick={() => onSort("expected_total")}
+                                >
+                                    Expected Total{getSortArrow("expected_total")}
                                 </TableCell>
 
                                 <TableCell

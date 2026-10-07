@@ -74,7 +74,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["Τελευταία στήλη", "Τα κουμπιά: επεξεργασία (μολύβι), μετακίνηση (⇄), ιστορικό (ρολόι) και, μόνο για admin, διαγραφή. Εξηγούνται παρακάτω."]
                             ]
                         },
-                        "Πατήστε τον τίτλο μιας στήλης για ταξινόμηση· πατήστε ξανά για αντίστροφη σειρά. Ταξινόμηση γίνεται στις ID, Name, Category, Subcategory, Assigned Quantity, Missing και Staff Count."
+                        "Πατήστε τον τίτλο μιας στήλης για ταξινόμηση· πατήστε ξανά για αντίστροφη σειρά. Ταξινόμηση γίνεται στις ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Missing και Staff Count. Η ταξινόμηση χρησιμοποιεί τους αριθμούς που βλέπετε, μαζί με το φίλτρο τοποθεσίας."
                     ]
                 },
                 {
@@ -94,8 +94,8 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                         },
                         {
                             list: [
-                                "Περάστε το ποντίκι πάνω από τον αριθμό για να δείτε κάθε τοποθεσία χωριστά, π.χ. «Bar (Marbella): counted 12, assigned 10 (+2), by maria, 12 Aug, 14:32». Το counted είναι όσα μετρήθηκαν, το assigned όσα έχει το σύστημα και στην παρένθεση η διαφορά. Οι τοποθεσίες με απόθεμα που δεν μετρήθηκαν φαίνονται ως «not counted, assigned 5».",
-                                "Το Staff Count κοιτάει πάντα όλες τις τοποθεσίες του είδους· τα φίλτρα και ο διακόπτης ποσότητας δεν το αλλάζουν.",
+                                "Περάστε το ποντίκι πάνω από τον αριθμό για να δείτε κάθε τοποθεσία χωριστά, π.χ. «Bar (Marbella): counted 12, assigned 10 (+2), by maria, 12/08/2026 14:32». Το counted είναι όσα μετρήθηκαν, το assigned όσα έχει το σύστημα και στην παρένθεση η διαφορά. Οι τοποθεσίες με απόθεμα που δεν μετρήθηκαν φαίνονται ως «not counted, assigned 5».",
+                                  "Το Staff Count ακολουθεί το φίλτρο Location, όπως και το Assigned Quantity: με επιλεγμένες τοποθεσίες (και Only at checked locations) αθροίζει και συγκρίνει μόνο αυτές, και μόνο αυτές φαίνονται όταν περάσετε το ποντίκι. Χωρίς φίλτρο τοποθεσίας, ή με Hotel-wide total, κοιτάει όλες τις τοποθεσίες.",
                                 "Το Unassigned δεν μετριέται ποτέ.",
                                 "Οι μετρήσεις μένουν μέχρι να μηδενιστούν. Δεν σβήνονται όταν μετακινείται απόθεμα: αν φύγει όλο το απόθεμα από μια τοποθεσία που είχε μετρηθεί, η μέτρησή της μένει και το χρώμα μπορεί να γίνει κίτρινο. Είναι αναμενόμενο· η μέτρηση μπορεί να μηδενιστεί αν δεν χρειάζεται πια."
                             ]
@@ -112,10 +112,10 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["Filters", "Ανοίγει τα φίλτρα: Category, Subcategory, Location, Supplier και Hotel. Μέσα στην ίδια ομάδα αρκεί να ταιριάζει ένα από τα επιλεγμένα· ανάμεσα σε διαφορετικές ομάδες πρέπει να ταιριάζουν όλες. Το **Clear all filters** τα καθαρίζει όλα."],
                                 ["Φίλτρο Location", "Δείχνει τα είδη που έχουν απόθεμα σε κάποια από τις επιλεγμένες τοποθεσίες και τις χρωματίζει πράσινες στον πίνακα. Ένα όνομα όπως «Store» σημαίνει το Store όλων των ξενοδοχείων που βλέπετε· για ένα μόνο ξενοδοχείο, επιλέξτε το και στο φίλτρο Hotel."],
                                 ["Φίλτρο Hotel", "Μόνο για χρήστες με περισσότερα από ένα ξενοδοχεία. Τα Expected Total, Assigned Quantity και Missing υπολογίζονται ξανά μόνο για τα επιλεγμένα ξενοδοχεία."],
-                                ["Διακόπτης Quantity columns", "Στο κάτω μέρος των φίλτρων. **Only at checked locations** (προεπιλογή): όταν έχετε επιλέξει τοποθεσίες, το Assigned Quantity δείχνει μόνο το απόθεμα σε αυτές. **Hotel-wide total**: το Assigned Quantity δείχνει πάντα το σύνολο. Τα Expected Total και Missing είναι πάντα συνολικά, οπότε με επιλεγμένες τοποθεσίες το Missing δεν ισούται με το Expected − Assigned που βλέπετε."],
+                                ["Διακόπτης Quantity columns", "Στο κάτω μέρος των φίλτρων. **Only at checked locations** (προεπιλογή): όταν έχετε επιλέξει τοποθεσίες, το Assigned Quantity και το Staff Count δείχνουν μόνο αυτές τις τοποθεσίες, και η ταξινόμηση και το .XLSX χρησιμοποιούν τους ίδιους αριθμούς. **Hotel-wide total**: δείχνουν πάντα όλες τις τοποθεσίες. Τα Expected Total και Missing είναι πάντα συνολικά, οπότε με επιλεγμένες τοποθεσίες το Missing δεν ισούται με το Expected − Assigned που βλέπετε."],
                                 ["Small / Medium / Large", "Μικραίνει ή μεγαλώνει τον πίνακα. Ο browser θυμάται την επιλογή σας."],
                                 ["Rows per page", "Στο κάτω μέρος: 25, 50, 100 ή All (όλα)."],
-                                [".XLSX", "Κατεβάζει αρχείο Excel με όλα τα είδη που ταιριάζουν στην αναζήτηση και στα φίλτρα (όλες τις σελίδες, με την τρέχουσα ταξινόμηση). Στήλες: ID, Name, Category, Locations, Total Quantity (το συνολικό Assigned Quantity), Broken/Missing, Supplier, Cost per Unit. Οι μετρήσεις του προσωπικού δεν περιλαμβάνονται."],
+                                [".XLSX", "Κατεβάζει αρχείο Excel με όλα τα είδη που ταιριάζουν στην αναζήτηση και στα φίλτρα (όλες τις σελίδες, με την τρέχουσα ταξινόμηση). Στήλες: ID, Name, Category, Locations, Total Quantity (το Assigned Quantity όπως φαίνεται στην οθόνη, μαζί με το φίλτρο τοποθεσίας), Broken/Missing, Supplier, Cost per Unit. Οι μετρήσεις του προσωπικού δεν περιλαμβάνονται."],
                                 ...(hasQuickCountButton
                                     ? [["Κουμπί κινητού", "Ανοίγει το Quick Count σε νέα καρτέλα."]]
                                     : [])
@@ -214,7 +214,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 "Το **Actually, not counted yet** σβήνει τη μέτρηση του είδους σε αυτή την τοποθεσία (π.χ. μετά από λάθος). Το προσωπικό καταμέτρησης μπορεί να σβήσει μόνο δικές του μετρήσεις.",
                                 "Είδος που βρίσκεται στην τοποθεσία αλλά δεν είναι στη λίστα δεν είναι καταχωρημένο εκεί στο σύστημα. Μην το προσπεράσετε: ενημερώστε έναν manager να το μετακινήσει εκεί με το ⇄, ώστε να εμφανιστεί.",
                                 "Βλέπετε μόνο τα είδη του δικού σας τμήματος (ο admin βλέπει όλα).",
-                                "Μετά από 60 λεπτά χωρίς αποθήκευση γίνεται αυτόματη αποσύνδεση. Κάθε αποθήκευση ή αναίρεση δίνει άλλα 15 λεπτά. Στα κοινόχρηστα PDA πατάτε πάντα **Log out** (πάνω δεξιά, στην οθόνη ξενοδοχείου/τοποθεσίας) όταν τελειώσετε."
+                                "Μετά από 60 λεπτά χωρίς αποθήκευση γίνεται αυτόματη αποσύνδεση. Κάθε αποθήκευση ή αναίρεση δίνει άλλα 60 λεπτά. Στα κοινόχρηστα PDA πατάτε πάντα **Log out** (πάνω δεξιά, στην οθόνη ξενοδοχείου/τοποθεσίας) όταν τελειώσετε."
                             ]
                         }
                     ]
@@ -317,7 +317,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["Last column", "The buttons: edit (pencil), move (⇄), history (clock) and, for admins only, delete. Explained below."]
                         ]
                     },
-                    "Click a column title to sort by it; click again to reverse the order. You can sort by ID, Name, Category, Subcategory, Assigned Quantity, Missing and Staff Count."
+                    "Click a column title to sort by it; click again to reverse the order. You can sort by ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Missing and Staff Count. Sorting uses the numbers you see, including the location filter."
                 ]
             },
             {
@@ -337,8 +337,8 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                     },
                     {
                         list: [
-                            "Hover over the chip to see every location on its own line, for example “Bar (Marbella): counted 12, assigned 10 (+2), by maria, 12 Aug, 14:32”. Counted is what staff counted, assigned is what the system has, and the brackets show the difference. Locations with stock that nobody counted show as “not counted, assigned 5”.",
-                            "The chip always looks at all of the item's locations. The filters and the quantity switch don't change it.",
+                            "Hover over the chip to see every location on its own line, for example “Bar (Marbella): counted 12, assigned 10 (+2), by maria, 12/08/2026 14:32”. Counted is what staff counted, assigned is what the system has, and the brackets show the difference. Locations with stock that nobody counted show as “not counted, assigned 5”.",
+                             "The chip follows the Location filter, like Assigned Quantity: with locations checked (and Only at checked locations), it only adds up and compares those locations, and only those show when you hover. With no location checked, or with Hotel-wide total, it looks at all locations.",
                             "Unassigned is never counted.",
                             "Counts stay until they are reset. They don't disappear when stock is moved: if all the stock leaves a counted location, its count stays and the chip can turn yellow. That's expected; the count can be reset if it's no longer needed."
                         ]
@@ -355,10 +355,10 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["Filters", "Opens the filter panel: Category, Subcategory, Location, Supplier and Hotel. Inside one group, an item needs to match any of the checked boxes; across groups it needs to match all of them. **Clear all filters** unchecks everything."],
                             ["Location filter", "Shows the items that have stock at any of the checked locations, and turns those locations green in the table. A name like “Store” means the Store of every hotel you see; to look at one hotel only, check it in the Hotel filter too."],
                             ["Hotel filter", "Only for users with more than one hotel. Expected Total, Assigned Quantity and Missing are calculated again for the checked hotels only."],
-                            ["Quantity columns switch", "At the bottom of the filter panel. **Only at checked locations** (the default): when locations are checked, Assigned Quantity shows only the stock at those locations. **Hotel-wide total**: Assigned Quantity always shows the full total. Expected Total and Missing are always hotel-wide, so with locations checked, Missing won't equal the Expected − Assigned you see on screen."],
+                            ["Quantity columns switch", "At the bottom of the filter panel. **Only at checked locations** (the default): when locations are checked,   Assigned Quantity and Staff Count only show those locations, and sorting and the .XLSX use the same numbers. **Hotel-wide total**: they always show all locations. Expected Total and Missing are always hotel-wide, so with locations checked, Missing won't equal the Expected − Assigned you see on screen."],
                             ["Small / Medium / Large", "Makes the table smaller or bigger. Your browser remembers the choice."],
                             ["Rows per page", "At the bottom: 25, 50, 100 or All."],
-                            [".XLSX", "Downloads an Excel file with every item that matches the search and filters (all pages, in the current order). Columns: ID, Name, Category, Locations, Total Quantity (the hotel-wide Assigned Quantity), Broken/Missing, Supplier, Cost per Unit. Staff counts are not included."],
+                            [".XLSX", "Downloads an Excel file with every item that matches the search and filters (all pages, in the current order). Columns: ID, Name, Category, Locations, Total Quantity   (the Assigned Quantity as shown on screen, including the location filter), Broken/Missing, Supplier, Cost per Unit. Staff counts are not included."],
                             ...(hasQuickCountButton
                                 ? [["Phone button", "Opens Quick Count in a new tab."]]
                                 : [])
@@ -457,7 +457,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             "**Actually, not counted yet** removes the count of this item at this location (for example after a mistake). Counting staff can only undo their own counts.",
                             "An item that is physically there but isn't in the list isn't assigned to this location in the system. Don't skip it: tell a manager, who can move it there with ⇄ so it appears.",
                             "You only see the items of your own department (admins see all).",
-                            "After 60 minutes without saving anything, you are logged out. Every save or undo gives another 15 minutes. On shared PDAs, always press **Log out** (top right of the hotel / location screen) when you finish."
+                            "After 60 minutes without saving anything, you are logged out. Every save or undo gives another 60 minutes. On shared PDAs, always press **Log out** (top right of the hotel / location screen) when you finish."
                         ]
                     }
                 ]

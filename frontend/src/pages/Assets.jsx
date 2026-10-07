@@ -510,16 +510,6 @@ function Assets() {
   };
 
 
-  const sortedItems = genericSort(filteredItems, itemSortColumn, itemSortDirection);
-
-  const paginatedItems = itemRowsPerPage === -1
-    ? sortedItems
-    : sortedItems.slice(
-      itemPage * itemRowsPerPage,
-      itemPage * itemRowsPerPage + itemRowsPerPage
-    );
-
-
   const handleItemSort = (column) => {
 
     setItemPage(0);
@@ -536,7 +526,7 @@ function Assets() {
 
   const movingItem = items.find((i) => i.id === movingItemId) || null;
 
-  const displayItems = paginatedItems.map((item) => {
+  const displayItems = filteredItems.map((item) => {
 
     if (!itemQtyAtLocation || selectedItemLocations.length === 0) {
       return item;
@@ -567,9 +557,22 @@ function Assets() {
       assigned_quantity: total,
       broken_quantity: broken,
       staff_counted_quantity: staffCounted,
-      countable_item_location_id: singleLocationId
+      countable_item_location_id: singleLocationId,
+      count_locations: relevant
     };
   });
+
+  //sort and split into pages only after the location filter has adjusted the numbers,
+  //so sorting, pagin and th .XLSX export all use what is on screen
+  const sortedItems = genericSort(displayItems, itemSortColumn, itemSortDirection);
+
+  const paginatedItems = itemRowsPerPage === -1
+    ? sortedItems
+    : sortedItems.slice(
+      itemPage * itemRowsPerPage,
+      itemPage * itemRowsPerPage + itemRowsPerPage
+    );
+
 
 
   return (
@@ -843,7 +846,7 @@ function Assets() {
           />
 
           <ItemTable
-            items={displayItems}
+            items={paginatedItems}
             selectedLocations={selectedItemLocations}
             zoomLevel={itemZoom}
             onDelete={handleItemDelete}

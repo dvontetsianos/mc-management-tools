@@ -494,16 +494,6 @@ function HousekeepingItems() {
   };
 
 
-  const sortedItems = genericSort(filteredItems, itemSortColumn, itemSortDirection);
-
-  const paginatedItems = itemRowsPerPage === -1
-    ? sortedItems
-    : sortedItems.slice(
-      itemPage * itemRowsPerPage,
-      itemPage * itemRowsPerPage + itemRowsPerPage
-    );
-
-
   const handleItemSort = (column) => {
 
     setItemPage(0);
@@ -520,7 +510,7 @@ function HousekeepingItems() {
 
   const movingItem = items.find((i) => i.id === movingItemId) || null;
 
-  const displayItems = paginatedItems.map((item) => {
+  const displayItems = filteredItems.map((item) => {
 
     if (!itemQtyAtLocation || selectedItemLocations.length === 0) {
       return item;
@@ -533,13 +523,41 @@ function HousekeepingItems() {
     const total = relevant.reduce((sum, loc) => sum + (loc.total_quantity || 0), 0);
     const broken = relevant.reduce((sum, loc) => sum + (loc.broken_quantity || 0), 0);
 
+    const countedLocs = relevant.filter(
+      (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
+    );
+
+    const staffCounted = countedLocs.length > 0
+      ? countedLocs.reduce((sum, loc) => sum + loc.staff_counted_quantity, 0)
+      : null;
+
+    const singleLocationId = selectedItemLocations.length === 1
+      ? relevant.find((loc) => loc.location === selectedItemLocations[0])?.id ?? null
+      : null;
+
     return {
       ...item,
       total_quantity: total,
       assigned_quantity: total,
-      broken_quantity: broken
+      broken_quantity: broken,
+      staff_counted_quantity: staffCounted,
+      countable_item_location_id: singleLocationId,
+      count_locations: relevant
     };
   });
+
+    
+
+    //sort and split into pages only after the location filter has adjusted the numbers,
+    //so sorting, paging and the .XLSX export all use what is on screen
+    const sortedItems = genericSort(displayItems, itemSortColumn, itemSortDirection);
+
+    const paginatedItems = itemRowsPerPage === -1
+      ? sortedItems
+      : sortedItems.slice(
+        itemPage * itemRowsPerPage,
+        itemPage * itemRowsPerPage + itemRowsPerPage
+      );
 
 
   return (
@@ -781,7 +799,7 @@ function HousekeepingItems() {
           />
 
           <ItemTable
-            items={displayItems}
+            items={paginatedItems}
             selectedLocations={selectedItemLocations}
             zoomLevel={itemZoom}
             onDelete={handleItemDelete}
