@@ -192,7 +192,8 @@ function Users() {
         "all_departments_access",
         "all_hotels_access",
         "movements_access",
-        "requests_access"
+        "requests_access",
+        "edit_opening_access"
     ];
 
     function handleInputChange(event) {

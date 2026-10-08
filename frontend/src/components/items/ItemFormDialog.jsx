@@ -47,6 +47,7 @@ function ItemFormDialog({
     const hasAllHotels = user?.role === "admin" || user?.permissions?.includes("all_hotels_access");
     const myHotelIds = user?.hotel_ids || [];
     const canUseHotel = (hotelId) => hasAllHotels || myHotelIds.includes(hotelId);
+    const canEditOpening = user?.role === "admin" || user?.permissions?.includes("edit_opening_access");
 
     //the user's own hotels, plus other hotels already on this item (shown locked)
     const visibleHotels = (hotels || []).filter(
@@ -256,10 +257,10 @@ function ItemFormDialog({
                         fullWidth
                     />
 
-                    {user?.role === "admin" && form.hotel_ids.length > 0 && (
+                    {canEditOpening && form.hotel_ids.length > 0 && (
                         <Stack spacing={2}>
                             {(hotels || [])
-                                .filter((hotel) => form.hotel_ids.includes(hotel.id))
+                                .filter((hotel) => form.hotel_ids.includes(hotel.id) && canUseHotel(hotel.id))
                                 .map((hotel) => (
                                     <TextField
                                         key={hotel.id}
@@ -279,7 +280,7 @@ function ItemFormDialog({
                                 ))}
 
                                 <FormHelperText>
-                                    Baseline stock at each hotel that the Expected Total is built from. Admin only - correct after a physical count.
+                                    Baseline stock at each hotel. Raising it puts the extra in Unassigned (move it on from there); lowering it takes it back out of Unassigned.
                                 </FormHelperText>
                             </Stack>
                     )}

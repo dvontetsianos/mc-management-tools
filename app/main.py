@@ -180,6 +180,34 @@ def user_hotel_scope(user: dict):
         return None
 
     return set(user.get("hotel_ids", []))
+#-----------------------------------------------------------------------------
+#opening quantities: admins always, other users only with the "edit_opening_access" permission
+def user_can_edit_opening(user: dict) -> bool:
+    return user["role"].lower() == "admin" or "edit_opening_access" in user.get("permissions", [])
+#-------------------------------------------------------------------------------
+def get_unassigned_row(db, item_id, hotel_id):
+
+    unassigned = db.query(models.Location).filter(
+        models.Location.hotel_id == hotel_id,
+        models.Location.name == "Unassigned"
+    ).first()
+
+    if unassigned is None:
+        unassigned = models.Location(name="Unassigned", hotel_id=hotel_id, is_active=True)
+        db.add(unassigned)
+        db.flush()
+
+
+    row = db.query(models.ItemLocation).filter(
+        models.ItemLocation.item_id == item_id,
+        models.ItemLocation.location_id == unassigned.id
+    ).first()
+
+    if row is None:
+        row = models.ItemLocation(item_id=item_id, location_id=unassigned.id, total_quantity=0, broken_quantity=0)
+        db.add(row)
+
+    return row
 #------------------------------------------------------------------------------
 #the user can see an item when it belongs to at least one of their hotels
 def user_can_see_item(item, hotel_scope) -> bool:
@@ -388,7 +416,8 @@ def create_default_permissions():
         "purchases_access",
         "requests_access",
         "all_departments_access",
-        "all_hotels_access"
+        "all_hotels_access",
+        "edit_opening_access"
     ]
 
     for permission_name in permissions:
@@ -2537,10 +2566,10 @@ def create_item(
     
     hotels_to_link = get_hotels_or_404(db, item.hotel_ids)
 
-    #opening stock per hotel: admin only, and only for the hotels picked for this item
+    #opening stock per hotel: admin or edit_opening_access, and only for the hotels picked for this item
     opening_by_hotel = {}
 
-    if user["role"].lower() == "admin" and item.opening_quantities:
+    if user_can_edit_opening(user) and item.opening_quantities:
         for hotel in hotels_to_link:
             quantity = item.opening_quantities.get(hotel.id, 0) or 0
 
@@ -2583,6 +2612,12 @@ def create_item(
             hotel_id=hotel.id,
             opening_quantity=opening_by_hotel.get(hotel.id, 0)
         ))
+
+    #the opening quantity is real stock: it starts in each hotel's Unassigned, ready to be moved
+    for hotel_id, quantity in opening_by_hotel.items():
+        if quantity > 0:
+            unassigned_row = get_unassigned_row(db, new_item.id, hotel_id)
+            unassigned_row.total_quantity = (unassigned_row.total_quantity or 0) + quantity
 
 
     db.commit()
@@ -2781,10 +2816,10 @@ def update_item(
         for hotel_id in new_ids - current_ids:
             db.add(models.ItemHotel(item_id=db_item.id, hotel_id=hotel_id))
 
-    #opening stock per hotel (admin only), every change goes into the item's history
+    #opening stock per hotel (admin or edit_opening_access), every change goes into the item's history
     opening_changes = []
 
-    if user["role"].lower() == "admin" and item.opening_quantities is not None:
+    if user_can_edit_opening(user) and item.opening_quantities is not None:
 
         if any((quantity or 0) < 0 for quantity in item.opening_quantities.values()):
             raise HTTPException(
@@ -2802,12 +2837,38 @@ def update_item(
             if link.hotel_id not in item.opening_quantities:
                 continue
 
+            #hotel users only change the opening stock of their own hotels
+            if hotel_scope is not None and link.hotel_id not in hotel_scope:
+                continue
+
             new_quantity = item.opening_quantities[link.hotel_id] or 0
             old_quantity = link.opening_quantity or 0
 
             if new_quantity != old_quantity:
                 hotel_name = link.hotel.name if link.hotel else f"Hotel {link.hotel_id}"
-                opening_changes.append(f"Opening Quantity ({hotel_name}): {old_quantity} -> {new_quantity}")
+
+                #the difference goes into (or comes out of) this hotel's Unassigned, so the stock always matches
+                unassigned_row = get_unassigned_row(db, db_item.id, link.hotel_id)
+                in_unassigned = unassigned_row.total_quantity or 0
+                difference = new_quantity - old_quantity
+
+                if difference < 0 and in_unassigned < -difference:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Lowering the opening quantity by {-difference} needs {-difference} in Unassigned at {hotel_name}, "
+                            f"but only {in_unassigned} are here. Move {-difference - in_unassigned} back to Unassigned first."
+                        )
+                    )
+
+                unassigned_row.total_quantity = in_unassigned + difference
+
+                opening_changes.append(
+                    f"Opening Quantity ({hotel_name}): {old_quantity} -> {new_quantity} "
+                    f"({difference:+} at Unassigned)"
+                )
+
                 link.opening_quantity = new_quantity
 
         #the item keeps the total of all its hotels too
