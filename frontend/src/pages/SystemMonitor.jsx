@@ -15,7 +15,11 @@ import {
     TableContainer,
     IconButton,
     Tooltip,
-    CircularProgress
+    CircularProgress,
+    Button,
+    Switch,
+    FormControlLabel,
+    Divider
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import MemoryIcon from "@mui/icons-material/Memory";
@@ -25,7 +29,8 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import FolderIcon from "@mui/icons-material/Folder";
 import DatasetIcon from "@mui/icons-material/Dataset";
 import LoginIcon from "@mui/icons-material/Login";
-import { getSystemStatus } from "../services/systemService";
+import BackupIcon from "@mui/icons-material/Backup";
+import { getSystemStatus, runBackupNow, getSettings, updateSettings } from "../services/systemService";
 
 
 
@@ -235,6 +240,11 @@ function SystemMonitor() {
 
     const loadingRef = useRef(false);
 
+    const [backupRunning, setBackupRunning] = useState(false);
+    const [backupResult, setBackupResult] = useState(null);
+    const [settings, setSettings] = useState(null);
+    const [settingsError, setSettingsError] = useState("");
+
 
     async function loadStatus() {
 
@@ -265,6 +275,43 @@ function SystemMonitor() {
             setLoading(false);
         }
     }
+
+    async function handleBackupNow() {
+
+        setBackupRunning(true);
+        setBackupResult(null);
+
+        try {
+            const data = await runBackupNow();
+            setBackupResult({ severity: "success", text: data.message });
+        } catch (err) {
+            setBackupResult({ severity: "error", text: err.message || "The backup failed." });
+        } finally {
+            setBackupRunning(false);
+        }
+    }
+
+    async function handleSettingChange(key, value) {
+
+        try {
+            const updated = await updateSettings({ [key]: value });
+            setSettings(updated);
+            setSettingsError("");
+
+            //tells the menu (Layout) to show or hide the widget straight away
+            window.dispatchEvent(new Event("settings-changed"));
+
+        } catch (err) {
+            setSettingsError(err.message || "Can't save the setting.");
+        }
+    }
+
+    useEffect(() => {
+
+        getSettings()
+            .then(setSettings)
+            .catch((err) => setSettingsError(err.message || "Can't load the settings."));
+    }, []);
 
 
     useEffect(() => {
@@ -457,6 +504,71 @@ function SystemMonitor() {
                                     </TableBody>
                                 </Table>
                             </TableContainer>
+                        )}
+                    </Paper>
+
+                    {/* admin tools */}
+                    <Paper sx={{ p: 2.5, borderRadius: 3, mb: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.secondary", mb: 1.5 }}>
+                            <BackupIcon fontSize="small" />
+                            <Typography sx={{ fontWeight: 600, fontSize: "0.95rem" }}>Admin Tools</Typography>
+                        </Box>
+
+                        <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
+                            <Button
+                                variant="contained"
+                                onClick={handleBackupNow}
+                                disabled={backupRunning}
+                                startIcon={backupRunning ? <CircularProgress size={18} color="inherit" /> : <BackupIcon />}
+                            >
+                                {backupRunning ? "Backing up..." : "Back up now"}
+                            </Button>
+
+                            <Typography sx={{ fontSize: "0.85rem", color: "text.secondary" }}>
+                                Same backup as the 03:00 and 12:00 ones: the database, plus new photos if they haven't been backed up yet today.
+                            </Typography>
+                        </Box>
+
+                        {backupResult && (
+                            <Alert severity={backupResult.severity} sx={{ mt: 2 }}>
+                                {backupResult.text}
+                            </Alert>
+                        )}
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Typography sx={{ fontWeight: 600, fontSize: "0.9rem" }}>Widgets</Typography>
+                        <Typography sx={{ fontSize: "0.85rem", color: "text.secondary", mb: 1 }}>
+                            For everyone. Other users see the changes the next time they open or refresh a page.
+                        </Typography>
+
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                            <FormControlLabel
+                                label="Calculator"
+                                control={
+                                    <Switch
+                                        checked={settings?.show_calculator ?? true}
+                                        disabled={!settings}
+                                        onChange={(event) => handleSettingChange("show_calculator", event.target.checked)}
+                                    />
+                                }
+                            />
+                            <FormControlLabel
+                                label="Clock"
+                                control={
+                                    <Switch
+                                        checked={settings?.show_clock ?? true}
+                                        disabled={!settings}
+                                        onChange={(event) => handleSettingChange("show_clock", event.target.checked)}
+                                    />
+                                }
+                            />
+                        </Box>
+
+                        {settingsError && (
+                            <Alert severity="error" sx={{ mt: 2 }}>
+                                {settingsError}
+                            </Alert>
                         )}
                     </Paper>
 

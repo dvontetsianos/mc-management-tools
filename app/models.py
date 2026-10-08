@@ -394,3 +394,11 @@ class ItemMovement(Base):
     purchase = relationship("Purchase", back_populates="movements")
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    #one row per setting, e.g. key "show_clock" with value "true" or "false"
+    key = Column(String, primary_key=True)
+    value = Column(String)

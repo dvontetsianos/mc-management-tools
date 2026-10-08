@@ -27,6 +27,7 @@ import { getPendingRequestCount } from "../services/requestService";
 import { API_URL } from "../config";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import { getSettings } from "../services/systemService";
 
 
 function Layout() {
@@ -164,6 +165,26 @@ function Layout() {
     const [sessionTime, setSessionTime] = useState("30:00");
 
     const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+    //which widgets are switches on (System Monitor -> Admin Tools), nothing shows until it's known
+    const [settings, setSettings] = useState(null);
+
+    useEffect(() => {
+
+        const loadSettings = () => {
+            getSettings()
+                .then(setSettings)
+                //if the settings can't be loaded, the widgets simply stay on
+                .catch(() => setSettings({ show_calculator: true, show_clock: true }));
+        };
+
+        loadSettings();
+
+        //System Monitor sends this when the admin flips a switch, so it changes straight away on this screen
+        window.addEventListener("settings-changed", loadSettings);
+
+        return () => window.removeEventListener("settings-changed", loadSettings);
+    }, []);
 
     const handleLogout = () => {
 
@@ -672,9 +693,9 @@ function Layout() {
                 onClose={() => setFeedbackOpen(false)}
             />
 
-            <Calculator />
-
-            <Clock />
+            {settings?.show_calculator && <Calculator />}
+            
+            {settings?.show_clock && <Clock />}
 
             <main
                 style={{

@@ -277,3 +277,9 @@ class ItemMovementResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class AppSettingsUpdate(BaseModel):
+    show_calculator: bool | None = None
+    show_clock: bool | None = None

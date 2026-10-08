@@ -29,6 +29,9 @@ load_dotenv()
 
 import uuid
 import shutil
+import subprocess
+import sys
+import threading
 from fastapi import UploadFile, File
 
 
@@ -1923,6 +1926,107 @@ def system_status(
         },
         "recent_logins": recent_logins
     }
+
+#----------------------------------------------------------------------
+#"Back up now" on System Monitor: runs backup_db.py
+backup_lock = threading.Lock()
+
+@app.post("/system/backup")
+def run_backup_now(
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    #one backup at a time, a second click while one is running gets a clear message
+    if not backup_lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=409,
+            detail="A backup is already running, wait for it to finish."
+        )
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(BASE_DIR / "backup_db.py")],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+            timeout=600
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail="The backup took longer than 10 minutes and was stopped."
+        )
+    finally:
+        backup_lock.release()
+
+
+    #backup_db.py prints one line per step, the last one says how it went
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    message = lines[-1] if lines else "The backup gave no output."
+
+    log_action(db, admin, "ran a backup", "System", "backup now", None, details=message)
+
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=message)
+
+    return {"message": message}
+
+#-------------------------------------------------------------------------
+#app-wide settings: switched on System Monitor (admin only), read by every page
+DEFAULT_SETTINGS = {
+    "show_calculator": True,
+    "show_clock": True
+}
+
+def read_settings(db):
+    #starts from the defaults, so a setting nobody has changed yet is simply "on"
+    settings = dict(DEFAULT_SETTINGS)
+
+    for row in db.query(models.AppSetting).all():
+        if row.key in settings:
+            settings[row.key] = row.value == "true"
+
+    return settings
+
+@app.get("/settings")
+def get_settings(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    return read_settings(db)
+
+
+@app.put("/settings")
+def update_settings(
+    new_settings: schemas.AppSettingsUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    changes = []
+
+    #only the switches that were sent, the others stay as they are
+    for key, value in new_settings.model_dump(exclude_none=True).items():
+
+        row = db.query(models.AppSetting).filter(models.AppSetting.key == key).first()
+
+        if row is None:
+            row = models.AppSetting(key=key)
+            db.add(row)
+
+        row.value = "true" if value else "false"
+        changes.append(f"{key}: {'on' if value else 'off'}")
+
+    db.commit()
+
+    if changes:
+        log_action(db, admin, "changed settings", "System", "Settings", None, details=", ".join(changes))
+
+    return read_settings(db)
 #------------------------------------------------------------------------
 #get lost and found items
 @app.get("/lost-found")
