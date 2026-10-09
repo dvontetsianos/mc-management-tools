@@ -426,10 +426,13 @@ function FnbItems() {
         ? (item.category || "").toLowerCase().includes(term)
         : itemSearchField === "supplier"
         ? (item.supplier || "").toLowerCase().includes(term)
+        : itemSearchField === "code"
+        ? (item.code || "").toLowerCase().includes(term)
         : (
             item.name.toLowerCase().includes(term) ||
             (item.category || "").toLowerCase().includes(term) ||
-            (item.supplier || "").toLowerCase().includes(term)
+            (item.supplier || "").toLowerCase().includes(term) ||
+            (item.code || "").toLowerCase().includes(term)
         );
 
     if (!matchesSearch) {
@@ -729,6 +732,7 @@ function FnbItems() {
                 <MenuItem value="name">Name</MenuItem>
                 <MenuItem value="category">Category</MenuItem>
                 <MenuItem value="supplier">Supplier</MenuItem>
+                <MenuItem value="code">Code</MenuItem>
               </Select>
             </FormControl>
 

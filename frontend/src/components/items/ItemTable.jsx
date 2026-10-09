@@ -96,7 +96,7 @@ function getCountSummary(item) {
     return { counted, countedTotal, systemTotal, moved, uncounted };
 }
 
-//the short catalogue details shown under the name, e.e. "160x260 · Cotton · White"
+//the short catalogue details shown under the name, e.g. "160x260 · Cotton · White"
 function getSpecLine(item) {
     return [item.size, item.material, item.color].filter(Boolean).join(" · ");
 }
@@ -305,7 +305,7 @@ function ItemTable({
                                             </Box>
                                         )}
                                     </TableCell>
-                                    
+
                                     <TableCell sx={{ width: 100}} align="center">{item.category}</TableCell>
                                     <TableCell sx={{ width: 100 }} align="center">{item.subcategory || "-"}</TableCell>
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
