@@ -835,7 +835,13 @@ function HousekeepingItems() {
                 cost_per_unit: item.cost_per_unit || "",
                 opening_quantity: item.opening_quantity ?? 0,
                 hotel_ids: item.hotel_ids || [],
-                opening_quantities: item.opening_quantities || {}
+                opening_quantities: item.opening_quantities || {},
+                code: item.code || "",
+                specification: item.specification || "",
+                material: item.material || "",
+                size: item.size || "",
+                color: item.color || "",
+                supplier_description: item.supplier_description || ""
               });
 
               if (item.image_url) {

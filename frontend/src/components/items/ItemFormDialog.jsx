@@ -20,6 +20,16 @@ import {
 } from "@mui/material";
 
 
+//group catalogue details, the same for every department (wide ones take the whole row)
+const SPEC_FIELDS = [
+    { field: "code", label: "Code (e.g. HK-LIN-01)" },
+    { field: "size", label: "Size" },
+    { field: "material", label: "Material" },
+    { field: "color", label: "Color" },
+    { field: "specification", label: "Specification", wide: true },
+    { field: "supplier_description", label: "Supplier Description", wide: true }
+];
+
 
 function ItemFormDialog({
     open,
@@ -256,6 +266,31 @@ function ItemFormDialog({
                         }
                         fullWidth
                     />
+
+                    <Box
+                        sx={{
+                            display: "grid",
+                            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                            gap: 2
+                        }}
+                    >
+                        {SPEC_FIELDS.map(({ field, label, wide }) => (
+                            <TextField
+                                key={field}
+                                label={label}
+                                value={form[field] ?? ""}
+                                disabled={detailsLocked}
+                                multiline={wide}
+                                sx={wide ? { gridColumn: "1 / -1" } : undefined}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        [field]: e.target.value
+                                    })
+                                }
+                            />
+                        ))}
+                    </Box>
 
                     {canEditOpening && form.hotel_ids.length > 0 && (
                         <Stack spacing={2}>
