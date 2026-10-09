@@ -285,6 +285,13 @@ class Item(Base):
     opening_quantity = Column(Integer, default=0)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     department = relationship("Department")
+    
+    code = Column(String, unique=True, nullable=True)
+    specification = Column(String, nullable=True)
+    material = Column(String, nullable=True)
+    size = Column(String, nullable=True)
+    color = Column(String, nullable=True)
+    supplier_description = Column(String, nullable=True)
 
     locations = relationship("ItemLocation", back_populates="item")
     purchases = relationship("Purchase", back_populates="item", passive_deletes=True)

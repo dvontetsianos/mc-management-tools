@@ -124,6 +124,13 @@ class ItemCreate(BaseModel):
     department_id: int | None = None
     hotel_ids: list[int] = []
 
+    code: str | None = None
+    specification: str | None = None
+    material: str | None = None
+    size: str | None = None
+    color: str | None = None
+    supplier_description: str | None = None
+
 
 class ItemUpdate(BaseModel):
     name: str
@@ -135,6 +142,13 @@ class ItemUpdate(BaseModel):
     opening_quantities: dict[int, int] | None = None
     department_id: int | None = None
     hotel_ids: list[int] | None = None
+
+    code: str | None = None
+    specification: str | None = None
+    material: str | None = None
+    size: str | None = None
+    color: str | None = None
+    supplier_description: str | None = None
 
 
 class ItemLocationResponse(BaseModel):
@@ -194,6 +208,13 @@ class ItemResponse(BaseModel):
     hotel_ids: list[int] = []
     hotels: list[str] = []
     opening_quantities: dict[int, int] = {}
+
+    code: str | None = None
+    specification: str | None = None
+    material: str | None = None
+    size: str | None = None
+    color: str | None = None
+    supplier_description: str | None = None
 
     class Config:
         from_attributes = True

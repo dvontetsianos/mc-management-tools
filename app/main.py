@@ -184,6 +184,53 @@ def user_hotel_scope(user: dict):
 #opening quantities: admins always, other users only with the "edit_opening_access" permission
 def user_can_edit_opening(user: dict) -> bool:
     return user["role"].lower() == "admin" or "edit_opening_access" in user.get("permissions", [])
+#------------------------------------------------------------------------------
+#group catalogue details: the same for every department (field -> label for History)
+ITEM_SPEC_FIELDS = {
+    "code": "Code",
+    "specification": "Specification",
+    "material": "Material",
+    "size": "Size",
+    "color": "Color",
+    "supplier_description": "Supplier Description",
+}
+
+#only the catalogue fields the form really sent, so an older form that doesn't send them never wipes them
+def sent_spec_fields(data) -> dict:
+    specs = {}
+
+    for field in ITEM_SPEC_FIELDS:
+        if field not in data.model_fields_set:
+            continue
+
+        value = (getattr(data, field) or "").strip()
+        specs[field] = value or None
+
+    if specs.get("code"):
+        specs["code"] = specs["code"].upper()
+
+    return specs
+
+#the item's catalogue fields, ready to go into a response
+def spec_fields_of(item) -> dict:
+    return {field: getattr(item, field) for field in ITEM_SPEC_FIELDS}
+
+#a code belongs to one item only
+def check_code_is_free(db, code, item_id=None):
+    if not code:
+        return
+
+    other = db.query(models.Item).filter(
+        models.Item.code == code,
+        models.Item.id != item_id
+    ).first()
+
+
+    if other:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Code {code} is already used by item #{other.id} {other.name}"
+        )
 #-------------------------------------------------------------------------------
 def get_unassigned_row(db, item_id, hotel_id):
 
@@ -2376,6 +2423,7 @@ def get_items(
             "supplier": item.supplier.name if item.supplier else None,
             "supplier_id": item.supplier_id,
             "cost_per_unit": item.cost_per_unit,
+            **spec_fields_of(item),
             "image_url": item.image_url,
             "total_quantity": total_quantity,
             "assigned_quantity": assigned_quantity,
@@ -2582,6 +2630,10 @@ def create_item(
             opening_by_hotel[hotel.id] = quantity
 
 
+    specs = sent_spec_fields(item)
+    check_code_is_free(db, specs.get("code"))
+
+
     new_item = models.Item(
         name=item.name,
         category_id=item.category_id,
@@ -2589,7 +2641,8 @@ def create_item(
         supplier_id=item.supplier_id,
         cost_per_unit=item.cost_per_unit,
         opening_quantity=sum(opening_by_hotel.values()),
-        department_id=department_id_to_use
+        department_id=department_id_to_use,
+        **specs
     )
 
 
@@ -2634,6 +2687,7 @@ def create_item(
         "supplier": supplier.name if supplier else None,
         "supplier_id": new_item.supplier_id,
         "cost_per_unit": new_item.cost_per_unit,
+        **spec_fields_of(new_item),
         "image_url": new_item.image_url,
         "total_quantity": 0,
         "broken_quantity": 0,
@@ -2688,6 +2742,7 @@ def update_item(
             or item.subcategory_id != db_item.subcategory_id
             or item.supplier_id != db_item.supplier_id
             or (item.cost_per_unit or 0) != (db_item.cost_per_unit or 0)
+            or any(getattr(db_item, field) != value for field, value in sent_spec_fields(item).items())
         )
 
         if details_changed:
@@ -2746,6 +2801,14 @@ def update_item(
     old_supplier_name = db_item.supplier.name if db_item.supplier else None
     old_cost_per_unit = db_item.cost_per_unit
     old_opening_quantity = db_item.opening_quantity
+
+    old_specs = spec_fields_of(db_item)
+
+    new_specs = sent_spec_fields(item)
+    check_code_is_free(db, new_specs.get("code"), db_item.id)
+
+    for field, value in new_specs.items():
+        setattr(db_item, field, value)
 
     db_item.name = item.name
     db_item.category_id = item.category_id
@@ -2906,6 +2969,10 @@ def update_item(
     if old_cost_per_unit != item.cost_per_unit:
         changes.append(f"Cost per Unit: {old_cost_per_unit} -> {item.cost_per_unit}")
 
+    for field, label in ITEM_SPEC_FIELDS.items():
+        if old_specs[field] != getattr(db_item, field):
+            changes.append(f"{label}: {old_specs[field]} -> {getattr(db_item, field)}")
+    
     changes.extend(opening_changes)
 
     details = ", ".join(changes) if changes else "No changes"
@@ -2931,6 +2998,7 @@ def update_item(
         "supplier": new_supplier_name,
         "supplier_id": db_item.supplier_id,
         "cost_per_unit": db_item.cost_per_unit,
+        **spec_fields_of(db_item),
         "image_url": db_item.image_url,
         "opening_quantity": db_item.opening_quantity,
         "department_id": db_item.department_id,
