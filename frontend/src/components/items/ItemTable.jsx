@@ -96,9 +96,9 @@ function getCountSummary(item) {
     return { counted, countedTotal, systemTotal, moved, uncounted };
 }
 
-//the short catalogue details shown under the name, e.g. "160x260 · Cotton · White"
+//the short catalogue details shown under the name, e.g. "160x260 · White"
 function getSpecLine(item) {
-    return [item.size, item.material, item.color].filter(Boolean).join(" · ");
+    return [item.size, item.color].filter(Boolean).join(" · ");
 }
 
 

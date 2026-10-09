@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, DateTime, Float, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, DateTime, Float, Boolean, Index, text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -265,10 +265,13 @@ class Item(Base):
     __tablename__ = "items"
 
     __table_args__ = (
-        UniqueConstraint(
+        #a name is used once per department, except by items with a code(the code tells them apart)
+        Index(
+            "unique_item_name_per_department",
             "department_id",
             "name",
-            name="unique_item_name_per_department"
+            unique=True,
+            sqlite_where=text("code IS NULL")
         ),
     )
 
