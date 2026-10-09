@@ -2466,6 +2466,7 @@ def export_items(
 
     sheet.append([
         "ID",
+        "Code",
         "Name",
         "Category",
         "Subcategory",
@@ -2473,7 +2474,12 @@ def export_items(
         "Assigned Quantity",
         "Staff Count",
         "Missing",
-        "Locations"
+        "Locations",
+        "Specification",
+        "Material",
+        "Size",
+        "Color",
+        "Supplier Description"
     ])
 
     for item in items:
@@ -2490,6 +2496,7 @@ def export_items(
 
         sheet.append([
             item["id"],
+            item.get("code") or "-",
             item["name"],
             item.get("category"),
             item.get("subcategory") or "-",
@@ -2497,7 +2504,12 @@ def export_items(
             item.get("assigned_quantity", item.get("total_quantity")),
             staff_count if staff_count is not None else "Not Counted",
             missing if missing is not None else "-",
-            location_names or "-"
+            location_names or "-",
+            item.get("specification"),
+            item.get("material"),
+            item.get("size"),
+            item.get("color"),
+            item.get("supplier_description")
         ])
 
         #text that starts with "=" (e.g. an item name) must stay text, never become an Excel formula
@@ -2505,7 +2517,7 @@ def export_items(
             if isinstance(cell.value, str) and cell.value.startswith("="):
                 cell.data_type = "s"
 
-    for row in sheet.iter_rows(min_col=5, max_col=8):
+    for row in sheet.iter_rows(min_col=6, max_col=9):
         for cell in row:
             cell.alignment = Alignment(horizontal="center", vertical="center")
 

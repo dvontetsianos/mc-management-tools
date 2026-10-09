@@ -96,8 +96,10 @@ function getCountSummary(item) {
     return { counted, countedTotal, systemTotal, moved, uncounted };
 }
 
-
-
+//the short catalogue details shown under the name, e.e. "160x260 · Cotton · White"
+function getSpecLine(item) {
+    return [item.size, item.material, item.color].filter(Boolean).join(" · ");
+}
 
 
 function ItemTable({
@@ -171,6 +173,14 @@ function ItemTable({
                                     sx={{ width: 30 }}
                                 >
                                     ID{getSortArrow("id")}
+                                </TableCell>
+
+                                <TableCell
+                                    onClick={() => onSort("code")}
+                                    align="center"
+                                    sx={{ width: 110 }}
+                                >
+                                    Code{getSortArrow("code")}
                                 </TableCell>
 
                                 <TableCell align="left" sx={{ width: 100, maxWidth: 100, px: 1 }}>
@@ -258,6 +268,9 @@ function ItemTable({
                                 >
 
                                     <TableCell sx={{ width: 30}}>{item.id}</TableCell>
+
+                                    <TableCell align="center" sx={{ width: 110 }}>{item.code || "-"}</TableCell>
+
                                     <TableCell align="center" sx={{ p: 0, position: "relative" }}>
                                         <Avatar
                                             variant="rounded"
@@ -283,7 +296,16 @@ function ItemTable({
                                         </Avatar>
                                     </TableCell>
 
-                                    <TableCell align="center">{item.name}</TableCell>
+                                    <TableCell align="center">
+                                        {item.name}
+
+                                        {getSpecLine(item) && (
+                                            <Box sx={{ fontSize: "0.8em", opacity: 0.7 }}>
+                                                {getSpecLine(item)}
+                                            </Box>
+                                        )}
+                                    </TableCell>
+                                    
                                     <TableCell sx={{ width: 100}} align="center">{item.category}</TableCell>
                                     <TableCell sx={{ width: 100 }} align="center">{item.subcategory || "-"}</TableCell>
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
