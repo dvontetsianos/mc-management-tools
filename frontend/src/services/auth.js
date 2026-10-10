@@ -74,6 +74,15 @@ export function hasPermission(permission) {
     return user.permissions?.includes(permission);
 }
 
+//can this user add and edit items (name, category, codes, photo...)? admins always, others with "edit_items_access"
+//only decides which buttons are shown: the backend checks it again on every save
+export function canEditItems() {
+
+    const user = getUser();
+
+    return user?.role === "admin" || user?.permissions?.includes("edit_items_access");
+}
+
 
 //gets a fresh token (another 15 minutes) after the user did something, e.g. saved a count.
 //if it fails (no connection, already expired) nothing changes: the normal expiry logs them out

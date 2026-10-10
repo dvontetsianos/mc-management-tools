@@ -267,17 +267,6 @@ class LostFoundItem(Base):
 class Item(Base):
     __tablename__ = "items"
 
-    __table_args__ = (
-        #a name is used once per department, except by items with a code(the code tells them apart)
-        Index(
-            "unique_item_name_per_department",
-            "department_id",
-            "name",
-            unique=True,
-            sqlite_where=text("code IS NULL")
-        ),
-    )
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"))

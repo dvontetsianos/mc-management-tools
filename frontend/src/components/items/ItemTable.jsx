@@ -21,7 +21,7 @@ import {
     Menu,
     MenuItem
 } from "@mui/material";
-import { getUser } from "../../services/auth";
+import { getUser, canEditItems } from "../../services/auth";
 import { API_URL } from "../../config";
 import { ZOOM_PRESETS } from "../../hooks/useTableZoom";
 import LocationLabel from "../LocationLabel";
@@ -502,14 +502,16 @@ function ItemTable({
 
                                     <TableCell align="center">
 
-                                        <Tooltip title="Edit">
-                                            <IconButton
-                                                color="primary"
-                                                onClick={() => onEdit(item)}
-                                            >
-                                                <EditIcon fontSize="large"/>
-                                            </IconButton>
-                                        </Tooltip>
+                                        {canEditItems() && (
+                                            <Tooltip title="Edit">
+                                                <IconButton
+                                                    color="primary"
+                                                    onClick={() => onEdit(item)}
+                                                >
+                                                    <EditIcon fontSize="large"/>
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
 
                                         {canViewMovements && (
                                             <Tooltip title="Move Item">

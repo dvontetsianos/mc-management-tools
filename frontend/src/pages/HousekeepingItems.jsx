@@ -21,7 +21,7 @@ import { getSuppliers } from "../services/supplierService";
 import { getDepartments } from "../services/departmentService";
 import { getSubcategories } from "../services/subcategoryService";
 import { getHotels } from "../services/hotelService";
-import { getUser } from "../services/auth";
+import { getUser, canEditItems } from "../services/auth";
 import {
   Button,
   Box,
@@ -723,32 +723,33 @@ function HousekeepingItems() {
 
             <TableZoomToggle zoomLevel={itemZoom} onChange={setItemZoom} />
 
+            {canEditItems() && (
+              <Button
+                variant="contained"
+                sx={{ ml: "auto" }}
+                onClick={() => {
 
-            <Button
-              variant="contained"
-              sx={{ ml: "auto" }}
-              onClick={() => {
+                  setItemEditingId(null);
 
-                setItemEditingId(null);
+                  setItemForm({
+                    name: "",
+                    category_id: "",
+                    subcategory_id: "",
+                    supplier_id: "",
+                    cost_per_unit: "",
+                    opening_quantity: "0",
+                    hotel_ids: []
+                  });
 
-                setItemForm({
-                  name: "",
-                  category_id: "",
-                  subcategory_id: "",
-                  supplier_id: "",
-                  cost_per_unit: "",
-                  opening_quantity: "0",
-                  hotel_ids: []
-                });
+                  setSelectedImage(null);
+                  setCurrentImageName(null);
 
-                setSelectedImage(null);
-                setCurrentImageName(null);
-
-                setItemDialogOpen(true);
-              }}
-            >
-              Add Item
-            </Button>
+                  setItemDialogOpen(true);
+                }}
+              >
+                Add Item
+              </Button>
+            )}
 
             {getUser()?.role === "admin" && (
               <Button

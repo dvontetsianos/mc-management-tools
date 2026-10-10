@@ -182,9 +182,34 @@ def user_hotel_scope(user: dict):
 
     return set(user.get("hotel_ids", []))
 #-----------------------------------------------------------------------------
+#permissions an admin switches on and off day to day (Edit Items, Edit Opening) are read from the database on every save,
+#so switching one off works straight away (the login token can be up to 15 minutes old)
+def user_has_live_permission(db, user: dict, permission: str) -> bool:
+    if user["role"].lower() == "admin":
+        return True
+
+    found = db.query(models.UserPermission).join(
+        models.Permission, models.Permission.id == models.UserPermission.permission_id
+    ).join(
+        models.User, models.User.id == models.UserPermission.user_id
+    ).filter(
+        models.User.username == user["username"],
+        models.Permission.name == permission
+    ).first()
+
+    return found is not None
+
+#adding, changing and deleting item details (name, category, codes, photo...): admins, or users with "edit_items_access"
+def require_edit_items(db, user: dict):
+    if not user_has_live_permission(db, user, "edit_items_access"):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to edit items. Ask an admin to switch on Edit Items for you."
+        )
+
 #opening quantities: admins always, other users only with the "edit_opening_access" permission
-def user_can_edit_opening(user: dict) -> bool:
-    return user["role"].lower() == "admin" or "edit_opening_access" in user.get("permissions", [])
+def user_can_edit_opening(db, user: dict) -> bool:
+    return user_has_live_permission(db, user, "edit_opening_access")
 #------------------------------------------------------------------------------
 #group catalogue details: the same for every department (field -> label for History)
 ITEM_SPEC_FIELDS = {
@@ -465,7 +490,8 @@ def create_default_permissions():
         "requests_access",
         "all_departments_access",
         "all_hotels_access",
-        "edit_opening_access"
+        "edit_opening_access",
+        "edit_items_access"
     ]
 
     for permission_name in permissions:
@@ -1816,6 +1842,8 @@ def update_user_permissions(
             detail="User not found"
         )
 
+    old_permissions = {link.permission.name for link in db_user.permissions if link.permission}
+
     #remove existing permissions
 
     db.query(models.UserPermission).filter(
@@ -1844,6 +1872,22 @@ def update_user_permissions(
         )
 
     db.commit()
+
+
+    #History shows who switched what on or off, and when
+    new_permissions = set(permissions_data.permissions)
+    added = sorted(new_permissions - old_permissions)
+    removed = sorted(old_permissions - new_permissions)
+
+    if added or removed:
+        details = []
+        if added:
+            details.append(f"Added: {', '.join(added)}")
+        if removed:
+            details.append(f"Removed: {', '.join(removed)}")
+
+        log_action(db, admin, "changed permissions for", "User", db_user.username, db_user.id, details="; ".join(details))
+
 
     return {
         "message": "Permissions updated successfully"
@@ -2668,6 +2712,8 @@ def create_item(
     user: dict = Depends(require_admin_or_items_access)
 ):
 
+    require_edit_items(db, user)
+
     category = db.query(models.Category).filter(
         models.Category.id == item.category_id
     ).first()
@@ -2754,7 +2800,7 @@ def create_item(
     #opening stock per hotel: admin or edit_opening_access, and only for the hotels picked for this item
     opening_by_hotel = {}
 
-    if user_can_edit_opening(user) and item.opening_quantities:
+    if user_can_edit_opening(db, user) and item.opening_quantities:
         for hotel in hotels_to_link:
             quantity = item.opening_quantities.get(hotel.id, 0) or 0
 
@@ -2846,6 +2892,8 @@ def update_item(
     db: Session = Depends(get_db),
     user: dict = Depends(require_admin_or_items_access)
 ):
+
+    require_edit_items(db, user)
 
     db_item = db.query(models.Item).filter(
         models.Item.id == item_id
@@ -3019,7 +3067,7 @@ def update_item(
     #opening stock per hotel (admin or edit_opening_access), every change goes into the item's history
     opening_changes = []
 
-    if user_can_edit_opening(user) and item.opening_quantities is not None:
+    if user_can_edit_opening(db, user) and item.opening_quantities is not None:
 
         if any((quantity or 0) < 0 for quantity in item.opening_quantities.values()):
             raise HTTPException(
@@ -3293,6 +3341,8 @@ def upload_item_image(
     user: dict = Depends(require_admin_or_items_access)
 ):
 
+    require_edit_items(db, user)
+
     item = db.query(models.Item).filter(
         models.Item.id == item_id
     ).first()
@@ -3369,6 +3419,8 @@ def delete_item_image(
     db: Session = Depends(get_db),
     user: dict = Depends(require_admin_or_items_access)
 ):
+
+    require_edit_items(db, user)
 
     item = db.query(models.Item).filter(
         models.Item.id == item_id
