@@ -52,6 +52,34 @@ Requests:
 
 \-------------------
 
+Excel export following each user’s columns
+
+
+
+Clickable sorting on Purchases
+
+
+
+Per-year purchase budget per hotel
+
+
+
+Quick Count: show code / size, so items with the same name can be told apart
+
+
+
+Create fix\_hk\_names.py before the server update
+
+
+
+Server update after the count, following the checklist
+
+
+
+Ask Eirini about the kids’ bathrobe sizes (4-6, 7-10, 11-12)
+
+
+
 Make an info button in Items pages, that explains the functionality and remove the h2 text
 
 
