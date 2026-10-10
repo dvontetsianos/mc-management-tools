@@ -57,10 +57,15 @@ class DepartmentCreate(BaseModel):
 
 class DepartmentResponse(BaseModel):
     id: int
+    item_fields: list[str] = []
     name: str
 
     class Config:
         from_attributes = True
+
+
+class DepartmentItemFieldsUpdate(BaseModel):
+    item_fields: list[str]
 
 class RequestCreate(BaseModel):
     title: str
@@ -304,3 +309,9 @@ class ItemMovementResponse(BaseModel):
 class AppSettingsUpdate(BaseModel):
     show_calculator: bool | None = None
     show_clock: bool | None = None
+
+
+
+class UserPreferenceUpdate(BaseModel):
+    key: str
+    value: list[str] | str | int | bool | None = None

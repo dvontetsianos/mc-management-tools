@@ -40,6 +40,8 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ItemsHelpButton from "../components/items/ItemsHelpButton";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
+import ColumnsButton from "../components/items/ColumnsButton";
+import { useHiddenColumns } from "../hooks/useHiddenColumns";
 
 
 const HOUSEKEEPING_DEPARTMENT_NAME = "Housekeeping";
@@ -57,6 +59,8 @@ function HousekeepingItems() {
   const [subcategories, setSubcategories] = useState([]);
   const [hotels, setHotels] = useState([]);
   const [housekeepingDepartmentId, setHousekeepingDepartmentId] = useState(null);
+  const [itemFields, setItemFields] = useState([]);
+  const [hiddenColumns, setHiddenColumns] = useHiddenColumns("Housekeeping");
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -190,6 +194,7 @@ function HousekeepingItems() {
       const departments = await getDepartments();
       const hkDept = departments.find((d) => d.name === HOUSEKEEPING_DEPARTMENT_NAME);
       setHousekeepingDepartmentId(hkDept ? hkDept.id : null);
+      setItemFields(hkDept ? hkDept.item_fields : []);
     } catch (error) {
       setSnackbarSeverity("error");
       setSnackbarMessage(error.message || "Failed to load departments");
@@ -710,6 +715,12 @@ function HousekeepingItems() {
               Filters
             </Button>
 
+            <ColumnsButton
+              hiddenColumns={hiddenColumns}
+              onChange={setHiddenColumns}
+              itemFields={itemFields}
+            />
+
             <TableZoomToggle zoomLevel={itemZoom} onChange={setItemZoom} />
 
 
@@ -815,6 +826,8 @@ function HousekeepingItems() {
             items={paginatedItems}
             selectedLocations={selectedItemLocations}
             zoomLevel={itemZoom}
+            itemFields={itemFields}
+            hiddenColumns={hiddenColumns}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
             onHistory={(item, type) =>

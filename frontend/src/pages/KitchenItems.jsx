@@ -40,6 +40,8 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ItemsHelpButton from "../components/items/ItemsHelpButton";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
+import ColumnsButton from "../components/items/ColumnsButton";
+import { useHiddenColumns } from "../hooks/useHiddenColumns";
 
 
 const KITCHEN_DEPARTMENT_NAME = "Kitchen";
@@ -57,6 +59,8 @@ function KitchenItems() {
   const [subcategories, setSubcategories] = useState([]);
   const [hotels, setHotels] = useState([]);
   const [kitchenDepartmentId, setKitchenDepartmentId] = useState(null);
+  const [itemFields, setItemFields] = useState([]);
+  const [hiddenColumns, setHiddenColumns] = useHiddenColumns("Kitchen");
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -190,6 +194,7 @@ function KitchenItems() {
       const departments = await getDepartments();
       const kitchenDept = departments.find((d) => d.name === KITCHEN_DEPARTMENT_NAME);
       setKitchenDepartmentId(kitchenDept ? kitchenDept.id : null);
+      setItemFields(kitchenDept ? kitchenDept.item_fields : []);
     } catch (error) {
       setSnackbarSeverity("error");
       setSnackbarMessage(error.message || "Failed to load departments");
@@ -709,6 +714,12 @@ function KitchenItems() {
               Filters
             </Button>
 
+            <ColumnsButton
+              hiddenColumns={hiddenColumns}
+              onChange={setHiddenColumns}
+              itemFields={itemFields}
+            />
+
             <TableZoomToggle zoomLevel={itemZoom} onChange={setItemZoom} />
 
 
@@ -814,6 +825,8 @@ function KitchenItems() {
             items={paginatedItems}
             selectedLocations={selectedItemLocations}
             zoomLevel={itemZoom}
+            itemFields={itemFields}
+            hiddenColumns={hiddenColumns}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
             onHistory={(item, type) =>

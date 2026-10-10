@@ -7,6 +7,8 @@ import MoveItemDialog from "../components/items/MoveItemDialog";
 import CountResetDialog from "../components/items/CountResetDialog";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
+import ColumnsButton from "../components/items/ColumnsButton";
+import { useHiddenColumns } from "../hooks/useHiddenColumns";
 import {
   getItems,
   createItem,
@@ -59,6 +61,8 @@ function FnbItems() {
   const [subcategories, setSubcategories] = useState([]);
   const [hotels, setHotels] = useState([]);
   const [fbDepartmentId, setFbDepartmentId] = useState(null);
+  const [itemFields, setItemFields] = useState([]);
+  const [hiddenColumns, setHiddenColumns] = useHiddenColumns("F&B");
 
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -193,6 +197,7 @@ function FnbItems() {
       const departments = await getDepartments();
       const fbDept = departments.find((d) => d.name === FB_DEPARTMENT_NAME);
       setFbDepartmentId(fbDept ? fbDept.id : null);
+      setItemFields(fbDept ? fbDept.item_fields : []);
     } catch (error) {
       setSnackbarSeverity("error");
       setSnackbarMessage(error.message || "Failed to load departments");
@@ -745,6 +750,12 @@ function FnbItems() {
               Filters
             </Button>
 
+            <ColumnsButton
+              hiddenColumns={hiddenColumns}
+              onChange={setHiddenColumns}
+              itemFields={itemFields}
+            />
+
             <TableZoomToggle zoomLevel={itemZoom} onChange={setItemZoom} />
 
 
@@ -873,6 +884,8 @@ function FnbItems() {
             items={paginatedItems}
             selectedLocations={selectedItemLocations}
             zoomLevel={itemZoom}
+            itemFields={itemFields}
+            hiddenColumns={hiddenColumns}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
             onDismissCount={handleDismissCount}

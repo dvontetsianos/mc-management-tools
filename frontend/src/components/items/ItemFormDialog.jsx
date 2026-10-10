@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getUser } from "../../services/auth";
+import { ITEM_SPEC_FIELDS } from "../../utils/itemFields";
 import ClearIcon from "@mui/icons-material/Clear";
 import {
     Button,
@@ -18,17 +19,6 @@ import {
     IconButton,
     FormHelperText
 } from "@mui/material";
-
-
-//group catalogue details, the same for every department (wide ones take the whole row)
-const SPEC_FIELDS = [
-    { field: "code", label: "Code (e.g. HK-LIN-01)" },
-    { field: "size", label: "Size" },
-    { field: "material", label: "Material" },
-    { field: "color", label: "Color" },
-    { field: "specification", label: "Specification", wide: true },
-    { field: "supplier_description", label: "Supplier Description", wide: true }
-];
 
 
 function ItemFormDialog({
@@ -79,6 +69,7 @@ function ItemFormDialog({
         }
     }, [open]);
 
+    
     const subcategoriesForCategory = (subcategories || []).filter(
         (sub) => sub.category_id === form.category_id
     );
@@ -267,30 +258,30 @@ function ItemFormDialog({
                         fullWidth
                     />
 
-                    <Box
-                        sx={{
-                            display: "grid",
-                            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                            gap: 2
-                        }}
-                    >
-                        {SPEC_FIELDS.map(({ field, label, wide }) => (
-                            <TextField
-                                key={field}
-                                label={label}
-                                value={form[field] ?? ""}
-                                disabled={detailsLocked}
-                                multiline={wide}
-                                sx={wide ? { gridColumn: "1 / -1" } : undefined}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        [field]: e.target.value
-                                    })
-                                }
-                            />
-                        ))}
-                    </Box>
+                        <Box
+                            sx={{
+                                display: "grid",
+                                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                                gap: 2
+                            }}
+                        >
+                            {ITEM_SPEC_FIELDS.map(({ field, label, example, wide }) => (
+                                <TextField
+                                    key={field}
+                                    label={example ? `${label} (e.g. ${example})` : label}
+                                    value={form[field] ?? ""}
+                                    disabled={detailsLocked}
+                                    multiline={wide}
+                                    sx={wide ? { gridColumn: "1 / -1" } : undefined}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            [field]: e.target.value
+                                        })
+                                    }
+                                />
+                            ))}
+                        </Box>
 
                     {canEditOpening && form.hotel_ids.length > 0 && (
                         <Stack spacing={2}>

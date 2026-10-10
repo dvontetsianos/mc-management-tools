@@ -26,6 +26,7 @@ import { API_URL } from "../../config";
 import { ZOOM_PRESETS } from "../../hooks/useTableZoom";
 import LocationLabel from "../LocationLabel";
 import { formatCountedAt } from "../../utils/countedAt";
+import { CATALOGUE_COLUMNS } from "../../utils/itemFields";
 
 
 
@@ -97,9 +98,24 @@ function getCountSummary(item) {
 }
 
 //the short catalogue details shown under the name, e.g. "160x260 · White"
-function getSpecLine(item) {
-    return [item.size, item.color].filter(Boolean).join(" · ");
+function getSpecLine(item, itemFields) {
+    return ["size", "color"]
+        .filter((field) => itemFields.includes(field))
+        .map((field) => item[field])
+        .filter(Boolean)
+        .join(" · ");
 }
+
+
+//simple text columns, all shown the same way: the value, or "-" when empty
+const TEXT_COLUMNS = [
+    { column: "size", label: "Size", width: 100 },
+    { column: "color", label: "Color", width: 100 },
+    { column: "material", label: "Material", width: 180 },
+    { column: "specification", label: "Specification", width: 220 },
+    { column: "supplier_description", label: "Supplier Description", width: 220 },
+    { column: "supplier", label: "Supplier", width: 140 }
+];
 
 
 function ItemTable({
@@ -112,11 +128,19 @@ function ItemTable({
     onSort,
     sortColumn,
     sortDirection,
-    zoomLevel = "medium"
+    zoomLevel = "medium",
+    itemFields = [],
+    hiddenColumns = []
 }) {
 
     const user = getUser();
     const zoom = (ZOOM_PRESETS[zoomLevel] || ZOOM_PRESETS.medium).zoom;
+
+    //a column shows unless this user hid it (Columns button),
+    //and catalogue columns (Code, Size...) only when the department uses them (Departments page)
+    const show = (column) =>
+        !hiddenColumns.includes(column)
+        && (!CATALOGUE_COLUMNS.includes(column) || itemFields.includes(column));
 
     const canViewPurchases = user?.role === "admin" || user?.permissions?.includes("purchases_access");
     const canViewMovements = user?.role === "admin" || user?.permissions?.includes("movements_access");
@@ -168,24 +192,30 @@ function ItemTable({
                         }}
                         >
                             <TableRow>
+                                {show("id") && (
                                 <TableCell 
                                     onClick={() => onSort("id")}
                                     sx={{ width: 30 }}
                                 >
                                     ID{getSortArrow("id")}
                                 </TableCell>
+                                )}
 
-                                <TableCell
-                                    onClick={() => onSort("code")}
-                                    align="center"
-                                    sx={{ width: 110 }}
-                                >
-                                    Code{getSortArrow("code")}
-                                </TableCell>
+                                {show("code") && (
+                                    <TableCell
+                                        onClick={() => onSort("code")}
+                                        align="center"
+                                        sx={{ width: 110 }}
+                                    >
+                                        Code{getSortArrow("code")}
+                                    </TableCell>
+                                )}
 
+                                {show("image") && (
                                 <TableCell align="left" sx={{ width: 100, maxWidth: 100, px: 1 }}>
                                     Image
                                 </TableCell>
+                                )}
 
                                 <TableCell
                                     onClick={() => onSort("name")}
@@ -195,6 +225,7 @@ function ItemTable({
                                         Name{getSortArrow("name")}
                                 </TableCell>
 
+                                {show("category") && (
                                 <TableCell 
                                     onClick={() => onSort("category")}
                                     align="center"
@@ -202,7 +233,9 @@ function ItemTable({
                                 >
                                     Category{getSortArrow("category")}
                                 </TableCell>
+                                )}
 
+                                {show("subcategory") && (
                                 <TableCell
                                     onClick={() => onSort("subcategory")}
                                     align="center"
@@ -210,7 +243,36 @@ function ItemTable({
                                 >
                                     Subcategory{getSortArrow("subcategory")}
                                 </TableCell>
+                                )}
 
+                                {TEXT_COLUMNS.filter(({ column }) => show(column)).map(({ column, label, width }) => (
+                                    <TableCell
+                                        key={column}
+                                        onClick={() => onSort(column)}
+                                        align="center"
+                                        sx={{ width }}
+                                    >
+                                        {label}{getSortArrow(column)}
+                                    </TableCell>
+                                ))}
+
+                                {show("cost_per_unit") && (
+                                <TableCell
+                                    onClick={() => onSort("cost_per_unit")}
+                                    align="center"
+                                    sx={{ width: 110 }}
+                                >
+                                    Cost per Unit{getSortArrow("cost_per_unit")}
+                                </TableCell>
+                                )}
+
+                                {show("hotels") && (
+                                <TableCell align="center" sx={{ width: 160 }}>
+                                    Hotels
+                                </TableCell>
+                                )}
+
+                                {show("expected_total") && (
                                 <TableCell
                                     align="center"
                                     sx={{ width: 140 }}
@@ -218,14 +280,18 @@ function ItemTable({
                                 >
                                     Expected Total{getSortArrow("expected_total")}
                                 </TableCell>
+                                )}
 
+                                {show("assigned_quantity") && (
                                 <TableCell
                                     align="center"
                                     sx={{ width: 140 }}
                                     onClick={() => onSort("assigned_quantity")}>
                                         Assigned Quantity{getSortArrow("assigned_quantity")}
                                 </TableCell>
+                                )}
 
+                                {show("staff_count") && (
                                 <TableCell
                                     align="center"
                                     sx={{ width: 140 }}
@@ -233,7 +299,9 @@ function ItemTable({
                                 >
                                     Staff Count{getSortArrow("staff_counted_quantity")}
                                 </TableCell>
+                                )}
 
+                                {show("missing") && (
                                 <TableCell
                                     align="center"
                                     sx={{ width: 120 }}
@@ -241,10 +309,13 @@ function ItemTable({
                                 >
                                     Missing{getSortArrow("missing")}
                                 </TableCell>
+                                )}
 
+                                {show("locations") && (
                                 <TableCell align="center" sx={{ width: 250 }}>
                                     Locations
                                 </TableCell>
+                                )}
 
                                 <TableCell align="center" sx={{ width: 180 }}>
                                     Edit / Assign{(canViewPurchases || canViewMovements) ? " / History" : ""}
@@ -267,10 +338,15 @@ function ItemTable({
                                     }}
                                 >
 
+                                    {show("id") && (
                                     <TableCell sx={{ width: 30}}>{item.id}</TableCell>
+                                    )}
 
-                                    <TableCell align="center" sx={{ width: 110 }}>{item.code || "-"}</TableCell>
+                                    {show("code") && (
+                                        <TableCell align="center" sx={{ width: 110 }}>{item.code || "-"}</TableCell>
+                                    )}
 
+                                    {show("image") && (
                                     <TableCell align="center" sx={{ p: 0, position: "relative" }}>
                                         <Avatar
                                             variant="rounded"
@@ -295,21 +371,50 @@ function ItemTable({
                                             <ImageNotSupportedIcon />}
                                         </Avatar>
                                     </TableCell>
+                                    )}
 
                                     <TableCell align="center">
                                         {item.name}
 
-                                        {getSpecLine(item) && (
+                                        {getSpecLine(item, itemFields) && (
                                             <Box sx={{ fontSize: "0.8em", opacity: 0.7 }}>
-                                                {getSpecLine(item)}
+                                                {getSpecLine(item, itemFields)}
                                             </Box>
                                         )}
                                     </TableCell>
 
+                                    {show("category") && (
                                     <TableCell sx={{ width: 100}} align="center">{item.category}</TableCell>
+                                    )}
+                                    {show("subcategory") && (
                                     <TableCell sx={{ width: 100 }} align="center">{item.subcategory || "-"}</TableCell>
+                                    )}
+
+                                    {TEXT_COLUMNS.filter(({ column }) => show(column)).map(({ column, width }) => (
+                                        <TableCell key={column} align="center" sx={{ width }}>
+                                            {item[column] || "-"}
+                                        </TableCell>
+                                    ))}
+
+                                    {show("cost_per_unit") && (
+                                    <TableCell align="center" sx={{ width: 110 }}>
+                                        {item.cost_per_unit != null ? `€${Number(item.cost_per_unit).toFixed(2)}` : "-"}
+                                    </TableCell>
+                                    )}
+
+                                    {show("hotels") && (
+                                    <TableCell align="center" sx={{ width: 160 }}>
+                                        {item.hotels?.length ? item.hotels.join(", ") : "-"}
+                                    </TableCell>
+                                    )}
+
+                                    {show("expected_total") && (
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
+                                    )}
+                                    {show("assigned_quantity") && (
                                     <TableCell align="center" sx={{ width: 140}}>{item.assigned_quantity}</TableCell>
+                                    )}
+                                    {show("staff_count") && (
                                     <TableCell align="center" sx={{ width: 140 }}>
                                         {(() => {
                                             const summary = getCountSummary(item);
@@ -365,14 +470,18 @@ function ItemTable({
                                             );
                                         })()}
                                     </TableCell>
+                                    )}
 
+                                    {show("missing") && (
                                     <TableCell
                                         align="center"
                                         sx={{ width:120 }}
                                     >
                                         {item.missing ?? "-"}
                                     </TableCell>
+                                    )}
 
+                                    {show("locations") && (
                                     <TableCell align="center" sx={{ width: 250, maxWidth: 250 }}>
                                         {item.locations && item.locations.filter((loc) => loc.total_quantity > 0).length > 0 ? (
                                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0, justifyContent: "center" }}>
@@ -389,6 +498,7 @@ function ItemTable({
                                             "-"
                                         )}
                                     </TableCell>
+                                    )}
 
                                     <TableCell align="center">
 

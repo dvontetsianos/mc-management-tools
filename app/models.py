@@ -118,6 +118,9 @@ class Department(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+    #which catalogue fields this department's items use, saved as a list like ["code", "size"]
+    #empty = never set = all of them
+    item_fields = Column(String, nullable=True)
 
     users = relationship(
         "User",
@@ -411,4 +414,23 @@ class AppSetting(Base):
 
     #one row per setting, e.g. key "show_clock" with value "true" or "false"
     key = Column(String, primary_key=True)
+    value = Column(String)
+
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "key",
+            name="unique_preference_per_user"
+        ),
+    )
+
+    #one row per user and setting, e.g. key "hidden_columns:Housekeeping" with value '["image", "locations"]'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    key = Column(String)
     value = Column(String)

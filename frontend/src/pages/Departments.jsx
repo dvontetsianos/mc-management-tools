@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { getDepartments, createDepartment, deleteDepartment } from "../services/departmentService";
+import { getDepartments, createDepartment, deleteDepartment, updateDepartmentItemFields } from "../services/departmentService";
+import { ITEM_SPEC_FIELDS, DEPARTMENTS_WITH_ITEMS } from "../utils/itemFields";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Alert from "@mui/material/Alert";
@@ -19,7 +20,9 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Snackbar
+    Snackbar,
+    FormControlLabel,
+    Checkbox
 } from "@mui/material";
 
 
@@ -115,6 +118,28 @@ function Departments() {
 
     };
 
+    //one tick box changed: save the department's new list of fields
+    const handleFieldToggle = async (department, field, checked) => {
+
+        const newFields = checked
+            ? [...department.item_fields, field]
+            : department.item_fields.filter((f) => f !== field);
+
+
+        try {
+            const updated = await updateDepartmentItemFields(department.id, newFields);
+
+            //only this department's row changes, the others stay as they are
+            setDepartments((current) => current.map((d) => (d.id === updated.id ? updated : d)));
+
+        } catch (error) {
+
+            setSnackbarMessage(error.message);
+            setSnackbarSeverity("error");
+            setSnackbarOpen(true);
+        }
+    };
+
     useEffect(() => {
         fetchDepartments();
     }, []);
@@ -175,6 +200,10 @@ function Departments() {
                                 </TableCell>
 
                                 <TableCell>
+                                    Shown in Table
+                                </TableCell>
+
+                                <TableCell>
                                     Actions
                                 </TableCell>
 
@@ -191,6 +220,31 @@ function Departments() {
 
                                     <TableCell>
                                         {department.name}
+                                    </TableCell>
+
+                                    <TableCell>
+
+                                        {DEPARTMENTS_WITH_ITEMS.includes(department.name) ? (
+                                            <Box sx={{ display: "flex", flexWrap: "wrap", columnGap: 1 }}>
+                                                {ITEM_SPEC_FIELDS.map(({ field, label }) => (
+                                                    <FormControlLabel
+                                                        key={field}
+                                                        label={label}
+                                                        control={
+                                                            <Checkbox
+                                                                size="small"
+                                                                checked={department.item_fields.includes(field)}
+                                                                onChange={(e) => handleFieldToggle(department, field, e.target.checked)}
+                                                            />
+                                                        }
+                                                    />
+                                                ))}
+                                            </Box>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                No items page
+                                            </Typography>
+                                        )}
                                     </TableCell>
 
                                     <TableCell>

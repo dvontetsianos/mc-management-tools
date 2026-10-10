@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import uuid
+import json
 import shutil
 import subprocess
 import sys
@@ -1114,11 +1115,27 @@ def delete_supplier(
     return {
         "message": "Supplier deleted successfully"
     }
+#----------------------------------------------------------------------------------
+#the catalogue fields a department uses (never set = all of them)
+def department_item_fields(department) -> list[str]:
+    if department.item_fields is None:
+        return list(ITEM_SPEC_FIELDS)
+
+    saved = json.loads(department.item_fields)
+
+    return [field for field in ITEM_SPEC_FIELDS if field in saved]
+
+def department_to_dict(department) -> dict:
+    return {
+        "id": department.id,
+        "name": department.name,
+        "item_fields": department_item_fields(department)
+    }
 #---------------------------------------------------------------------------
 #get departments
 @app.get("/departments", response_model=list[schemas.DepartmentResponse])
 def get_departments(db: Session = Depends(get_db)):
-    return db.query(models.Department).all()
+    return [department_to_dict(department) for department in db.query(models.Department).all()]
 
 #-------------------------------------------------------------------
 #create department
@@ -1146,9 +1163,50 @@ def create_department(
             detail="Department already exists"
         )
 
-    return new_department
+    return department_to_dict(new_department)
 
+#---------------------------------------------------------------------------
+#which catalogue fields a department's items use (admin only), only what the pages show: no data is deleted
+@app.put("/departments/{department_id}/item-fields", response_model=schemas.DepartmentResponse)
+def update_department_item_fields(
+    department_id: int,
+    data: schemas.DepartmentItemFieldsUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
 
+    department = db.query(models.Department).filter(
+        models.Department.id == department_id
+    ).first()
+
+    if not department:
+        raise HTTPException(
+            status_code=404,
+            detail="Department not found"
+        )
+
+    unknown = [field for field in data.item_fields if field not in ITEM_SPEC_FIELDS]
+
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown field(s): {', '.join(unknown)}"
+        )
+
+    #saved in the same order as the form
+    new_fields = [field for field in ITEM_SPEC_FIELDS if field in data.item_fields]
+
+    department.item_fields = json.dumps(new_fields)
+    db.commit()
+
+    labels = [ITEM_SPEC_FIELDS[field] for field in new_fields]
+    
+    log_action(
+        db, admin, "updated", "Department", department.name, department.id,
+        details=f"Item fields: {', '.join(labels) if labels else 'none'}"
+    )
+
+    return department_to_dict(department)
 #------------------------------------------------------------------------
 #delete department
 @app.delete("/departments/{department_id}")
@@ -1645,6 +1703,11 @@ def delete_user(
         models.UserHotel.user_id == user_id
     ).delete()
 
+    #delete their settings with the user
+    db.query(models.UserPreference).filter(
+        models.UserPreference.user_id == user_id
+    ).delete()
+
     #their requests stay: the username is kept as text and the link to the deleted user is cleared,
     #so a future user can never inherit these requests
     db.query(models.Request).filter(
@@ -2103,6 +2166,68 @@ def update_settings(
         log_action(db, admin, "changed settings", "System", "Settings", None, details=", ".join(changes))
 
     return read_settings(db)
+#-----------------------------------------------------------------------
+#each user's own view settings (hidden table columns, zoom...), they never change anything for other users
+def get_db_user(db, user: dict):
+    db_user = db.query(models.User).filter(
+        models.User.username == user["username"]
+    ).first()
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return db_user
+
+
+#all of the logged-in user's settings, e.g. {"hidden_columns:Housekeeping": ["image"]}
+@app.get("/me/preferences")
+def get_my_preferences(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+
+    db_user = get_db_user(db, user)
+
+    rows = db.query(models.UserPreference).filter(
+        models.UserPreference.user_id == db_user.id
+    ).all()
+
+    return {row.key: json.loads(row.value) for row in rows}
+
+
+#saves one setting for the logged-in user only
+@app.put("/me/preferences")
+def save_my_preference(
+    data: schemas.UserPreferenceUpdate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+
+    if not data.key or len(data.key) > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid setting name"
+        )
+
+    db_user = get_db_user(db, user)
+
+    row = db.query(models.UserPreference).filter(
+        models.UserPreference.user_id == db_user.id,
+        models.UserPreference.key == data.key
+    ).first()
+
+    if row is None:
+        row = models.UserPreference(user_id=db_user.id, key=data.key)
+        db.add(row)
+
+
+    row.value = json.dumps(data.value)
+    db.commit()
+
+    return {"key": data.key, "value": data.value}
 #------------------------------------------------------------------------
 #get lost and found items
 @app.get("/lost-found")

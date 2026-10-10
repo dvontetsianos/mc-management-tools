@@ -66,3 +66,26 @@ export async function deleteDepartment(id) {
     return data;
     
 }
+
+
+
+//which catalogue fields the department's items use (admin only)
+export async function updateDepartmentItemFields(id, itemFields) {
+
+    const response = await fetch(
+        `${API_URL}/departments/${id}/item-fields`,
+        {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ item_fields: itemFields })
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to save the item fields");
+    }
+
+    return data;
+}
