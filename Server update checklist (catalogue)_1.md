@@ -45,7 +45,10 @@ The scripts only **add** new columns/tables or **remove one rule**.
    2. Real import (backs up the database first):
       `python import_hk_catalogue.py HK_database_List_Draft_XLS.xlsx --apply`
       → last line: `DONE: 147 item(s) imported into Housekeeping, linked to 5 hotel(s).`
-   3. Delete the Excel file from the project folder afterwards (git doesn't ignore .xlsx files).
+   3. Fix the spelling mistakes from her file (test run, then real):
+      `python fix_hk_names.py` → then `python fix_hk_names.py --apply`
+      → last line: `DONE: 12 name(s) fixed.`
+   4. Delete the Excel file from the project folder afterwards (git doesn't ignore .xlsx files).
    - Running it twice never doubles anything: codes that already exist are skipped.
 
 ## After the update (in the browser, as admin)
