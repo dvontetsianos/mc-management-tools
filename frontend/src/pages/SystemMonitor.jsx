@@ -581,7 +581,7 @@ function SystemMonitor() {
 
                         <Typography sx={{ fontWeight: 600, fontSize: "0.9rem" }}>Dashboard tiles</Typography>
                         <Typography sx={{ fontSize: "0.85rem", color: "text.secondary", mb: 1 }}>
-                            For everyone. Each user still only sees tiles the tiles their permissions allow.
+                            For everyone. Each user still only sees the tiles their permissions allow.
                         </Typography>
 
                         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>

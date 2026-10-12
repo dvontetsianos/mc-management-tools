@@ -2284,6 +2284,7 @@ def get_dashboard(
         unassigned_units = 0
         unassigned_items = set()
         unassigned_by_department = {}
+        missing_by_department = {}
 
         for item_location, location, item in rows.all():
             total = item_location.total_quantity or 0
@@ -2313,16 +2314,29 @@ def get_dashboard(
             if counted is not None:
                 difference = counted - total
 
+                #the same numbers per department, only for departments where the count found a difference
+                if difference != 0:
+                    department_name = item.department.name if item.department else "No department"
+                    department_missing = missing_by_department.setdefault(
+                        department_name, {"units_short": 0, "value_short": 0.0, "units_over": 0}
+                    )
+
                 if difference < 0:
                     units_short += -difference
+                    department_missing["units_short"] += -difference
 
                     if item.cost_per_unit:
                         value_short += -difference * item.cost_per_unit
+                        department_missing["value_short"] += -difference * item.cost_per_unit
                     else:
                         short_items_without_cost.add(item.id)
 
                 elif difference > 0:
                     units_over += difference
+                    department_missing["units_over"] += difference
+
+            
+                        
 
         result["count_progress"] = {
             "locations_total": len(locations_with_stock),
@@ -2333,7 +2347,16 @@ def get_dashboard(
             "units_short": units_short,
             "value_short": round(value_short, 2),
             "items_without_cost": len(short_items_without_cost),
-            "units_over": units_over
+            "units_over": units_over,
+            "by_department": [
+                {
+                    "department": name,
+                    "units_short": values["units_short"],
+                    "value_short": round(values["value_short"], 2),
+                    "units_over": values["units_over"]
+                }
+                for name, values in sorted(missing_by_department.items())
+            ]
         }
         result["unassigned"] = {
             "units": unassigned_units,

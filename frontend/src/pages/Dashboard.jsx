@@ -158,6 +158,11 @@ function Dashboard() {
         dashboard?.unassigned?.by_department.some((row) => row.department === page.department)
     );
 
+    //Missing only opens the pages of the departments where the count found a difference
+    const missingButtons = itemButtons.filter((page) =>
+        dashboard?.missing?.by_department.some((row) => row.department === page.department)
+    );
+
     const spendButtons = [];
     if (hasPermission("purchases_access")) {
         spendButtons.push({ label: "Purchases", path: "/purchases" });
@@ -254,7 +259,7 @@ function Dashboard() {
 
                     {/* ---- 2. missing (only shortages, extra found is shown apart) ---- */}
                     {showTile("missing") && (
-                        <Tile icon={<ReportProblemIcon />} title="Missing" buttons={itemButtons}>
+                        <Tile icon={<ReportProblemIcon />} title="Missing" buttons={missingButtons}>
                             <BigNumber
                                 value={dashboard.missing.units_short}
                                 label="units short after the staff count"
@@ -268,9 +273,14 @@ function Dashboard() {
                                     {dashboard.missing.items_without_cost} short item(s) have no cost, so the value is incomplete
                                 </Typography>
                             )}
-                            {dashboard.missing.units_over > 0 && (
-                                <Chip size="small" label={`${dashboard.missing.units_over} extra found`} sx={{ mt: 1.5 }} />
-                            )}
+                            <Box sx={{ mt: 1 }}>
+                                {dashboard.missing.by_department.map((row) => (
+                                    <Typography key={row.department} variant="body2">
+                                        <b>{row.department}</b>: {row.units_short} short · {currencyFormatter.format(row.value_short)}
+                                        {row.units_over > 0 && ` · ${row.units_over} extra found`}
+                                    </Typography>
+                                ))}
+                            </Box>
                         </Tile>
                     )}
 
