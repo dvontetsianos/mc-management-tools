@@ -397,6 +397,34 @@ class ItemMovement(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
+#a stock change that is not a purchase or a move: what a closed count found missing or extra, or breakage.
+#quantity is negative for losses (-3) and pisitive for items found (+2).
+#hotel, department and unit cost are saved as they were at that moment, so old imports never change.
+class StockAdjustment(Base):
+    __tablename__ = "stock_adjustments"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    item_id = Column(Integer, ForeignKey("items.id"))
+    item = relationship("Item")
+
+    location_id = Column(Integer, ForeignKey("locations.id"))
+    location = relationship("Location")
+
+    hotel_id = Column(Integer, ForeignKey("hotels.id"), nullable=True)
+    hotel = relationship("Hotel")
+
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    department = relationship("Department")
+
+    quantity = Column(Integer)
+    reason = Column(String)
+    unit_cost = Column(Float, nullable=True)
+    notes = Column(String, nullable=True)
+
+    created_by = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class AppSetting(Base):
     __tablename__ = "app_settings"

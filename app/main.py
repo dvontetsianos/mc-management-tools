@@ -2724,6 +2724,19 @@ def get_items(
             purchases_by_item[purchase_item_id] = purchases_by_item.get(purchase_item_id, 0) + (purchased or 0)
 
 
+    #stock adjustments per item per hotel (closed counts, brekage): -3 lost, +2 found
+    adjustments_by_item_hotel = (
+        db.query(models.StockAdjustment.item_id, models.StockAdjustment.hotel_id, func.sum(models.StockAdjustment.quantity))
+        .group_by(models.StockAdjustment.item_id, models.StockAdjustment.hotel_id)
+        .all()
+    )
+
+    adjustments_by_item = {}
+
+    for adjustment_item_id, adjustment_hotel_id, adjusted in adjustments_by_item_hotel:
+        if hotel_scope is None or adjustment_hotel_id in hotel_scope:
+            adjustments_by_item[adjustment_item_id] = adjustments_by_item.get(adjustment_item_id, 0) + (adjusted or 0)
+    
     #stock moved between hotels counts as leaving one hotel and arriving at the other
     transfers_by_item = {}
 
@@ -2811,7 +2824,8 @@ def get_items(
         )
         total_purchased_quantity = purchases_by_item.get(item.id, 0) or 0
         transferred_quantity = transfers_by_item.get(item.id, 0)
-        expected_total = opening_quantity + total_purchased_quantity + transferred_quantity
+        adjusted_quantity = adjustments_by_item.get(item.id, 0)
+        expected_total = opening_quantity + total_purchased_quantity + transferred_quantity + adjusted_quantity
         broken_missing = expected_total - assigned_quantity
         item_hotels = [link.hotel for link in item.hotel_links if link.hotel]
 

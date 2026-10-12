@@ -169,7 +169,9 @@ function ItemList() {
                             sx={{
                                 mb: 1,
                                 borderRadius: 2,
-                                backgroundColor: isCounted ? "#e8f5e9" : "white",
+                                backgroundColor: isCounted ? "#c8e6c9" : "white",
+                                border: "2px solid",
+                                borderColor: isCounted ? "#66bb6a" : "transparent",
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
