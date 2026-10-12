@@ -5,6 +5,7 @@ import ItemFormDialog from "../components/items/ItemFormDialog";
 import ItemDeleteConfirmDialog from "../components/items/ItemDeleteConfirmDialog";
 import MoveItemDialog from "../components/items/MoveItemDialog";
 import CountResetDialog from "../components/items/CountResetDialog";
+import CountCloseDialog from "../components/items/CountCloseDialog";
 import {
   getItems,
   createItem,
@@ -100,6 +101,7 @@ function KitchenItems() {
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [movingItemId, setMovingItemId] = useState(null);
   const [countResetOpen, setCountResetOpen] = useState(false);
+  const [countCloseOpen, setCountCloseOpen] = useState(false);
 
   const [selectedItemCategories, setSelectedItemCategories] = useState([]);
   const [selectedItemSubcategories, setSelectedItemSubcategories] = useState([]);
@@ -759,6 +761,15 @@ function KitchenItems() {
                 Reset counts
               </Button>
             )}
+
+            {getUser()?.role === "admin" && (
+              <Button
+                variant="outlined"
+                onClick={() => setCountCloseOpen(true)}
+              >
+                Close count
+              </Button>
+            )}
           </Box>
 
           <ItemsFilterPanel
@@ -797,6 +808,18 @@ function KitchenItems() {
             itemLocations={itemToDelete?.locations}
           />
 
+          <CountCloseDialog
+            open={countCloseOpen}
+            onClose={() => setCountCloseOpen(false)}
+            defaultDepartmentId={kitchenDepartmentId}
+            onDone={(result) => {
+              fetchItems();
+              setSnackbarSeverity("success");
+              setSnackbarMessage(`Count closed: ${result.units_missing} missing, ${result.units_found} found`);
+              setSnackbarOpen(true);
+            }}
+          />
+          
           <CountResetDialog
             open={countResetOpen}
             onClose={() => setCountResetOpen(false)}

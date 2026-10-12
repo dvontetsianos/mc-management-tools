@@ -4316,6 +4316,7 @@ def close_counts(
         changes.append({
             "item_location_id": item_location.id,
             "item": item.name if item else None,
+            "item_details": " · ".join(value for value in [item.size, item.color] if value) if item else "",
             "location": location.name if location else None,
             "hotel": location.hotel.name if location and location.hotel else None,
             "system": system,

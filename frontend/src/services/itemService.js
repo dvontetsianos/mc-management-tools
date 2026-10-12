@@ -335,3 +335,23 @@ export async function resetCounts(filters, preview = true) {
 
     return data;
 }
+
+
+
+//admin: close a count (same filters as resetCounts). preview = true only lists what would change
+export async function closeCounts(filters, preview = true) {
+
+    const response = await fetch(`${API_URL}/counts/close`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ...filters, preview })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to close the count");
+    }
+
+    return data;
+}
