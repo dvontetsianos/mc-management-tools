@@ -43,7 +43,7 @@ function PermissionRoute({
             return (
                 <div style={{ padding: 24, textAlign: "center", fontFamily: "sans-serif" }}>
                     <p>Your account has no Quick Count access yet.</p>
-                    <p>Ask an admin to give you F&amp;B Items or Housekeeping Items access.</p>
+                    <p>Ask an admin to give you F&amp;B Items, Housekeeping or Kitchen Items access.</p>
                     <button
                         onClick={() => {
                             logout();

@@ -158,6 +158,24 @@ def user_can_access_department_items(user: dict, department_id) -> bool:
 
     return department_id == user.get("department_id")
 #-----------------------------------------------------------------------------------
+#the departments whose items a user can see without chosing one: their own department,
+#plus every department they have items permission for (e.g. an F&B user with kitchen_items_access)
+def user_item_department_ids(db, user: dict) -> set:
+    department_ids = set()
+
+    if user.get("department_id"):
+        department_ids.add(user["department_id"])
+
+    permissions = user.get("permissions", [])
+
+    for department in db.query(models.Department).all():
+        permission = DEPARTMENT_ITEM_PERMISSIONS.get(department.name)
+
+        if permission and permission in permissions:
+            department_ids.add(department.id)
+
+    return department_ids
+#-----------------------------------------------------------------------------------
 #admins and all_hotels_access users cover every hotel, everyone else needs at least one assigned hotel
 def user_needs_hotel(role: str, permissions: list[str]) -> bool:
     return (role or "user").lower() != "admin" and "all_hotels_access" not in permissions
@@ -2162,7 +2180,13 @@ def run_backup_now(
 #app-wide settings: switched on System Monitor (admin only), read by every page
 DEFAULT_SETTINGS = {
     "show_calculator": True,
-    "show_clock": True
+    "show_clock": True,
+    "dashboard_count_progress": True,
+    "dashboard_missing": True,
+    "dashboard_unassigned": True,
+    "dashboard_requests": True,
+    "dashboard_lost_found": True,
+    "dashboard_spend": True
 }
 
 def read_settings(db):
@@ -2210,6 +2234,193 @@ def update_settings(
         log_action(db, admin, "changed settings", "System", "Settings", None, details=", ".join(changes))
 
     return read_settings(db)
+#-----------------------------------------------------------------------------
+#dashboard tiles: one call returns every number, only for what this user is allowed to see
+#(their departments and hotels). A tile the user has no permission for is simply left out.
+@app.get("/dashboard")
+def get_dashboard(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+
+    permissions = user.get("permissions", [])
+    is_admin = user["role"].lower() == "admin"
+    hotel_scope = user_hotel_scope(user)
+
+    def has(permission):
+        return is_admin or permission in permissions
+
+    #None = every department (admins and all_departments_access), otherwise the user's own + their item permissions
+    if is_admin or "all_departments_access" in permissions:
+        department_ids = None
+    else:
+        department_ids = user_item_department_ids(db, user)
+
+    result = {}
+
+    #---- count progress, missing, unassigned: from the stock rows
+    can_see_items = is_admin or any(p in permissions for p in DEPARTMENT_ITEM_PERMISSIONS.values())
+
+    if can_see_items:
+        rows = db.query(models.ItemLocation, models.Location, models.Item).join(
+            models.Location, models.Location.id == models.ItemLocation.location_id
+        ).join(
+            models.Item, models.Item.id == models.ItemLocation.item_id
+        )
+
+        if department_ids is not None:
+            rows = rows.filter(models.Item.department_id.in_(department_ids))
+
+        if hotel_scope is not None:
+            rows = rows.filter(models.Location.hotel_id.in_(hotel_scope))
+
+        locations_with_stock = set()
+        locations_not_done = set()
+        items_uncounted = 0
+        units_short = 0
+        value_short = 0.0
+        short_items_without_cost = set()
+        units_over = 0
+        unassigned_units = 0
+        unassigned_items = set()
+        unassigned_by_department = {}
+
+        for item_location, location, item in rows.all():
+            total = item_location.total_quantity or 0
+            counted = item_location.staff_counted_quantity
+
+            #Unassigned is never counted, it's stock waiting to be placed
+            if location.name == "Unassigned":
+                if total > 0:
+                    unassigned_units += total
+                    unassigned_items.add(item.id)
+
+                    #the same numbers per department, so the tile can say whose stock it is
+                    department_name = item.department.name if item.department else "No department"
+                    department = unassigned_by_department.setdefault(department_name, {"units": 0, "items": set()})
+                    department["units"] += total
+                    department["items"].add(item.id)
+                continue
+
+            if total > 0:
+                locations_with_stock.add(location.id)
+
+                if counted is None:
+                    items_uncounted += 1
+                    locations_not_done.add(location.id)
+
+            #only shortages count as missing, extra items found are kept apart
+            if counted is not None:
+                difference = counted - total
+
+                if difference < 0:
+                    units_short += -difference
+
+                    if item.cost_per_unit:
+                        value_short += -difference * item.cost_per_unit
+                    else:
+                        short_items_without_cost.add(item.id)
+
+                elif difference > 0:
+                    units_over += difference
+
+        result["count_progress"] = {
+            "locations_total": len(locations_with_stock),
+            "locations_counted": len(locations_with_stock - locations_not_done),
+            "items_uncounted": items_uncounted
+        }
+        result["missing"] = {
+            "units_short": units_short,
+            "value_short": round(value_short, 2),
+            "items_without_cost": len(short_items_without_cost),
+            "units_over": units_over
+        }
+        result["unassigned"] = {
+            "units": unassigned_units,
+            "items": len(unassigned_items),
+            "by_department": [
+                {"department": name, "units": values["units"], "items": len(values["items"])}
+                for name, values in sorted(unassigned_by_department.items())
+            ]
+        }
+
+    #---- requests: pending for the user's department (the same number as the menu badge)
+    if has("requests_access"):
+        viewer = db.query(models.User).filter(models.User.username == user["username"]).first()
+        pending = 0
+
+        if viewer and viewer.department_id is not None:
+            pending = db.query(models.Request).filter(
+                models.Request.target_department_id == viewer.department_id,
+                models.Request.status == "pending"
+            ).count()
+
+        result["requests"] = {"pending": pending}
+
+    #---- lost & found: unclaimed, and how many of those are older than 30 days
+    if has("lost_found_access"):
+        unclaimed = db.query(models.LostFoundItem).filter(models.LostFoundItem.status == "unclaimed")
+
+        #items without a hotel are shown to everyone, like on the Lost & Found page
+        if hotel_scope is not None:
+            unclaimed = unclaimed.filter(
+                models.LostFoundItem.hotel_id.in_(hotel_scope) | models.LostFoundItem.hotel_id.is_(None)
+            )
+
+        month_ago = datetime.utcnow() - timedelta(days=30)
+        unclaimed = unclaimed.all()
+
+        result["lost_found"] = {
+            "unclaimed": len(unclaimed),
+            "older_than_30_days": sum(1 for found in unclaimed if found.date_found and found.date_found < month_ago)
+        }
+
+    #---- spend: quantity x unit cost, this month and this year, per hotel (by document date, else the logged date)
+    if has("purchases_access") or has("reports_access"):
+        now = datetime.utcnow()
+        purchases = db.query(models.Purchase).options(joinedload(models.Purchase.hotel))
+
+        if department_ids is not None:
+            purchases = purchases.filter(models.Purchase.department_id.in_(department_ids))
+
+        if hotel_scope is not None:
+            purchases = purchases.filter(models.Purchase.hotel_id.in_(hotel_scope))
+
+        this_month = 0.0
+        this_year = 0.0
+        by_hotel = {}
+        without_cost = 0
+
+        for purchase in purchases.all():
+            when = purchase.document_date or purchase.created_at
+
+            if when is None or when.year != now.year:
+                continue
+
+            if purchase.unit_cost is None:
+                without_cost += 1
+                continue
+
+            value = purchase.quantity * purchase.unit_cost
+            this_year += value
+
+            if when.month == now.month:
+                this_month += value
+
+            hotel_name = purchase.hotel.name if purchase.hotel else "No hotel"
+            by_hotel[hotel_name] = by_hotel.get(hotel_name, 0.0) + value
+
+        result["spend"] = {
+            "this_month": round(this_month, 2),
+            "this_year": round(this_year, 2),
+            "by_hotel": [
+                {"hotel": name, "value": round(value, 2)}
+                for name, value in sorted(by_hotel.items(), key=lambda pair: pair[1], reverse=True)
+            ],
+            "purchases_without_cost": without_cost
+        }
+
+    return result
 #-----------------------------------------------------------------------
 #each user's own view settings (hidden table columns, zoom...), they never change anything for other users
 def get_db_user(db, user: dict):
@@ -3480,7 +3691,7 @@ def get_item_locations(
         and "all_departments_access" not in user.get("permissions", [])
     ):
         query = query.filter(
-            models.ItemLocation.item.has(department_id=user.get("department_id"))
+            models.ItemLocation.item.has(models.Item.department_id.in_(user_item_department_ids(db, user)))
         )
 
     #hotel users only see stock at their own hotels' locations

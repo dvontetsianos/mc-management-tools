@@ -41,6 +41,17 @@ const HISTORY_LENGTH = 60;
 const NAVY = "#080125";
 
 
+//the dashboard tiles the admin can switch off for everyone (the keys match the backend settings)
+const DASHBOARD_TILES = [
+    { key: "dashboard_count_progress", label: "Count Progress" },
+    { key: "dashboard_missing", label: "Missing" },
+    { key: "dashboard_unassigned", label: "In Unassigned" },
+    { key: "dashboard_requests", label: "Requests" },
+    { key: "dashboard_lost_found", label: "Lost & Found" },
+    { key: "dashboard_spend", label: "Spend" }
+];
+
+
 //------------------------------------------------------------ helpers
 
 function formatBytes(bytes) {
@@ -564,6 +575,31 @@ function SystemMonitor() {
                                 }
                             />
                         </Box>
+
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Typography sx={{ fontWeight: 600, fontSize: "0.9rem" }}>Dashboard tiles</Typography>
+                        <Typography sx={{ fontSize: "0.85rem", color: "text.secondary", mb: 1 }}>
+                            For everyone. Each user still only sees tiles the tiles their permissions allow.
+                        </Typography>
+
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                            {DASHBOARD_TILES.map((tile) => (
+                                <FormControlLabel
+                                    key={tile.key}
+                                    label={tile.label}
+                                    control={
+                                        <Switch
+                                            checked={settings?.[tile.key] ?? true}
+                                            disabled={!settings}
+                                            onChange={(event) => handleSettingChange(tile.key, event.target.checked)}
+                                        />
+                                    }
+                                />
+                            ))}
+                        </Box>
+
 
                         {settingsError && (
                             <Alert severity="error" sx={{ mt: 2 }}>

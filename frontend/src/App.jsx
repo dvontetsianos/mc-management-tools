@@ -55,7 +55,7 @@ function App() {
                 path="/quick-count"
                 element={
                     <ProtectedRoute>
-                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access"]}>
+                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access", "kitchen_items_access"]}>
                             <LocationPicker />
                         </PermissionRoute>
                     </ProtectedRoute>
@@ -66,7 +66,7 @@ function App() {
                 path="/quick-count/:locationId"
                 element={
                     <ProtectedRoute>
-                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access"]}>
+                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access", "kitchen_items_access"]}>
                             <ItemList />
                         </PermissionRoute>
                     </ProtectedRoute>
@@ -77,7 +77,7 @@ function App() {
                 path="/quick-count/:locationId/item/:itemLocationId"
                 element={
                     <ProtectedRoute>
-                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access"]}>
+                        <PermissionRoute permissions={["fnb_items_access", "housekeeping_items_access", "kitchen_items_access"]}>
                             <ItemQuantity />
                         </PermissionRoute>
                     </ProtectedRoute>

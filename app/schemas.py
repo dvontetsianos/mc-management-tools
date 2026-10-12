@@ -309,6 +309,12 @@ class ItemMovementResponse(BaseModel):
 class AppSettingsUpdate(BaseModel):
     show_calculator: bool | None = None
     show_clock: bool | None = None
+    dashboard_count_progress: bool | None = None
+    dashboard_missing: bool | None = None
+    dashboard_unassigned: bool | None = None
+    dashboard_requests: bool | None = None
+    dashboard_lost_found: bool | None = None
+    dashboard_spend: bool | None = None
 
 
 
