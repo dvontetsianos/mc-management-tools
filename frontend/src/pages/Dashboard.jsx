@@ -12,11 +12,13 @@ import {
     CardContent,
     Chip,
     CircularProgress,
+    Fade,
     Grid,
     IconButton,
     LinearProgress,
     Typography
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import InventoryIcon from "@mui/icons-material/Inventory";
@@ -36,6 +38,19 @@ const currencyFormatter = new Intl.NumberFormat(
     }
 );
 
+//each tile's own color, for its title and icon (all dark enough to read on white)
+const TILE_COLORS = {
+    count_progress: "#1c5cab",
+    missing: "#5a46c8",
+    unassigned: "#0b7a5a",
+    requests: "#b8336a",
+    lost_found: "#a0522d",
+    spend: "#1f7a1f"
+};
+
+//true when the computer is set to "reduce motion": then nothing animates
+const REDUCE_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 //the item pages a tile can open, each one only for users with its permission
 const ITEM_PAGES = [
     { department: "F&B", permission: "fnb_items_access", label: "F&B Items", path: "/fnb-items" },
@@ -45,19 +60,47 @@ const ITEM_PAGES = [
 
 
 //one dashboard tile: icon + title on top, the numbers in the middle, buttons to open pages at the bottom
-function Tile({ icon, title, buttons, children }) {
+//index = its place on the page, so the tiles fade in one after another
+function Tile({ icon, title, color, index, buttons, children }) {
 
     const navigate = useNavigate();
 
     return (
+        <Fade in timeout={REDUCE_MOTION ? 0 : 500} style={{ transitionDelay: REDUCE_MOTION ? "0ms" : `${index * 80}ms` }}>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <Card sx={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: "rgba(255, 255, 255, 0.85)" }}>
+            <Card
+                sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    backgroundColor: "rgba(255, 255, 255, 0.85)",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    "&:hover": {
+                        transform: REDUCE_MOTION ? "none" : "translateY(-3px)",
+                        boxShadow: 6
+                    }
+                }}
+            >
 
                 <CardContent sx={{ flexGrow: 1 }}>
 
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, color: "text.secondary" }}>
-                        {icon}
-                        <Typography sx={{ fontWeight: 600 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+                        {/* the icon in a soft round badge of the tile's colour */}
+                        <Box
+                            sx={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: color,
+                                backgroundColor: alpha(color, 0.12)
+                            }}
+                        >
+                            {icon}
+                        </Box>
+                        <Typography sx={{ fontWeight: 600, color: color }}>
                             {title}
                         </Typography>
                     </Box>
@@ -76,23 +119,78 @@ function Tile({ icon, title, buttons, children }) {
 
             </Card>
         </Grid>
+        </Fade>
     );
 }
 
 
-//the big number of a tile, with a short line under it saying what it is
-function BigNumber({ value, label, color = "text.primary" }) {
+//counts from 0 up to the target in about half a second, slowing down at the end
+function useCountUp(target, duration = 600) {
+
+    const [shown, setShown] = useState(0);
+
+    useEffect(() => {
+
+        if (REDUCE_MOTION) {
+            return;
+        }
+
+        let frame;
+        const start = performance.now();
+
+        const step = (now) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+
+            setShown(target * eased);
+
+            if (progress < 1) {
+                frame = requestAnimationFrame(step);
+            }
+        };
+
+        frame = requestAnimationFrame(step);
+
+        //if the page closes mid-count, stop counting
+        return () => cancelAnimationFrame(frame);
+    }, [target, duration]);
+
+    //with reduce motion the real number is shown straight away
+    return REDUCE_MOTION ? target : shown;
+}
+
+
+//the big number of a tile, with a short line under it saying what it is.
+//format = how to show the number (whole number by default, or money), suffix = text after it, e.g. " / 28"
+function BigNumber({ value, label, color = "text.primary", format = (number) => Math.round(number), suffix = "" }) {
+
+    const shown = useCountUp(value);
 
     return (
         <>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: color, fontVariantNumeric: "tabular-nums" }}>
-                {value}
+            <Typography variant="h4" sx={{ fontWeight: 700, color: color, textAlign: "left" }}>
+                {format(shown)}{suffix}
             </Typography>
             <Typography sx={{ color: "text.secondary", mb: 2 }}>
                 {label}
             </Typography>
         </>
     );
+}
+
+
+//good morning / afternoon / evening, by the computer's clock
+function greeting() {
+
+    const hour = new Date().getHours();
+    
+    if (hour < 12) {
+        return "Good morning";
+    }
+    if (hour < 18) {
+        return "Good afternoon";
+    }
+    return "Good evening";
 }
 
 
@@ -214,7 +312,11 @@ function Dashboard() {
             </Typography>
 
             <Typography sx={{ mb: 3 }}>
-                Welcome <b>{user?.sub}</b>
+                {greeting()}, <b>{user?.sub}</b>
+                <Box component="span" sx={{ color: "text.secondary" }}>
+                    {" · "}
+                    {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+                </Box>
             </Typography>
 
             {error && (
@@ -239,9 +341,10 @@ function Dashboard() {
 
                     {/* ---- 1. count progress ---- */}
                     {showTile("count_progress") && (
-                        <Tile icon={<FactCheckIcon />} title="Count Progress" buttons={itemButtons}>
+                        <Tile icon={<FactCheckIcon />} title="Count Progress" color={TILE_COLORS.count_progress} index={0} buttons={itemButtons}>
                             <BigNumber
-                                value={`${dashboard.count_progress.locations_counted} / ${dashboard.count_progress.locations_total}`}
+                                value={dashboard.count_progress.locations_counted}
+                                suffix={` / ${dashboard.count_progress.locations_total}`}
                                 label="locations fully counted"
                             />
                             <LinearProgress
@@ -259,7 +362,7 @@ function Dashboard() {
 
                     {/* ---- 2. missing (only shortages, extra found is shown apart) ---- */}
                     {showTile("missing") && (
-                        <Tile icon={<ReportProblemIcon />} title="Missing" buttons={missingButtons}>
+                        <Tile icon={<ReportProblemIcon />} title="Missing" color={TILE_COLORS.missing} index={1} buttons={missingButtons}>
                             <BigNumber
                                 value={dashboard.missing.units_short}
                                 label="units short after the staff count"
@@ -286,7 +389,7 @@ function Dashboard() {
 
                     {/* ---- 3. stock waiting in Unassigned ---- */}
                     {showTile("unassigned") && (
-                        <Tile icon={<InventoryIcon />} title="In Unassigned" buttons={unassignedButtons}>
+                        <Tile icon={<InventoryIcon />} title="In Unassigned" color={TILE_COLORS.unassigned} index={2} buttons={unassignedButtons}>
                             <BigNumber
                                 value={dashboard.unassigned.units}
                                 label="units waiting to be placed"
@@ -308,7 +411,7 @@ function Dashboard() {
 
                     {/* ---- 4. requests ---- */}
                     {showTile("requests") && (
-                        <Tile icon={<AssignmentIcon />} title="Requests" buttons={[{ label: "Requests", path: "/requests" }]}>
+                        <Tile icon={<AssignmentIcon />} title="Requests" color={TILE_COLORS.requests} index={3} buttons={[{ label: "Requests", path: "/requests" }]}>
                             <BigNumber
                                 value={dashboard.requests.pending}
                                 label="pending for your department"
@@ -319,7 +422,7 @@ function Dashboard() {
 
                     {/* ---- 5. lost & found ---- */}
                     {showTile("lost_found") && (
-                        <Tile icon={<FindInPageIcon />} title="Lost & Found" buttons={[{ label: "Lost & Found", path: "/lost-found" }]}>
+                        <Tile icon={<FindInPageIcon />} title="Lost & Found" color={TILE_COLORS.lost_found} index={4} buttons={[{ label: "Lost & Found", path: "/lost-found" }]}>
                             <BigNumber
                                 value={dashboard.lost_found.unclaimed}
                                 label="unclaimed items"
@@ -336,9 +439,10 @@ function Dashboard() {
 
                     {/* ---- 6. spend, with a small bar per hotel ---- */}
                     {showTile("spend") && (
-                        <Tile icon={<EuroIcon />} title="Spend" buttons={spendButtons}>
+                        <Tile icon={<EuroIcon />} title="Spend" color={TILE_COLORS.spend} index={5} buttons={spendButtons}>
                             <BigNumber
-                                value={currencyFormatter.format(dashboard.spend.this_month)}
+                                value={dashboard.spend.this_month}
+                                format={(number) => currencyFormatter.format(number)}
                                 label="spent this month"
                             />
                             <Typography sx={{ mb: 1.5 }}>
