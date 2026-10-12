@@ -192,6 +192,13 @@ class CountReset(BaseModel):
     item_id: int | None = None
     preview: bool = True
 
+class CountClose(BaseModel):
+    hotel_id: int | None = None
+    department_id: int | None = None
+    location_id: int | None = None
+    item_id: int | None = None
+    preview: bool = True
+
 
 class ItemResponse(BaseModel):
     id: int

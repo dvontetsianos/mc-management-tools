@@ -4214,6 +4214,193 @@ def reset_counts(
     )
 
     return {"count": count}
+
+#------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------
+#the item locations a count close works on: hotel / department / location / item (empty = all)
+def filter_count_scope(query, scope):
+
+    if scope.hotel_id is not None:
+        query = query.filter(
+            models.ItemLocation.location.has(models.Location.hotel_id == scope.hotel_id)
+        )
+
+    if scope.department_id is not None:
+        query = query.filter(
+            models.ItemLocation.item.has(models.Item.department_id == scope.department_id)
+        )
+
+    if scope.location_id is not None:
+        query = query.filter(models.ItemLocation.location_id == scope.location_id)
+
+    if scope.item_id is not None:
+        query = query.filter(models.ItemLocation.item_id == scope.item_id)
+
+    return query
+
+
+#the same scope in words, for the History line, e.g. "Nido, Housekeeping, all locations, all items"
+def describe_count_scope(db, scope):
+
+    def name_or_all(model, row_id, label):
+        if row_id is None:
+            return f"all {label}"
+
+        row = db.query(model).filter(model.id == row_id).first()
+
+        return row.name if row else f"{label} #{row_id}"
+
+    return ", ".join([
+        name_or_all(models.Hotel, scope.hotel_id, "hotels"),
+        name_or_all(models.Department, scope.department_id, "departments"),
+        name_or_all(models.Location, scope.location_id, "locations"),
+        name_or_all(models.Item, scope.item_id, "items")
+    ])
+
+
+#-------------------------------------------------------------------------------------
+#admin: close a count. Every counted location becomes the new truth:
+#the system quantity becomes what staff counted, each difference is saved as a stock adjustment
+#(missing or found), and the counts are cleared for the next count.
+#locations nobody counted are left as they are.
+#preview=True only lists what would change, nothing is saved
+@app.post("/counts/close")
+def close_counts(
+    scope: schemas.CountClose,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    counted_rows = filter_count_scope(
+        db.query(models.ItemLocation).options(
+            joinedload(models.ItemLocation.item),
+            joinedload(models.ItemLocation.location).joinedload(models.Location.hotel)
+        ).filter(models.ItemLocation.staff_counted_quantity.isnot(None)),
+        scope
+    ).all()
+
+    #stock nobody counted: left alone, only reported in the preview
+    not_counted = filter_count_scope(
+        db.query(models.ItemLocation).filter(
+            models.ItemLocation.staff_counted_quantity.is_(None),
+            models.ItemLocation.total_quantity > 0,
+            models.ItemLocation.location.has(models.Location.name != "Unassigned")
+        ),
+        scope
+    ).count()
+
+    changes = []
+    units_missing = 0
+    units_found = 0
+    value_missing = 0.0
+
+    for item_location in counted_rows:
+        item = item_location.item
+        location = item_location.location
+
+        system = item_location.total_quantity or 0
+        counted = item_location.staff_counted_quantity
+        difference = counted - system
+
+        if difference == 0:
+            continue
+
+        cost = item.cost_per_unit if item else None
+
+        if difference < 0:
+            units_missing += -difference
+            value_missing += -difference * (cost or 0)
+        else:
+            units_found += difference
+
+        changes.append({
+            "item_location_id": item_location.id,
+            "item": item.name if item else None,
+            "location": location.name if location else None,
+            "hotel": location.hotel.name if location and location.hotel else None,
+            "system": system,
+            "counted": counted,
+            "difference": difference,
+            "reason": "missing" if difference < 0 else "found",
+            "unit_cost": cost
+        })
+
+    #by hotel, then location, then item, so the preview reads like a walk through the hotel
+    changes.sort(key=lambda change: (change["hotel"] or "", change["location"] or "", change["item"] or ""))
+
+    summary = {
+        "counts": len(counted_rows),
+        "matching": len(counted_rows) - len(changes),
+        "units_missing": units_missing,
+        "units_found": units_found,
+        "value_missing": round(value_missing, 2),
+        "not_counted": not_counted,
+        "changes": changes
+    }
+
+    if scope.preview or not counted_rows:
+        return summary
+
+    #a safety backup first (the same one update.bat makes); if it fails, nothing is changed
+    backup = subprocess.run(
+        [sys.executable, str(BASE_DIR / "backup_db.py"), "--before-update"],
+        cwd=BASE_DIR,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        timeout=600
+    )
+
+    if backup.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail="The safety backup failed, so nothing was changed. Try System Monitor -> Back up now to see why."
+        )
+
+    for item_location in counted_rows:
+        item = item_location.item
+        location = item_location.location
+        difference = item_location.staff_counted_quantity - (item_location.total_quantity or 0)
+
+        if difference != 0:
+            db.add(models.StockAdjustment(
+                item_id=item_location.item_id,
+                location_id=item_location.location_id,
+                hotel_id=location.hotel_id if location else None,
+                department_id=item.department_id if item else None,
+                quantity=difference,
+                reason="missing" if difference < 0 else "found",
+                unit_cost=item.cost_per_unit if item else None,
+                notes="Count closed",
+                created_by=admin["username"]
+            ))
+
+            #the count becomes the new truth
+            item_location.total_quantity = item_location.staff_counted_quantity
+
+        item_location.staff_counted_quantity = None
+        item_location.staff_counted_at = None
+        item_location.staff_counted_by = None
+
+        #a row left with no stock only existed to keep its count, so it goes too (like Reset counts)
+        if (item_location.total_quantity or 0) <= 0 and (item_location.broken_quantity or 0) <= 0:
+            db.delete(item_location)
+
+    db.commit()
+
+    log_action(
+        db, admin, "closed count", "Item Location",
+        f"{len(counted_rows)} count{'s' if len(counted_rows) != 1 else ''}",
+        None,
+        details=(
+            f"{describe_count_scope(db, scope)}: {units_missing} missing (€{value_missing:.2f}), "
+            f"{units_found} found, {summary['matching']} matching, {not_counted} not counted"
+        )
+    )
+
+    return summary
 #-------------------------------------------------------------------------------------
 #remove an item from a single location (stays assigned elsewhere)
 @app.delete("/item-locations/{item_location_id}")
