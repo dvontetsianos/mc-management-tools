@@ -50,3 +50,12 @@ export const CATALOGUE_COLUMNS = ITEM_SPEC_FIELDS.map((spec) => spec.field)
 //departments that have their own items page (F&B Items, Housekeeping Items, Kitchen Items)
 //a new items page needs its department's exact name added here
 export const DEPARTMENTS_WITH_ITEMS = ["F&B", "Housekeeping", "Kitchen"];
+
+
+//the short details that tell same-named items apart in Quick Count, e.g. "180X260 · Carbone · 100% Cotton"
+//(the backend already leaves out the fields a department doesn't use)
+export function itemDetailsLine(itemLocation) {
+    return [itemLocation?.item_size, itemLocation?.item_color, itemLocation?.item_material]
+        .filter(Boolean)
+        .join(" · ");
+}

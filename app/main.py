@@ -1169,6 +1169,13 @@ def department_item_fields(department) -> list[str]:
 
     return [field for field in ITEM_SPEC_FIELDS if field in saved]
 
+#one catalogue etail of an item (e.g. its size), or None when its department doesn't use that field
+def item_detail(item, field: str, fields: list[str]):
+    if item is None or field not in fields:
+        return None
+
+    return getattr(item, field)
+
 def department_to_dict(department) -> dict:
     return {
         "id": department.id,
@@ -3694,7 +3701,7 @@ def get_item_locations(
 ):
 
     query = db.query(models.ItemLocation).options(
-        joinedload(models.ItemLocation.item),
+        joinedload(models.ItemLocation.item).joinedload(models.Item.department),
         joinedload(models.ItemLocation.location)
     )
 
@@ -3733,14 +3740,32 @@ def get_item_locations(
 
     result = []
 
+    #which catalogue fields (code, size...) each department uses, worked out at oce per department
+    fields_by_department = {}
+
 
     for item_location in item_locations:
+
+        item = item_location.item
+
+        if item and item.department_id not in fields_by_department:
+            fields_by_department[item.department_id] = (
+                department_item_fields(item.department) if item.department else list(ITEM_SPEC_FIELDS)
+            )
+
+        fields = fields_by_department[item.department_id] if item else []
 
         result.append({
             "id": item_location.id,
             "item_id": item_location.item_id,
             "item_name": item_location.item.name if item_location.item else None,
             "item_image_url": item_location.item.image_url if item_location.item else None,
+            #the details that tell same-named items apart (only the ones the department uses)
+            "item_code": item_detail(item, "code", fields),
+            "item_size": item_detail(item, "size", fields),
+            "item_color": item_detail(item, "color", fields),
+            "item_material": item_detail(item, "material", fields),
+            "item_specification": item_detail(item, "specification", fields),
             "location_id": item_location.location_id,
             "location": item_location.location.name if item_location.location else None,
             "total_quantity": item_location.total_quantity,

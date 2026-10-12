@@ -18,6 +18,7 @@ import { getItemLocations, submitItemLocationCount, dismissItemLocationCount } f
 import { formatCountedAt } from "../../utils/countedAt";
 import { API_URL } from "../../config";
 import { renewSession } from "../../services/auth";
+import { itemDetailsLine } from "../../utils/itemFields";
 
 
 
@@ -165,8 +166,13 @@ function ItemQuantity() {
                     <Typography variant="h6" sx={{ fontWeight: "bold", lineHeight: 1.2 }}>
                         {itemLocation?.item_name || "Item"}
                     </Typography>
+                    {itemDetailsLine(itemLocation) && (
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {itemDetailsLine(itemLocation)}
+                        </Typography>
+                    )}
                     <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                        {locationName}
+                        {[itemLocation?.item_code, locationName].filter(Boolean).join(" · ")}
                     </Typography>
                 </Box>
             </Box>
@@ -190,6 +196,13 @@ function ItemQuantity() {
                         }}
                     />
                 </Box>
+            )}
+
+            {/* the long description, so the person can be sure it's the right item */}
+            {itemLocation?.item_specification && (
+                <Typography variant="body2" sx={{ px: 2, mt: 1.5, color: "text.secondary" }}>
+                    {itemLocation.item_specification}
+                </Typography>
             )}
 
             <Dialog open={imageOpen} onClose={() => setImageOpen(false)} maxWidth="md">

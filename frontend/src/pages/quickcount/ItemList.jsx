@@ -18,6 +18,7 @@ import ImageNotSupportedIcon from "@mui/icons-material/ImageNotSupported";
 import { API_URL } from "../../config";
 import { getItemLocations } from "../../services/itemService";
 import { getLocations } from "../../services/locationService";
+import { itemDetailsLine } from "../../utils/itemFields";
 
 
 function ItemList() {
@@ -44,8 +45,11 @@ function ItemList() {
                 (il) => String(il.location_id) === String(locationId)
             );
 
+            //by name, then items with the same name by size (numeric: 24cm before 100cm), then by color
             filtered.sort((a, b) =>
-            (a.item_name || "").localeCompare(b.item_name || "")
+            (a.item_name || "").localeCompare(b.item_name || "") ||
+            (a.item_size || "").localeCompare(b.item_size || "", undefined, { numeric: true }) ||
+            (a.item_color || "").localeCompare(b.item_color || "")
             );
 
             setItemLocations(filtered);
@@ -83,8 +87,10 @@ function ItemList() {
 
         const term = search.trim().toLowerCase();
 
+        //the search also finds codes, sizes, colors and materials
         return itemLocations.filter((il) =>
-            (il.item_name || "").toLowerCase().includes(term)
+            [il.item_name, il.item_code, il.item_size, il.item_color, il.item_material]
+                .some((value) => (value || "").toLowerCase().includes(term))
         );
 
     }, [itemLocations, search]);
@@ -128,7 +134,7 @@ function ItemList() {
                 <TextField
                     fullWidth
                     size="small"
-                    placeholder="Search items..."
+                    placeholder="Search name, size, color, code..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
@@ -150,6 +156,8 @@ function ItemList() {
                 <List sx={{ px: 1, pb: 4 }}>
                     {visibleItems.map((itemLocation) => {
 
+                        const details = itemDetailsLine(itemLocation);
+
                         const isCounted =
                             itemLocation.staff_counted_quantity !== null &&
                             itemLocation.staff_counted_quantity !== undefined;
@@ -164,7 +172,8 @@ function ItemList() {
                                 backgroundColor: isCounted ? "#e8f5e9" : "white",
                                 display: "flex",
                                 justifyContent: "space-between",
-                                alignItems: "center"
+                                alignItems: "center",
+                                gap: 1
                             }}
                             >
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
@@ -180,6 +189,20 @@ function ItemList() {
 
                                     <ListItemText
                                         primary={itemLocation.item_name}
+                                        secondary={
+                                            <>
+                                                {details && (
+                                                    <Box component="span" sx={{ display: "block", color: "text.primary" }}>
+                                                        {details}
+                                                    </Box>
+                                                )}
+                                                {itemLocation.item_code && (
+                                                    <Box component="span" sx={{ display: "block", fontSize: "0.75rem" }}>
+                                                        {itemLocation.item_code}
+                                                    </Box>
+                                                )}
+                                            </>
+                                        }
                                     />
                                 </Box>
 
@@ -190,6 +213,7 @@ function ItemList() {
                                         size="small"
                                         color="success"
                                         variant="outlined"
+                                        sx={{ flexShrink: 0 }}
                                     />
                                 )}
                             </ListItemButton>

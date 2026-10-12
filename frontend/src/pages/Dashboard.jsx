@@ -66,7 +66,7 @@ function Tile({ icon, title, color, index, buttons, children }) {
     const navigate = useNavigate();
 
     return (
-        <Fade in timeout={REDUCE_MOTION ? 0 : 500} style={{ transitionDelay: REDUCE_MOTION ? "0ms" : `${index * 80}ms` }}>
+        <Fade in timeout={REDUCE_MOTION ? 0 : 500} style={{ transitionDelay: REDUCE_MOTION ? "0ms" : `${index * 300}ms` }}>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Card
                 sx={{
