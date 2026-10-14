@@ -4872,6 +4872,27 @@ def get_purchases(
 
     return result
 
+#--------------------------------------------------------------------------------------
+#an item's Cost per Unit follows its latest purchase (by invoice date, or the day it was logged if there's no invoice date)
+#purchases without a cost are skipped; with no costed purchases the cost stays as it is
+#returns a short note for History, or "" when nothing changed
+def update_cost_from_purchases(db: Session, item):
+
+    latest = db.query(models.Purchase).filter(
+        models.Purchase.item_id == item.id,
+        models.Purchase.unit_cost.isnot(None)
+    ).order_by(
+        func.coalesce(models.Purchase.document_date, models.Purchase.created_at).desc(),
+        models.Purchase.id.desc()
+    ).first()
+
+    if latest is None or latest.unit_cost == item.cost_per_unit:
+        return ""
+
+    old_cost = item.cost_per_unit if item.cost_per_unit is not None else "empty"
+    item.cost_per_unit = latest.unit_cost
+
+    return f", Cost per Unit: {old_cost} -> {latest.unit_cost}"
 
 #---------------------------------------------------------------------
 #log a purchase
@@ -5006,6 +5027,10 @@ def create_purchase(
     )
 
     db.add(receiving_movement)
+
+    #the item's Cost per Unit follows its latest purchase
+    cost_change = update_cost_from_purchases(db, item)
+
     db.commit()
     db.refresh(new_purchase)
 
@@ -5016,7 +5041,7 @@ def create_purchase(
         "Item",
         item.name,
         item.id,
-        details=f"Qty: {new_purchase.quantity}" + (f", Supplier: {supplier.name}" if supplier else "") + f", received into {location.name}"
+        details=f"Qty: {new_purchase.quantity}" + (f", Supplier: {supplier.name}" if supplier else "") + f", received into {location.name}" + cost_change
     )
 
     return {
@@ -5090,10 +5115,18 @@ def delete_purchase(
         location_note = f" (removed from {location_name})"
 
     db.delete(db_purchase)
+    db.flush()
+
+    #the item's cost goes back to its latest purchase that's left
+    cost_change = ""
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if item is not None:
+        cost_change = update_cost_from_purchases(db, item)
+
     db.commit()
 
 
-    log_action(db, user=admin, action="deleted a logged purchase for",entity_type="Item", entity_name=item_name, entity_id=item_id, details=f"Qty: {quantity}{location_note}")
+    log_action(db, user=admin, action="deleted a logged purchase for",entity_type="Item", entity_name=item_name, entity_id=item_id, details=f"Qty: {quantity}{location_note}{cost_change}")
 
 
     return {"message": "Purchase deleted successfully"}

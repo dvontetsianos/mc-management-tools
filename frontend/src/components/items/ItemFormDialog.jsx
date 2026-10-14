@@ -243,6 +243,7 @@ function ItemFormDialog({
                         disabled={detailsLocked}
                         type="number"
                         value={form.cost_per_unit}
+                        helperText="Updated automatically by the latest purchase"
                         onChange={(e) => 
                             setForm({
                                 ...form,
