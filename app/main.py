@@ -5057,7 +5057,12 @@ if FRONTEND_DIST.exists():
             and not path.startswith(("/uploads", "/assets", "/docs", "/redoc", "/openapi.json"))
         )
         if is_page_load:
-            return FileResponse(FRONTEND_DIST / "index.html")
+            #never saved by the browser, and "Vary: Accept" says page loads and data calls are different answers,
+            #so e.g. the Dashboard's data call to /dashboard can't get the saved page back
+            page = FileResponse(FRONTEND_DIST / "index.html")
+            page.headers["Cache-Control"] = "no-store"
+            page.headers["Vary"] = "Accept"
+            return page
         return await call_next(request)
 
     @app.get("/{full_path:path}")
