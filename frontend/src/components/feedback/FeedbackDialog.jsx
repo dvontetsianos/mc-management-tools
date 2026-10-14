@@ -1,33 +1,53 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Alert } from "@mui/material";
 import { useState } from "react";
 import { sendFeedback } from "../../services/feedbackService";
 
 
-function FeedbackDialog({ open, onClose }) {
-    
-    const handleSend = async () => {
+const EMPTY_FEEDBACK = { type: "Bug", message: "" };
 
-        console.log("SENDING:", feedback);
-        await sendFeedback(feedback);
-        
-        setFeedback({
-            type: "Bug",
-            message: ""
-        });
 
+//report a bug / suggestion. Used in the menu and in Quick Count.
+//onSent = optional, called after it was saved (e.g. to show a "thank you" message)
+function FeedbackDialog({ open, onClose, onSent }) {
+
+    const [feedback, setFeedback] = useState(EMPTY_FEEDBACK);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState("");
+
+    const handleClose = () => {
+        setError("");
         onClose();
-        
     };
 
-    const [feedback, setFeedback] = useState({
-        type: "Bug",
-        message: ""
-    });
+    const handleSend = async () => {
+
+        setSending(true);
+        setError("");
+
+        try {
+            await sendFeedback(feedback);
+
+            setFeedback(EMPTY_FEEDBACK);
+            onClose();
+
+            if (onSent) {
+                onSent();
+            }
+
+        } catch (err) {
+            //e.g. no connection: the text stays in the box, so nothing typed is lost
+            setError(err.message);
+        } finally {
+            setSending(false);
+        }
+    };
 
     return (
         <Dialog
             open={open}
-            onClose={onClose}
+            onClose={sending ? undefined : handleClose}
+            fullWidth
+            maxWidth="xs"
         >
 
             <DialogTitle>
@@ -82,20 +102,27 @@ function FeedbackDialog({ open, onClose }) {
                         })
                     }
                 />
-                    
+
+                {error && (
+                    <Alert severity="error" sx={{ mt: 1 }}>
+                        {error}
+                    </Alert>
+                )}
+
             </DialogContent>
 
             <DialogActions>
 
-                <Button onClick={onClose}>
+                <Button onClick={handleClose} disabled={sending}>
                     Cancel
                 </Button>
 
                 <Button
                     variant="contained"
                     onClick={handleSend}
+                    disabled={sending || !feedback.message.trim()}
                 >
-                    Send
+                    {sending ? "Sending..." : "Send"}
                 </Button>
 
             </DialogActions>

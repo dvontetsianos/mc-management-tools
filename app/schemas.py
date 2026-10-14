@@ -37,6 +37,10 @@ class FeedbackCreate(BaseModel):
     message: str
 
 
+class FeedbackStatusUpdate(BaseModel):
+    status: str
+
+
 class UserPasswordUpdate(BaseModel):
     password: str
 

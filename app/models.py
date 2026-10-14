@@ -426,6 +426,20 @@ class StockAdjustment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String)
+    type = Column(String)
+    message = Column(String)
+    role = Column(String, nullable=True)
+    #new -> seen -> done
+    status = Column(String, default="new")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
 

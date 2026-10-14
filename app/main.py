@@ -50,7 +50,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 #full paths, so the logs always end up in the project's logs folder, wherever the service was started from
 LOGS_DIR = BASE_DIR / "logs"
-LOG_FILE = LOGS_DIR / "user_feedback.txt"
 LOGIN_LOG_FILE = LOGS_DIR / "login_log.txt"
 
 #when this backend started, shown on System Monitor
@@ -2050,27 +2049,93 @@ def refresh_token(current_user: dict = Depends(get_current_user), db: Session = 
     }
 
 #----------------------------------------------------------------------------
-#feedback
+#feedback: anyone logged in can send it, admins read it on the Feedback page
+FEEDBACK_STATUSES = ["new", "seen", "done"]
+
+def feedback_to_dict(feedback) -> dict:
+    return {
+        "id": feedback.id,
+        "username": feedback.username,
+        "type": feedback.type,
+        "message": feedback.message,
+        "role": feedback.role,
+        "status": feedback.status,
+        "created_at": feedback.created_at
+    }
+
 @app.post("/feedback")
 def save_feedback(
     feedback: schemas.FeedbackCreate,
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
 
-    os.makedirs(LOGS_DIR, exist_ok=True)
-    
-    with open(LOG_FILE, "a", encoding="utf-8") as file:
-    
-        file.write("=" * 50 + "\n")
-        file.write(f"Date: {datetime.now()}\n")
-        file.write(f"User: {current_user['username']}\n")
-        file.write(f"Type: {feedback.type}\n")
-        file.write("Message:\n")
-        file.write(feedback.message + "\n")
-        file.write("=" * 50 + "\n\n")
+    message = feedback.message.strip()
+
+    if not message:
+        raise HTTPException(status_code=400, detail="Write a message first.")
+
+    db.add(models.Feedback(
+        username=current_user["username"],
+        type=feedback.type,
+        message=message,
+        role=current_user["role"],
+        status="new"
+    ))
+    db.commit()
 
     return {"message": "Feedback saved"}
 
+
+#all feedback, newest first. status="new" / "seen" / "done" shows only those
+@app.get("/feedback")
+def get_feedback(
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    query = db.query(models.Feedback)
+
+    if status:
+        query = query.filter(models.Feedback.status == status)
+
+    return [feedback_to_dict(feedback) for feedback in query.order_by(models.Feedback.created_at.desc()).all()]
+
+
+#how many are still new, for the red dot in the menu
+@app.get("/feedback/new-count")
+def get_new_feedback_count(
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    count = db.query(models.Feedback).filter(models.Feedback.status == "new").count()
+
+    return {"count": count}
+
+
+#mark one as new / seen / done
+@app.put("/feedback/{feedback_id}")
+def update_feedback_status(
+    feedback_id: int,
+    update: schemas.FeedbackStatusUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    if update.status not in FEEDBACK_STATUSES:
+        raise HTTPException(status_code=400, detail="Status must be new, seen or done.")
+
+    feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+
+    if feedback is None:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+
+    feedback.status = update.status
+    db.commit()
+
+    return feedback_to_dict(feedback)
 #-----------------------------------------------------------------------
 #system status for the System Monitor page (admin only)
 @app.get("/system/status")

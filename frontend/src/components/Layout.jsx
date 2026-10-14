@@ -40,6 +40,8 @@ import HistoryIcon from "@mui/icons-material/History";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import FindInPageIcon from "@mui/icons-material/FindInPage";
 import { getPendingRequestCount } from "../services/requestService";
+import { getNewFeedbackCount } from "../services/feedbackService";
+import InboxIcon from "@mui/icons-material/Inbox";
 import { API_URL } from "../config";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
@@ -96,6 +98,7 @@ const NAV_SECTIONS = [
         links: [
             { label: "User Management", path: "/users", icon: <PeopleIcon />, show: isAdmin },
             { label: "History", path: "/history", icon: <HistoryIcon />, show: isAdmin },
+            { label: "Feedback", path: "/feedback", icon: <InboxIcon />, show: isAdmin, badge: "feedback" },
             { label: "Excel Viewer", path: "/excel", icon: <TableChartIcon />, show: has("view_excel_access") },
             { label: "System Monitor", path: "/system-monitor", icon: <MonitorHeartIcon />, show: isAdmin }
         ]
@@ -288,6 +291,33 @@ function Layout() {
 
     const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
+        //admins: how many feedback are still new, for the red dot on Feedback
+    const [newFeedbackCount, setNewFeedbackCount] = useState(0);
+
+    useEffect(() => {
+
+        if (getUser()?.role !== "admin") {
+            return;
+        }
+
+        const loadFeedbackCount = () => {
+            getNewFeedbackCount()
+                .then(setNewFeedbackCount)
+                .catch(() => {});
+        };
+
+        loadFeedbackCount();
+
+        //every 5 minutes, and straight away when the Feedback page changes a status
+        const interval = setInterval(loadFeedbackCount, 300000);
+        window.addEventListener("feedback-changed", loadFeedbackCount);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener("feedback-changed", loadFeedbackCount);
+        };
+    }, []);
+
     //which widgets are switches on (System Monitor -> Admin Tools), nothing shows until it's known
     const [settings, setSettings] = useState(null);
 
@@ -430,7 +460,10 @@ function Layout() {
                                         icon={link.icon}
                                         open={sidebarOpen}
                                         active={isActive(link.path)}
-                                        dot={link.badge === "requests" && pendingRequestCount > 0}
+                                        dot={
+                                            (link.badge === "requests" && pendingRequestCount > 0) ||
+                                            (link.badge === "feedback" && newFeedbackCount > 0)
+                                            }
                                         onClick={() => navigate(link.path)}
                                     />
                                 ))}

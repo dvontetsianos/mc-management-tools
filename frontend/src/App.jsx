@@ -21,6 +21,7 @@ const Excel = lazy(() => import("./pages/Excel"));
 const Departments = lazy(() => import("./pages/Departments"));
 const Requests = lazy(() => import("./pages/Requests"));
 const History = lazy(() => import("./pages/History"));
+const Feedback = lazy(() => import("./pages/Feedback"));
 const Reports = lazy(() => import("./pages/Reports"));
 const SpendReport = lazy(() => import("./pages/reports/SpendReport"));
 const LostFound = lazy(() => import("./pages/LostFound"));
@@ -219,6 +220,15 @@ function App() {
                     element={
                         <PermissionRoute adminOnly>
                             <History />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
+                    path="/feedback"
+                    element={
+                        <PermissionRoute adminOnly>
+                            <Feedback />
                         </PermissionRoute>
                     }
                 />

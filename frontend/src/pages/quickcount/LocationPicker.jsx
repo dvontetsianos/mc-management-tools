@@ -6,9 +6,13 @@ import {
     Card,
     CardActionArea,
     CircularProgress,
-    Button
+    Button,
+    Snackbar,
+    Alert
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import FeedbackIcon from "@mui/icons-material/Feedback";
+import FeedbackDialog from "../../components/feedback/FeedbackDialog";
 import { getLocations } from "../../services/locationService";
 import { logout, getUser } from "../../services/auth";
 import { getHotels } from "../../services/hotelService";
@@ -18,6 +22,10 @@ import { getHotels } from "../../services/hotelService";
 function LocationPicker() {
 
     const navigate = useNavigate();
+
+    //the feedback window, and the "thank you" message after sending
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
+    const [feedbackSent, setFeedbackSent] = useState(false);
 
     const [locations, setLocations] = useState([]);
     const [hotels, setHotels] = useState([]);
@@ -100,14 +108,41 @@ function LocationPicker() {
                     Quick Count
                 </Typography>
 
-                <Button
-                    size="small"
-                    startIcon={<LogoutIcon />}
-                    onClick={handleLogout}
-                >
-                    Log out
-                </Button>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button
+                        size="small"
+                        startIcon={<FeedbackIcon />}
+                        onClick={() => setFeedbackOpen(true)}
+                    >
+                        Feedback
+                    </Button>
+
+                    <Button
+                        size="small"
+                        startIcon={<LogoutIcon />}
+                        onClick={handleLogout}
+                    >
+                        Log out
+                    </Button>
+                </Box>
             </Box>
+
+            <FeedbackDialog
+                open={feedbackOpen}
+                onClose={() => setFeedbackOpen(false)}
+                onSent={() => setFeedbackSent(true)}
+            />
+
+            <Snackbar
+                open={feedbackSent}
+                autoHideDuration={3000}
+                onClose={() => setFeedbackSent(false)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+            >
+                <Alert severity="success" variant="filled" onClose={() => setFeedbackSent(false)}>
+                    Thank you, your feedback was sent.
+                </Alert>
+            </Snackbar>
 
             {selectedHotel && (
                 <Box
