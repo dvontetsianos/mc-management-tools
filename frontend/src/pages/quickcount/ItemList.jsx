@@ -45,11 +45,16 @@ function ItemList() {
                 (il) => String(il.location_id) === String(locationId)
             );
 
-            //by name, then items with the same name by size (numeric: 24cm before 100cm), then by color
+            //counted items first, then the ones not counted yet.
+            //inside each group: by name, then same-named items by size (numeric: 24cm before 100cm), then by color
+            const isCounted = (il) =>
+                il.staff_counted_quantity !== null && il.staff_counted_quantity !== undefined;
+
             filtered.sort((a, b) =>
-            (a.item_name || "").localeCompare(b.item_name || "") ||
-            (a.item_size || "").localeCompare(b.item_size || "", undefined, { numeric: true }) ||
-            (a.item_color || "").localeCompare(b.item_color || "")
+                Number(isCounted(b)) - Number(isCounted(a)) ||
+                (a.item_name || "").localeCompare(b.item_name || "") ||
+                (a.item_size || "").localeCompare(b.item_size || "", undefined, { numeric: true }) ||
+                (a.item_color || "").localeCompare(b.item_color || "")
             );
 
             setItemLocations(filtered);
