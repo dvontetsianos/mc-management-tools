@@ -13,16 +13,23 @@ After the update, **Close count** turns the October counts into the new stock (p
 
 ## A. Practice run on the laptop (a few days before, on a COPY of the server database)
 
+> **Done once on 14 Oct 2026:** all 3 scripts worked, the app loaded, close count preview was correct.
+> Repeat it if the code changes a lot before update day.
+> If the backend gets started before the scripts by mistake, that's harmless: it only adds the new empty tables.
+
+
 - [ ] 1. On the server, copy `C:\MC Management Tools\assets.db` (and `uploads` if you want photos) to a USB / shared folder.
 - [ ] 2. On the laptop, keep the laptop's own `assets.db` aside in a **separate** folder (not the project folder).
 - [ ] 3. With the backend stopped, put the server copy in the laptop project folder as `assets.db`.
 - [ ] 4. Run the 3 scripts from step 9d, in order. Each should finish without errors.
-- [ ] 5. Start the backend and frontend. Check:
+- [ ] 5. Start the backend and frontend. **Log in with your server admin account** (the laptop login isn't in this copy). Check:
   - [ ] F&B Items loads, staff counts are there (Staff Count, Missing).
   - [ ] Dashboard loads.
   - [ ] **Close count** → preview for one location looks right (each row = counted − system).
         Closing is fine too, it's only a copy.
-- [ ] 6. Stop the backend and put the laptop's own `assets.db` back.
+- [ ] 6. Optional: stop the backend and put the laptop's own `assets.db` back
+  (or keep the server copy to develop with, as done on 14 Oct 2026).
+- **Never copy the laptop's `assets.db` to the server.** The server keeps its own database; only the code changes.
 
 ## B. On the laptop (update day, before going to the server)
 
@@ -61,6 +68,8 @@ After the update, **Close count** turns the October counts into the new stock (p
   - [ ] Dashboard tiles show numbers.
   - [ ] Quick Count opens on a phone.
   - [ ] Edit an item as admin → saves.
+- [ ] 12b. If a page shows **"Unexpected token '<'"** or still looks old, press **Ctrl+Shift+R** once
+  (phones: reload the page / clear the browser cache). Tell staff the same if they see it.
 
 ## E. Close the October count (only when counting is really finished)
 
@@ -87,7 +96,9 @@ After the update, **Close count** turns the October counts into the new stock (p
 
 ## G. Later (not on update day)
 
-- Read-only check that every `broken_quantity` on the server is 0, before it is removed from the code (close count step 6).
+- `broken_quantity` is **NOT all 0** on the server (found 14 Oct 2026): 4 F&B rows at Marbella → Deck
+  (MENU DECK ΒΡΑΔΙ 5, MENU DECK ΜΕΣΗΜΕΡΙ 16, MENU DECK ΜΕΣΗΜΕΡΙ ΠΟΤΑ 18, WINE LIST DECK ΒΡΑΔΙ 2).
+  Decide what to do with them **before** the broken column is removed from the code (close count step 6).
 - Opening quantity becomes a one-time setup tool (hide or lock it after the setup year, decision pending).
 
 ## If something goes wrong
