@@ -770,7 +770,9 @@ function KitchenItems() {
           <ItemsFilterPanel
             open={itemFiltersOpen}
             categories={categories.map((c) => c.name)}
-            subcategoriesList={subcategories.map((s) => s.name)}
+            subcategoriesList={subcategories
+              .filter((s) => categories.some((c) => c.id === s.category_id))
+              .map((s) => s.name)}
             locationsList={locations.map((l) => l.name)}
             suppliersList={suppliers.map((s) => s.name)}
             hotelsList={hotels.map((h) => h.name)}
