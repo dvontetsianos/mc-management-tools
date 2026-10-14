@@ -6,7 +6,7 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 function Reports() {
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
 
             <Typography variant="h4" gutterBottom>
                 Reports

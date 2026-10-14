@@ -39,6 +39,7 @@ import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/items/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ItemsHelpButton from "../components/items/ItemsHelpButton";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { useTableZoom } from "../hooks/useTableZoom";
 import TableZoomToggle from "../components/TableZoomToggle";
 import ColumnsButton from "../components/items/ColumnsButton";
@@ -590,30 +591,50 @@ function KitchenItems() {
 
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
 
-      {/* HEADER */}
+      {/* HEADER: title and help on the left, Quick Count and the Excel export on the right */}
 
       <Box
         sx={{
-          position: "relative",
           display: "flex",
-          justifyContent: "center",
           alignItems: "center",
-          mb: 5,
-          mt: -5
+          flexWrap: "wrap",
+          gap: 1,
+          mb: 3
         }}
       >
-        <h1>Kitchen Items</h1>
+        <Typography variant="h4" component="h1">
+          Kitchen Items
+        </Typography>
 
         <ItemsHelpButton department="Kitchen" />
-      </Box>
 
-      {/* ITEMS TAB */}
-      {tab === 0 && (
-        <>
+        <Box sx={{ ml: "auto", display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {/* closing / resetting a count: admins only */}
+          {getUser()?.role === "admin" && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => setCountCloseOpen(true)}
+              >
+                Close count
+              </Button>
+
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => setCountResetOpen(true)}
+              >
+                Reset counts
+              </Button>
+            </>
+          )}
+
           <Button
             variant="outlined"
+            color="success"
+            startIcon={<FileDownloadIcon />}
             onClick={async () => {
               try {
                 await exportItems(sortedItems, itemSearch);
@@ -621,24 +642,15 @@ function KitchenItems() {
                 alert(error.message);
               }
             }}
-            sx={{
-              position: "absolute",
-              top: 9,
-              right: 24,
-              zIndex: 10,
-              fontWeight: "bold",
-              letterSpacing: 0.5,
-              backgroundColor: "white",
-              color: "green",
-              "&:hover": {
-                backgroundColor: "#217346",
-                borderColor: "#217346",
-                color: "white"
-              }
-            }}
           >
-            .XLSX
+            Export .xlsx
           </Button>
+        </Box>
+      </Box>
+
+      {/* ITEMS TAB */}
+      {tab === 0 && (
+        <>
 
           <ItemFormDialog
             open={itemDialogOpen}
@@ -667,8 +679,9 @@ function KitchenItems() {
               display: "flex",
               justifyContent: "flex-start",
               alignItems: "center",
-              gap: 2,
-              mb: 5
+              flexWrap: "wrap",
+              gap: 1.5,
+              mb: 2.5
             }}
           >
 
@@ -752,24 +765,6 @@ function KitchenItems() {
               </Button>
             )}
 
-            {getUser()?.role === "admin" && (
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => setCountResetOpen(true)}
-              >
-                Reset counts
-              </Button>
-            )}
-
-            {getUser()?.role === "admin" && (
-              <Button
-                variant="outlined"
-                onClick={() => setCountCloseOpen(true)}
-              >
-                Close count
-              </Button>
-            )}
           </Box>
 
           <ItemsFilterPanel

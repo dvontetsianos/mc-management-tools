@@ -1,5 +1,19 @@
-import { Drawer, List, ListItem, ListItemButton, ListItemText, Toolbar, Box, Button, Badge, Divider } from "@mui/material";
-import { Outlet, useNavigate } from "react-router-dom";
+import {
+    Drawer,
+    List,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    ListSubheader,
+    Box,
+    Badge,
+    Divider,
+    IconButton,
+    Tooltip,
+    Typography
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { logout, getUser, getToken } from "../services/auth";
 import { useState, useEffect, Suspense } from "react";
 import FeedbackDialog from "../components/feedback/FeedbackDialog";
@@ -16,6 +30,8 @@ import CategoryIcon from "@mui/icons-material/Category";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import TableChartIcon from "@mui/icons-material/TableChart";
+import MenuOpenIcon from "@mui/icons-material/MenuOpen";
+import MenuIcon from "@mui/icons-material/Menu";
 import Calculator from "../components/Calculator";
 import Clock from "../components/Clock";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -28,6 +44,110 @@ import { API_URL } from "../config";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { getSettings } from "../services/systemService";
+import { NAVY } from "../theme";
+
+
+const OPEN_WIDTH = 248;
+
+//the small round buttons at the bottom of the menu (extend session, feedback, logout)
+const FOOTER_BUTTON = {
+    color: "rgba(255,255,255,0.72)",
+    "&:hover": { color: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.1)" }
+};
+const CLOSED_WIDTH = 72;
+
+//admins see everything, everyone else needs the permission
+const isAdmin = (user) => user?.role === "admin";
+const has = (permission) => (user) => isAdmin(user) || user?.permissions?.includes(permission);
+
+
+//the menu, in groups. show = who sees the link (same rules as before)
+const NAV_SECTIONS = [
+    {
+        title: "Overview",
+        links: [
+            { label: "Dashboard", path: "/dashboard", icon: <DashboardIcon />, show: () => true },
+            { label: "Requests", path: "/requests", icon: <AssignmentIcon />, show: has("requests_access"), badge: "requests" },
+            { label: "Reports", path: "/reports", icon: <AssessmentIcon />, show: has("reports_access") }
+        ]
+    },
+    {
+        title: "Inventory",
+        links: [
+            { label: "F&B Items", path: "/fnb-items", icon: <RestaurantIcon />, show: has("fnb_items_access") },
+            { label: "Housekeeping Items", path: "/housekeeping-items", icon: <CleaningServicesIcon />, show: has("housekeeping_items_access") },
+            { label: "Kitchen Items", path: "/kitchen-items", icon: <KitchenIcon />, show: has("kitchen_items_access") },
+            { label: "Purchases", path: "/purchases", icon: <ShoppingCartIcon />, show: has("purchases_access") },
+            { label: "Item Movements", path: "/movements", icon: <SwapHorizIcon />, show: has("movements_access") },
+            { label: "Lost & Found", path: "/lost-found", icon: <FindInPageIcon />, show: has("lost_found_access") }
+        ]
+    },
+    {
+        title: "Setup",
+        links: [
+            { label: "Categories", path: "/categories", icon: <CategoryIcon />, show: has("categories_access") },
+            { label: "Locations", path: "/locations", icon: <LocationOnIcon />, show: has("locations_access") },
+            { label: "Suppliers", path: "/suppliers", icon: <LocalShippingIcon />, show: has("suppliers_access") },
+            { label: "Departments", path: "/departments", icon: <BusinessIcon />, show: isAdmin }
+        ]
+    },
+    {
+        title: "Admin",
+        links: [
+            { label: "User Management", path: "/users", icon: <PeopleIcon />, show: isAdmin },
+            { label: "History", path: "/history", icon: <HistoryIcon />, show: isAdmin },
+            { label: "Excel Viewer", path: "/excel", icon: <TableChartIcon />, show: has("view_excel_access") },
+            { label: "System Monitor", path: "/system-monitor", icon: <MonitorHeartIcon />, show: isAdmin }
+        ]
+    }
+];
+
+
+//one menu link. Closed sidebar: only the icon, the name shows as a tooltip
+function NavLink({ label, icon, active, open, onClick, dot = false }) {
+
+    const button = (
+        <ListItemButton
+            onClick={onClick}
+            selected={active}
+            sx={{
+                mx: 1.25,
+                mb: 0.25,
+                minHeight: 36,
+                py: 0.5,
+                borderRadius: 2,
+                px: open ? 1.5 : 0,
+                justifyContent: open ? "flex-start" : "center",
+                color: "rgba(255, 255, 255, 0.72)",
+                "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.07)", color: "#FFFFFF" },
+                "&.Mui-selected": {
+                    backgroundColor: alpha("#4A7FC6", 0.28),
+                    color: "#FFFFFF",
+                    "&:hover": { backgroundColor: alpha("#4A7FC6", 0.36) }
+                }
+            }}
+        >
+            <ListItemIcon sx={{ minWidth: 0, mr: open ? 1.5 : 0, color: "inherit", "& svg": { fontSize: 20 } }}>
+                <Badge variant="dot" color="error" invisible={!dot}>
+                    {icon}
+                </Badge>
+            </ListItemIcon>
+
+            {open && (
+                <ListItemText
+                    primary={label}
+                    slotProps={{ primary: { fontSize: "0.875rem", fontWeight: active ? 650 : 500, noWrap: true } }}
+                />
+            )}
+        </ListItemButton>
+    );
+
+    return open ? button : (
+        <Tooltip title={label} placement="right" arrow>
+            {button}
+        </Tooltip>
+    );
+}
 
 
 function Layout() {
@@ -158,6 +278,8 @@ function Layout() {
 
     const navigate = useNavigate();
 
+    const { pathname } = useLocation();
+
     const [feedbackOpen, setFeedbackOpen] = useState(false);
 
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -194,531 +316,222 @@ function Layout() {
 
     };
 
+    const width = sidebarOpen ? OPEN_WIDTH : CLOSED_WIDTH;
+
+    //the link of the page we're on is highlighted, also on its sub pages (e.g. /reports/spend)
+    const isActive = (path) => pathname === path || pathname.startsWith(`${path}/`);
+
+    //the session turns orange in its last 5 minutes
+    const sessionEnding = sessionTime < "05:00";
+
+
     return (
-        <div>
+        <Box sx={{ display: "flex", minHeight: "100vh" }}>
             <Drawer
                 variant="permanent"
                 sx={{
-                    width: sidebarOpen ? 240 : 70,
-
+                    width,
+                    flexShrink: 0,
+                    transition: "width 0.2s",
                     "& .MuiDrawer-paper": {
-                        width: sidebarOpen ? 240 : 70,
+                        width,
                         boxSizing: "border-box",
-                        backgroundColor: "#080125",
-                        color: "white",
-                    },
+                        backgroundColor: NAVY,
+                        color: "#FFFFFF",
+                        borderRight: "none",
+                        overflowX: "hidden",
+                        transition: "width 0.2s",
+                        display: "flex",
+                        flexDirection: "column"
+                    }
                 }}
             >
-                <Toolbar
-
+                {/* logo, app name and the open / close button */}
+                <Box
                     sx={{
                         display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center"
+                        alignItems: "center",
+                        gap: 1.25,
+                        px: sidebarOpen ? 2 : 0,
+                        py: 2,
+                        justifyContent: sidebarOpen ? "flex-start" : "center",
+                        flexDirection: sidebarOpen ? "row" : "column"
                     }}
                 >
-
-                    <ListItemButton 
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        sx={{
-                            width: "auto",
-                            flex: "none",
-                            ml: -2,
-                            color: "#7d89f8"
-                        }}
-
-                    >
-                        <ListItemText
-                            primary="☰"
-                        />
-                    </ListItemButton>
+                    <Box
+                        component="img"
+                        src="/MC.png"
+                        alt=""
+                        onClick={() => navigate("/dashboard")}
+                        sx={{ width: 34, height: 34, borderRadius: 2, cursor: "pointer", flexShrink: 0 }}
+                    />
 
                     {sidebarOpen && (
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                fontSize: "12px",
-                                color: "white",
-                                whiteSpace: "nowrap"
-                            }}
-                        >
-
-                            <span>
-                            Session Timer {sessionTime}
-                            </span>
-
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={extendSession}
-                                sx={{
-                                    minWidth: "25px",
-                                    padding: "0px",
-                                    color: "white",
-                                    borderColor: "white"
-                                }}
-                            >
-                                <RefreshIcon fontSize="small" />
-                            </Button>
+                        <Box sx={{ minWidth: 0, flexGrow: 1, lineHeight: 1.15 }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "#FFFFFF" }} noWrap>
+                                MC Management
+                            </Typography>
+                            <Typography sx={{ fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }} noWrap>
+                                Marbella Collection
+                            </Typography>
                         </Box>
                     )}
-                </Toolbar>
-                
 
+                    <Tooltip title={sidebarOpen ? "Collapse menu" : "Expand menu"} placement="right">
+                        <IconButton
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                            size="small"
+                            sx={{ color: "rgba(255,255,255,0.6)", "&:hover": { color: "#FFFFFF", backgroundColor: "rgba(255,255,255,0.08)" } }}
+                        >
+                            {sidebarOpen ? <MenuOpenIcon fontSize="small" /> : <MenuIcon fontSize="small" />}
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+
+                {/* the page links, in groups */}
+                <Box sx={{ flexGrow: 1, overflowY: "auto", overflowX: "hidden", pb: 1 }}>
+                    {NAV_SECTIONS.map((section) => {
+
+                        const links = section.links.filter((link) => link.show(user));
+
+                        if (links.length === 0) {
+                            return null;
+                        }
+
+                        return (
+                            <List
+                                key={section.title}
+                                disablePadding
+                                sx={{ mb: 0.5 }}
+                                subheader={sidebarOpen ? (
+                                    <ListSubheader
+                                        disableSticky
+                                        sx={{
+                                            backgroundColor: "transparent",
+                                            color: "rgba(255,255,255,0.42)",
+                                            fontSize: "0.68rem",
+                                            fontWeight: 700,
+                                            letterSpacing: "0.12em",
+                                            textTransform: "uppercase",
+                                            lineHeight: "28px",
+                                            px: 2.75
+                                        }}
+                                    >
+                                        {section.title}
+                                    </ListSubheader>
+                                ) : (
+                                    <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mx: 2, my: 1 }} />
+                                )}
+                            >
+                                {links.map((link) => (
+                                    <NavLink
+                                        key={link.path}
+                                        label={link.label}
+                                        icon={link.icon}
+                                        open={sidebarOpen}
+                                        active={isActive(link.path)}
+                                        dot={link.badge === "requests" && pendingRequestCount > 0}
+                                        onClick={() => navigate(link.path)}
+                                    />
+                                ))}
+                            </List>
+                        );
+                    })}
+                </Box>
+
+                <Divider sx={{ borderColor: "rgba(255, 255, 255, 0.1)" }} />
+
+                {/* session timer, then feedback and logout: one row when the menu is open, stacked when closed */}
+                <Box
+                    sx={{
+                        p: 1.25,
+                        display: "flex",
+                        flexDirection: sidebarOpen ? "row" : "column",
+                        alignItems: "center",
+                        gap: 0.5
+                    }}
+                >
                     <Box
                         sx={{
-                            color: "#fffffff0",
-                            height: "100%",
+                            flexGrow: 1,
+                            width: sidebarOpen ? "auto" : "100%",
+                            px: sidebarOpen ? 1.25 : 0,
+                            py: 0.5,
                             display: "flex",
-                            flexDirection: "column"
+                            alignItems: "center",
+                            justifyContent: sidebarOpen ? "space-between" : "center",
+                            borderRadius: 2,
+                            backgroundColor: "rgba(255,255,255,0.05)"
                         }}
                     >
-
-                        <List>
-                            <ListItem disablePadding>
-                                <ListItemButton
-                                    onClick={() => navigate("/dashboard")}
+                        {sidebarOpen && (
+                            <Box sx={{ lineHeight: 1.15 }}>
+                                <Typography sx={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                    Session
+                                </Typography>
+                                <Typography
                                     sx={{
-                                        justifyContent: sidebarOpen ? "initial" : "center",
+                                        fontSize: "0.9rem",
+                                        fontWeight: 700,
+                                        fontVariantNumeric: "tabular-nums",
+                                        color: sessionEnding ? "#FFB74D" : "#FFFFFF"
                                     }}
                                 >
+                                    {sessionTime}
+                                </Typography>
+                            </Box>
+                        )}
 
-                                    <DashboardIcon />
-
-                                    {sidebarOpen && (
-                                        <ListItemText
-                                            primary="Dashboard"
-                                            sx={{ ml: 2 }}
-                                        />
-                                    )}
-                                </ListItemButton>
-                            </ListItem>
-
-                            {(user?.role === "admin" || user?.permissions?.includes("requests_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/requests")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <Badge
-                                            variant="dot"
-                                            color="error"
-                                            invisible={pendingRequestCount === 0}
-                                        >
-                                            <AssignmentIcon />
-                                        </Badge>
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Requests"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("fnb_items_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/fnb-items")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" :"center",
-                                        }}
-                                    >
-
-                                        <RestaurantIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                            primary="F&B Items"
-                                            sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("housekeeping_items_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/housekeeping-items")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" :"center",
-                                        }}
-                                    >
-                                        <CleaningServicesIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Housekeeping Items"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("kitchen_items_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/kitchen-items")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" :"center",
-                                        }}
-                                    >
-                                        <KitchenIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Kitchen Items"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role ==="admin" || user?.permissions?.includes("purchases_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/purchases")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <ShoppingCartIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Purchases"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("movements_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/movements")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <SwapHorizIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Item Movements"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("lost_found_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/lost-found")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <FindInPageIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Lost & Found"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {user?.role === "admin" && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/users")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-
-                                        <PeopleIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="User Management"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("categories_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/categories")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <CategoryIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Categories"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("locations_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/locations")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <LocationOnIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Locations"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-
-                                    </ListItemButton>
-
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("suppliers_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/suppliers")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <LocalShippingIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Suppliers"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-
-                                    </ListItemButton>
-
-                                </ListItem>
-                            )}
-
-                            {user?.role === "admin" && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/departments")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <BusinessIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Departments"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-
-                                </ListItem>
-                            )}
-
-                            {user?.role === "admin" && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/history")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <HistoryIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="History"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("reports_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/reports")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <AssessmentIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Reports"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {(user?.role === "admin" || user?.permissions?.includes("view_excel_access")) && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/excel")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <TableChartIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Excel Viewer"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-
-                            {user?.role === "admin" && (
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={() => navigate("/system-monitor")}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-                                        <MonitorHeartIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="System Monitor"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-
-                                    </ListItemButton>
-                                </ListItem>
-                            )}
-                            
-                        </List>
-
-                        <Divider sx={{ borderColor: "rgba(255, 255, 255, 0.2)", mt: "auto", mb: 0 }} />
-
-                        <Box>
-                            
-                            <List>
-
-                                <ListItem disablePadding>
-
-                                    <ListItemButton
-                                        onClick={() => setFeedbackOpen(true)}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-
-                                        <FeedbackIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Feedback"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-
-                                </ListItem>
-
-                                <ListItem disablePadding>
-                                    <ListItemButton
-                                        onClick={handleLogout}
-                                        sx={{
-                                            justifyContent: sidebarOpen ? "initial" : "center",
-                                        }}
-                                    >
-
-                                        <LogoutIcon />
-
-                                        {sidebarOpen && (
-                                            <ListItemText
-                                                primary="Logout"
-                                                sx={{ ml: 2 }}
-                                            />
-                                        )}
-                                    </ListItemButton>
-                                </ListItem>
-
-
-                            </List>
-                        </Box>
-
+                        <Tooltip title={`Extend session (${sessionTime} left)`} placement="right">
+                            <IconButton size="small" onClick={extendSession} sx={FOOTER_BUTTON}>
+                                <RefreshIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
                     </Box>
+
+                    <Tooltip title="Feedback" placement="right">
+                        <IconButton onClick={() => setFeedbackOpen(true)} sx={FOOTER_BUTTON}>
+                            <FeedbackIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Logout" placement="right">
+                        <IconButton onClick={handleLogout} sx={FOOTER_BUTTON}>
+                            <LogoutIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
 
             </Drawer>
 
-            
+
             <FeedbackDialog
                 open={feedbackOpen}
                 onClose={() => setFeedbackOpen(false)}
             />
 
             {settings?.show_calculator && <Calculator />}
-            
+
             {settings?.show_clock && <Clock />}
 
-            <main
-                style={{
-                    marginLeft: sidebarOpen ? "240px" : "70px",
-                    width: sidebarOpen ? "calc(100% - 240px)" : "calc(100% - 70px)",
-                    boxSizing: "border-box",
-                    overflowX: "hidden",
-                    marginTop: "0px",
-                    padding: "0px",
+            <Box
+                component="main"
+                sx={{
+                    flexGrow: 1,
+                    minWidth: 0,
                     minHeight: "100vh",
-                    background: "linear-gradient(180deg, #f4f6f8 0%, #b4c0f5 100%)"
+                    p: { xs: 2, md: 3 },
+                    backgroundColor: "background.default"
                 }}
             >
 
-                <Suspense fallback={<Box sx={{ p: 5, textAlign: "center" }}>Loading...</Box>}>
+                <Suspense fallback={<Box sx={{ p: 5, textAlign: "center", color: "text.secondary" }}>Loading...</Box>}>
                     <Outlet />
                 </Suspense>
 
-            </main>
+            </Box>
 
-            
-
-        </div>
+        </Box>
     );
 }
 

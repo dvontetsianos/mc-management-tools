@@ -380,7 +380,7 @@ function PurchaseLogDialog({
                         onChange={(e) =>
                             setForm({ ...form, documentDate: e.target.value })
                         }
-                        InputLabelProps={{ shrink: true }}
+                        slotProps={{ inputLabel: { shrink: true } }}
                         fullWidth
                     />
 

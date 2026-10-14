@@ -144,7 +144,7 @@ function ItemQuantity() {
         <Box
             sx={{
                 minHeight: "100vh",
-                background: "linear-gradient(180deg, #f4f6f8 0%, #b4c0f5 100%)",
+                background: "linear-gradient(180deg, #F3F5FA 0%, #DCE4F5 100%)",
                 display: "flex",
                 flexDirection: "column"
             }}
@@ -254,14 +254,16 @@ function ItemQuantity() {
                                 setTotalQuantity(value === "" ? 0 : Math.max(0, Number(value)));
                             }}
                             onFocus={(e) => e.target.select()}
-                            inputProps={{
-                                inputMode: "numeric",
-                                pattern: "[0-9]*",
-                                style: {
-                                    textAlign: "center",
-                                    fontSize: "2.5rem",
-                                    fontVariantNumeric: "tabular-nums",
-                                    padding: "8px 0"
+                            slotProps={{
+                                htmlInput: {
+                                    inputMode: "numeric",
+                                    pattern: "[0-9]*",
+                                    style: {
+                                        textAlign: "center",
+                                        fontSize: "2.5rem",
+                                        fontVariantNumeric: "tabular-nums",
+                                        padding: "8px 0"
+                                    }
                                 }
                             }}
                             sx={{ width: 120 }}

@@ -175,9 +175,7 @@ function ItemTable({
     };
 
     return (
-        <Paper sx={{ p: 2 }}>
-
-            <h2>Items</h2>
+        <Paper sx={{ overflow: "hidden" }}>
 
                 <TableContainer sx={{ zoom }}>
 
@@ -187,7 +185,7 @@ function ItemTable({
                         sx={{
                             "& .MuiTableCell-root": {
                                 fontWeight: "bold",
-                                backgroundColor: "#7becc3"
+                                backgroundColor: "background.tableHead"
                             }
                         }}
                         >
@@ -331,8 +329,8 @@ function ItemTable({
                                 <TableRow
                                     key={item.id}
                                     sx={{
-                                        "&:nth-of-type(odd)": {
-                                            backgroundColor: "#ddc9b6"
+                                        "&:nth-of-type(even)": {
+                                            backgroundColor: "background.stripe"
                                         },
                                         
                                     }}
@@ -537,13 +535,13 @@ function ItemTable({
                                         {user?.role === "admin" && (
                                             <Tooltip title="Delete (admin only)">
                                                 <Button
-                                                    variant="contained"
+                                                    variant="outlined"
+                                                    color="error"
                                                     size="small"
                                                     sx={{
                                                         minWidth: 0,
                                                         ml: 1,
-                                                        backgroundColor: "#070000",
-                                                        color: "red"
+                                                        px: 0.75
                                                     }}
                                                     onClick={() => onDelete(item)}
                                                 >

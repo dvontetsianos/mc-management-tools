@@ -44,6 +44,7 @@ import Alert from "@mui/material/Alert";
 import ItemsFilterPanel from "../components/items/ItemsFilterPanel";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ItemsHelpButton from "../components/items/ItemsHelpButton";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 
 
@@ -606,48 +607,61 @@ function FnbItems() {
 
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
 
-      {/* HEADER */}
+      {/* HEADER: title and help on the left, Quick Count and the Excel export on the right */}
 
       <Box
         sx={{
-          position: "relative",
           display: "flex",
-          justifyContent: "center",
           alignItems: "center",
-          mb: 5,
-          mt: -5
+          flexWrap: "wrap",
+          gap: 1,
+          mb: 3
         }}
       >
-        <h1>F&B Items</h1>
+        <Typography variant="h4" component="h1">
+          F&B Items
+        </Typography>
 
         <ItemsHelpButton department="F&B" hasQuickCountButton />
 
-        <Button
-          variant="outlined"
-          component="a"
-          href="/quick-count"
-          target="_blank"
-          rel="noopener"
-          startIcon={<PhoneIphoneIcon />}
-          sx={{
-            position: "absolute",
-            right: 90,
-            minWidth: 0,
-            px: 1,
-            "& .MuiButton-startIcon": {
-              margin: 0
-            }
-          }}
-        />
-      </Box>
+        <Box sx={{ ml: "auto", display: "flex", flexWrap: "wrap", gap: 1 }}>
+          {/* closing / resetting a count: admins only */}
+          {getUser()?.role === "admin" && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => setCountCloseOpen(true)}
+              >
+                Close count
+              </Button>
 
-      {/* ITEMS TAB */}
-      {tab === 0 && (
-        <>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => setCountResetOpen(true)}
+              >
+                Reset counts
+              </Button>
+            </>
+          )}
+
           <Button
             variant="outlined"
+            component="a"
+            href="/quick-count"
+            target="_blank"
+            rel="noopener"
+            startIcon={<PhoneIphoneIcon />}
+          >
+            Quick Count
+          </Button>
+
+          <Button
+            variant="outlined"
+            color="success"
+            startIcon={<FileDownloadIcon />}
             onClick={async () => {
               try {
                 await exportItems(sortedItems, itemSearch);
@@ -655,24 +669,15 @@ function FnbItems() {
                 alert(error.message);
               }
             }}
-            sx={{
-              position: "absolute",
-              top: 9,
-              right: 24,
-              zIndex: 10,
-              fontWeight: "bold",
-              letterSpacing: 0.5,
-              backgroundColor: "white",
-              color: "green",
-              "&:hover": {
-                backgroundColor: "#217346",
-                borderColor: "#217346",
-                color: "white"
-              }
-            }}
           >
-            .XLSX
+            Export .xlsx
           </Button>
+        </Box>
+      </Box>
+
+      {/* ITEMS TAB */}
+      {tab === 0 && (
+        <>
 
           
 
@@ -703,8 +708,9 @@ function FnbItems() {
               display: "flex",
               justifyContent: "flex-start",
               alignItems: "center",
-              gap: 2,
-              mb: 5
+              flexWrap: "wrap",
+              gap: 1.5,
+              mb: 2.5
             }}
           >
 
@@ -788,24 +794,6 @@ function FnbItems() {
               </Button>
             )}
 
-            {getUser()?.role === "admin" && (
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => setCountResetOpen(true)}
-              >
-                Reset Counts
-              </Button>
-            )}
-
-            {getUser()?.role === "admin" && (
-              <Button
-                variant="outlined"
-                onClick={() => setCountCloseOpen(true)}
-              >
-                Close count
-              </Button>
-            )}
 
             {/* Old assign item to location button
             <Button

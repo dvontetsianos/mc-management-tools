@@ -156,8 +156,8 @@ function Calculator() {
                     fullWidth
                     value={expression || display}
                     size="small"
-                    inputProps={{
-                        readOnly: true
+                    slotProps={{
+                        htmlInput: { readOnly: true }
                     }}
                     sx={{ mb: 1 }}
                 />

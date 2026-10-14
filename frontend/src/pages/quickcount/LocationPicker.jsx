@@ -82,7 +82,7 @@ function LocationPicker() {
         <Box
             sx={{
                 minHeight: "100vh",
-                background: "linear-gradient(180deg, #f4f6f8 0%, #b4c0f5 100%)",
+                background: "linear-gradient(180deg, #F3F5FA 0%, #DCE4F5 100%)",
                 display: "flex",
                 flexDirection: "column"
             }}

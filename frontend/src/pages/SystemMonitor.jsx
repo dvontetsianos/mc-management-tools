@@ -358,7 +358,6 @@ function SystemMonitor() {
     return (
         <Box
             sx={{
-                p: { xs: 2, md: 4 },
                 maxWidth: 1300,
                 mx: "auto",
                 width: "100%",

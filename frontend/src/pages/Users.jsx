@@ -25,7 +25,8 @@ import {
     Select,
     MenuItem,
     FormControlLabel,
-    Checkbox
+    Checkbox,
+    Typography
 } from "@mui/material";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -488,29 +489,9 @@ return (
 
     <div>
 
-        <div
-            style={{
-                position: "relative",
-                width: "100%",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: "20px"
-            }}
-        >
-            <h1
-                style={{
-                    margin: 10,
-                    textAlign: "center"
-                }}
-            >
-                User Management
-            </h1>
-
-
-
-
-        </div>
+        <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
+            User Management
+        </Typography>
 
         {/*
         {user?.role === "admin" && (
@@ -661,46 +642,55 @@ return (
                             <TableCell>
 
                                 <Button
-                                    variant="contained"
+                                    variant="outlined"
+                                    size="small"
                                     startIcon={<SecurityIcon />}
                                     onClick={() => openPermissionsDialog(user)}
-                                    sx={{ mr: 1, color: "green", backgroundColor: "black" }}
+                                    sx={{ mr: 1, mb: 0.5 }}
                                 >
                                     Edit Permissions
                                 </Button>
 
                                 <Button
-                                    variant="contained"
+                                    variant="outlined"
+                                    size="small"
+                                    color="inherit"
                                     startIcon={<BusinessIcon />}
                                     onClick={() => openDepartmentDialog(user)}
-                                    sx={{ mr: 1, color: "yellow", backgroundColor: "black" }}
+                                    sx={{ mr: 1, mb: 0.5, borderColor: "divider" }}
                                 >
                                     Edit Department
                                 </Button>
 
                                 <Button
-                                    variant="contained"
+                                    variant="outlined"
+                                    size="small"
+                                    color="inherit"
                                     startIcon={<HotelIcon />}
                                     onClick={() => openHotelsDialog(user)}
-                                    sx={{ mr: 1, color: "orange", backgroundColor: "black" }}
+                                    sx={{ mr: 1, mb: 0.5, borderColor: "divider" }}
                                 >
                                     Edit Hotels
                                 </Button>
 
                                 <Button
-                                    variant="contained"
+                                    variant="outlined"
+                                    size="small"
+                                    color="inherit"
                                     startIcon={<LockIcon />}
                                     onClick={() => handleChangePassword(user)}
-                                    sx={{ mr: 1, color: "blue", backgroundColor: "black" }}
+                                    sx={{ mr: 1, mb: 0.5, borderColor: "divider" }}
                                 >
                                     Change Password
                                 </Button>
 
                                 <Button
-                                    variant="contained"
+                                    variant="outlined"
+                                    size="small"
+                                    color="error"
                                     startIcon={<DeleteIcon />}
                                     onClick={() => openDeleteDialog(user)}
-                                    sx={{ mr: 1, color: "red", backgroundColor: "black" }}
+                                    sx={{ mr: 1, mb: 0.5 }}
                                 >
                                     Delete
                                 </Button>

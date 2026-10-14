@@ -222,7 +222,7 @@ function Purchases() {
                             sx={{
                                 "& .MuiTableCell-root": {
                                     fontWeight: "bold",
-                                    backgroundColor: "#aee9f3"
+                                    backgroundColor: "background.tableHead"
                                 }
                             }}
                         >

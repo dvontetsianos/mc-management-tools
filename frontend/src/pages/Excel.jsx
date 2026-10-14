@@ -126,7 +126,7 @@ function Excel() {
                 });
 
     return (
-        <Box sx={{ p: 4 }}>
+        <Box>
             <Typography variant="h4" gutterBottom>
                 Excel Viewer
             </Typography>

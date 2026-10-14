@@ -94,7 +94,7 @@ function History() {
         );
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
             <Typography variant="h4">
                 Action History
             </Typography>
@@ -108,7 +108,7 @@ function History() {
                         sx={{
                             "& .MuiTableCell-root": {
                                 fontWeight: "bold",
-                                backgroundColor: "#aee9f3",
+                                backgroundColor: "background.tableHead",
                                 py: 5
                             }
                         }}

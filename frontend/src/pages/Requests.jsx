@@ -225,26 +225,27 @@ function Requests() {
                     backgroundColor: getBackgroundColor(pendingRequests.length),
                     transition: "background-color 20s ease",
                     minHeight: "100vh",
-                    p: 3
+                    m: { xs: -2, md: -3 },
+                    p: { xs: 2, md: 3 }
                 }}
             >
                 <Box
                     sx={{
-                        position: "relative",
                         display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center"
+                        alignItems: "center",
+                        gap: 2,
+                        mb: 1
                     }}
                 >
 
-                    <Typography variant="h2" sx={{ mt: -4 }}>
+                    <Typography variant="h4" component="h1">
                         Requests
                     </Typography>
 
                     <Button
                         variant="contained"
                         onClick={() => setCreateDialogOpen(true)}
-                        sx={{ position: "absolute", right: 0, mr: 5 }}
+                        sx={{ ml: "auto" }}
                     >
                         New Request
                     </Button>
@@ -262,7 +263,7 @@ function Requests() {
                                 sx={{
                                     "& .MuiTableCell-root": {
                                         fontWeight: "bold",
-                                        backgroundColor: "#aee9f3"
+                                        backgroundColor: "background.tableHead"
                                     }
                                 }}
                             >
@@ -323,7 +324,7 @@ function Requests() {
                                 sx={{
                                     "& .MuiTableCell-root": {
                                         fontWeight: "bold",
-                                        backgroundColor: "#aee9f3"
+                                        backgroundColor: "background.tableHead"
                                     }
                                 }}
                             >
@@ -357,8 +358,8 @@ function Requests() {
                                         <TableCell>
                                             {user?.role === "admin" && (
                                                 <IconButton
+                                                    color="error"
                                                     onClick={() => handleDeleteClick(req)}
-                                                    sx={{ backgroundColor: "#070000", color: "red"}}
                                                 >
                                                     <DeleteIcon />
                                                 </IconButton>

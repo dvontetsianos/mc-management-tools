@@ -74,7 +74,7 @@ function ItemPurchaseHistory() {
 
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
                 <IconButton onClick={() => navigate(-1)}>
@@ -106,7 +106,7 @@ function ItemPurchaseHistory() {
                             sx={{
                                 "& .MuiTableCell-root": {
                                     fontWeight: "bold",
-                                    backgroundColor: "#aee9f3"
+                                    backgroundColor: "background.tableHead"
                                 }
                             }}
                         >

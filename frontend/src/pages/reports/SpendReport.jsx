@@ -120,7 +120,7 @@ function SpendReport() {
                     sx={{
                         "& .MuiTableCell-root": {
                             fontWeight: "bold",
-                            backgroundColor: "#aee9f3"
+                            backgroundColor: "background.tableHead"
                         }
                     }}
                 >
@@ -171,7 +171,7 @@ function SpendReport() {
     );
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
 
             <Typography variant="h4" gutterBottom>
                 Spend Report

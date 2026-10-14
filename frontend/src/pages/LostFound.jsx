@@ -291,7 +291,7 @@ function LostFound() {
                             sx={{
                                 "& .MuiTableCell-root": {
                                     fontWeight: "bold",
-                                    backgroundColor: "#aee9fe"
+                                    backgroundColor: "background.tableHead"
                                 }
                             }}
                         >
@@ -360,9 +360,10 @@ function LostFound() {
                                         {item.status === "claimed" && user?.role === "admin" && (
                                             <Button
                                                 size="small"
-                                                variant="contained"
+                                                variant="outlined"
+                                                color="warning"
                                                 onClick={() => handleUnclaim(item)}
-                                                sx={{ mr: 1, color: "orange", backgroundColor: "#070000" }}
+                                                sx={{ mr: 1 }}
                                             >
                                                 Unclaim (admin only)
                                             </Button>
@@ -371,9 +372,9 @@ function LostFound() {
                                         {user?.role === "admin" && (
                                             <Button
                                                 size="small"
-                                                variant="contained"
+                                                variant="outlined"
+                                                color="error"
                                                 onClick={() => openDeleteDialog(item)}
-                                                sx={{ color: "red", backgroundColor: "#070000" }}
                                             >
                                                 Delete
                                             </Button>
