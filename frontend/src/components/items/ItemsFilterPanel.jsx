@@ -78,7 +78,7 @@ function ItemsFilterPanel({
                             </Typography>
 
                             <FormGroup>
-                                {(subcategoriesList || []).map((name) => (
+                                {[...new Set(subcategoriesList || [])].map((name) => (
                                     <FormControlLabel
                                         key={name}
                                         control={

@@ -183,7 +183,7 @@ function CountCloseDialog({ open, onClose, onDone, defaultDepartmentId }) {
                         <FormControl fullWidth size="small">
                             <InputLabel>Department</InputLabel>
                             <Select
-                                value={departmentId}
+                                value={departments.some((d) => d.id === departmentId) ? departmentId : ""}
                                 label="Department"
                                 onChange={(e) => setDepartmentId(e.target.value)}
                             >

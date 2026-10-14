@@ -87,12 +87,6 @@ function ItemFormDialog({
 
             <DialogContent sx={{ pt: 3 }}>
 
-                {error && (
-                    <Alert severity="error">
-                        {error}
-                    </Alert>
-                )}
-
                 {detailsLocked && (
                     <Alert severity="info" sx={{ mt: 1 }}>
                         This item is shared with other hotels, so only an admin can change its details. You can still add or remove your own hotels.
@@ -359,6 +353,12 @@ function ItemFormDialog({
                     </Box>
 
                 </Stack>
+
+                {error && (
+                    <Alert severity="error">
+                        {error}
+                    </Alert>
+                )}
 
             </DialogContent>
             
