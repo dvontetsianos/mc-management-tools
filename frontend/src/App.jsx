@@ -4,6 +4,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PermissionRoute from "./components/PermissionRoute";
+import { REPORT_PERMISSIONS } from "./pages/reports/reportList";
 
 //pages are loaded only when they are opened, so e.g. Quick Count on a PDA
 //doesn't download the office pages (and the big chart library of System Monitor)
@@ -24,6 +25,7 @@ const History = lazy(() => import("./pages/History"));
 const Feedback = lazy(() => import("./pages/Feedback"));
 const Reports = lazy(() => import("./pages/Reports"));
 const SpendReport = lazy(() => import("./pages/reports/SpendReport"));
+const LossesReport = lazy(() => import("./pages/reports/LossesReport"));
 const LostFound = lazy(() => import("./pages/LostFound"));
 const LocationPicker = lazy(() => import("./pages/quickcount/LocationPicker"));
 const ItemList = lazy(() => import("./pages/quickcount/ItemList"));
@@ -236,7 +238,7 @@ function App() {
                 <Route
                     path="/reports"
                     element={
-                        <PermissionRoute permission="reports_access">
+                        <PermissionRoute permissions={REPORT_PERMISSIONS}>
                             <Reports />
                         </PermissionRoute>
                     }
@@ -245,8 +247,17 @@ function App() {
                 <Route
                     path="/reports/spend"
                     element={
-                        <PermissionRoute permission="reports_access">
+                        <PermissionRoute permission="spend_report_access">
                             <SpendReport />
+                        </PermissionRoute>
+                    }
+                />
+
+                <Route
+                    path="/reports/losses"
+                    element={
+                        <PermissionRoute permission="losses_report_access">
+                            <LossesReport />
                         </PermissionRoute>
                     }
                 />

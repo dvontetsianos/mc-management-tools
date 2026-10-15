@@ -265,7 +265,7 @@ function Dashboard() {
     if (hasPermission("purchases_access")) {
         spendButtons.push({ label: "Purchases", path: "/purchases" });
     }
-    if (hasPermission("reports_access")) {
+    if (hasPermission("spend_report_access")) {
         spendButtons.push({ label: "Spend Report", path: "/reports/spend" });
     }
 

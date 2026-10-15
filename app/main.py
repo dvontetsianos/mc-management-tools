@@ -8,7 +8,7 @@ from .database import Base, engine, get_db, SessionLocal
 from . import models, schemas
 from passlib.context import CryptContext
 from jose import jwt
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from jose import JWTError
 from fastapi import Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -404,11 +404,17 @@ def require_admin_or_lost_found_access(user: dict = Depends(get_current_user)):
 
     return user
 #-------------------------------------------------------------------------
-def require_admin_or_reports_access(user: dict = Depends(get_current_user)):
-    if user["role"].lower() != "admin" and "reports_access" not in user.get("permissions", []):
-        raise HTTPException(status_code=403, detail="Admin or Reports access required")
+#every report has its own permission, e.g. Depends(require_report_access("spend_report_access"))
+#(a function that makes the check, so each report doesn't need its own copy of it)
+def require_report_access(permission: str):
 
-    return user
+    def check(user: dict = Depends(get_current_user)):
+        if user["role"].lower() != "admin" and permission not in user.get("permissions", []):
+            raise HTTPException(status_code=403, detail="You don't have access to this report")
+
+        return user
+
+    return check
 #----------------------------------------------------------------------
 def require_admin_or_movements_access(user: dict = Depends(get_current_user)):
     if user["role"].lower() != "admin" and "movements_access" not in user.get("permissions", []):
@@ -501,7 +507,8 @@ def create_default_permissions():
         "suppliers_access",
         "view_excel_access",
         "lost_found_access",
-        "reports_access",
+        "spend_report_access",
+        "losses_report_access",
         "movements_access",
         "purchases_access",
         "requests_access",
@@ -626,7 +633,7 @@ def get_spend_report(
     start_date: date | None = None,
     end_date: date | None = None,
     db: Session = Depends(get_db),
-    admin: dict = Depends(require_admin_or_reports_access)
+    admin: dict = Depends(require_report_access("spend_report_access"))
 ):
 
 
@@ -706,6 +713,228 @@ def get_spend_report(
         "by_category": to_sorted_list(by_category),
         "by_supplier": to_sorted_list(by_supplier)
     }
+
+#------------------------------------------------------------------------
+#losses report: everything broken, missing or found (the stock_adjustments table).
+#the page and the Excel export both use this, so they always show the same numbers
+LOSS_REASONS = ["broken", "missing", "found"]
+
+
+def empty_loss_totals():
+    return {reason: {"units": 0, "value": 0.0} for reason in LOSS_REASONS}
+
+
+def losses_report_data(db, user, year, hotel_id, department_id, location_id, reason):
+
+    query = db.query(models.StockAdjustment).options(
+        joinedload(models.StockAdjustment.item).joinedload(models.Item.department),
+        joinedload(models.StockAdjustment.location),
+        joinedload(models.StockAdjustment.hotel),
+        joinedload(models.StockAdjustment.department)
+    )
+
+    #each manager only sees their own hotels and departments (admins see everything)
+    hotel_scope = user_hotel_scope(user)
+
+    if hotel_scope is not None:
+        query = query.filter(models.StockAdjustment.hotel_id.in_(hotel_scope))
+
+    if user["role"].lower() != "admin" and "all_departments_access" not in user.get("permissions", []):
+        query = query.filter(models.StockAdjustment.department_id.in_(user_item_department_ids(db, user)))
+
+    in_scope = query.order_by(
+        models.StockAdjustment.created_at.desc(),
+        models.StockAdjustment.id.desc()
+    ).all()
+
+    #the choices for the page's dropdowns: only what this user can see
+    this_year = datetime.utcnow().year
+    years = sorted({row.created_at.year for row in in_scope if row.created_at} | {this_year}, reverse=True)
+    hotels = {row.hotel_id: row.hotel.name for row in in_scope if row.hotel}
+    departments = {row.department_id: row.department.name for row in in_scope if row.department}
+    locations = {
+        row.location_id: {"id": row.location_id, "name": row.location.name, "hotel_id": row.hotel_id}
+        for row in in_scope if row.location
+    }
+
+    if year is None:
+        year = this_year
+
+    #the filters (None = all)
+    rows = [
+        row for row in in_scope
+        if row.created_at and row.created_at.year == year
+        and (hotel_id is None or row.hotel_id == hotel_id)
+        and (department_id is None or row.department_id == department_id)
+        and (location_id is None or row.location_id == location_id)
+        and (reason is None or row.reason == reason)
+    ]
+
+    totals = empty_loss_totals()
+    by_location = {}
+    by_item = {}
+    by_month = {month: empty_loss_totals() for month in range(1, 13)}
+    entries = []
+    without_cost = 0
+
+    for row in rows:
+        if row.reason not in LOSS_REASONS:
+            continue
+
+        units = abs(row.quantity or 0)
+        value = units * row.unit_cost if row.unit_cost is not None else 0.0
+
+        #items found don't cost anything, so only losses without a cost make the value incomplete
+        if row.unit_cost is None and row.reason != "found":
+            without_cost += 1
+
+        item = row.item
+        fields = department_item_fields(item.department) if item and item.department else []
+        details = " · ".join(
+            part for part in [item_detail(item, "size", fields), item_detail(item, "color", fields)] if part
+        )
+
+        item_name = item.name if item else "Deleted item"
+        location_name = row.location.name if row.location else "-"
+        hotel_name = row.hotel.name if row.hotel else "-"
+
+        location_group = by_location.setdefault(row.location_id, {
+            "hotel": hotel_name, "location": location_name, **empty_loss_totals()
+        })
+        item_group = by_item.setdefault(row.item_id, {
+            "item": item_name, "item_details": details, "item_code": item_detail(item, "code", fields),
+            "department": row.department.name if row.department else "-", **empty_loss_totals()
+        })
+
+        #the same units and value go into every view
+        for group in [totals, location_group, item_group, by_month[row.created_at.month]]:
+            group[row.reason]["units"] += units
+            group[row.reason]["value"] += value
+
+        entries.append({
+            "id": row.id,
+            "date": row.created_at,
+            "item": item_name,
+            "item_details": details,
+            "hotel": hotel_name,
+            "location": location_name,
+            "department": row.department.name if row.department else "-",
+            "reason": row.reason,
+            "units": units,
+            "unit_cost": row.unit_cost,
+            "value": round(value, 2),
+            "created_by": row.created_by,
+            "notes": row.notes
+        })
+
+    def rounded(group):
+        for reason_name in LOSS_REASONS:
+            group[reason_name]["value"] = round(group[reason_name]["value"], 2)
+        return group
+
+    #most lost value first, so the expensive problems are at the top
+    def lost_value(group):
+        return group["broken"]["value"] + group["missing"]["value"]
+
+    return {
+        "year": year,
+        "totals": rounded(totals),
+        "entries_without_cost": without_cost,
+        "by_location": [rounded(group) for group in sorted(by_location.values(), key=lambda g: (g["hotel"], g["location"]))],
+        "by_item": [rounded(group) for group in sorted(by_item.values(), key=lambda g: (-lost_value(g), g["item"]))],
+        "by_month": [{"month": month, **rounded(group)} for month, group in by_month.items()],
+        "entries": entries,
+        "choices": {
+            "years": years,
+            "hotels": [{"id": key, "name": name} for key, name in sorted(hotels.items(), key=lambda pair: pair[1])],
+            "departments": [{"id": key, "name": name} for key, name in sorted(departments.items(), key=lambda pair: pair[1])],
+            "locations": sorted(locations.values(), key=lambda location: location["name"])
+        }
+    }
+
+
+@app.get("/reports/losses")
+def get_losses_report(
+    year: int | None = None,
+    hotel_id: int | None = None,
+    department_id: int | None = None,
+    location_id: int | None = None,
+    reason: str | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_report_access("losses_report_access"))
+):
+    return losses_report_data(db, user, year, hotel_id, department_id, location_id, reason)
+
+
+#the same report as an Excel file: one sheet per view
+@app.get("/reports/losses/export")
+def export_losses_report(
+    year: int | None = None,
+    hotel_id: int | None = None,
+    department_id: int | None = None,
+    location_id: int | None = None,
+    reason: str | None = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_report_access("losses_report_access"))
+):
+    report = losses_report_data(db, user, year, hotel_id, department_id, location_id, reason)
+
+    #the 6 number columns every summary sheet ends with
+    loss_headers = ["Broken", "Broken €", "Missing", "Missing €", "Found", "Found €"]
+
+    def loss_numbers(group):
+        return [
+            number
+            for reason_name in LOSS_REASONS
+            for number in (group[reason_name]["units"], group[reason_name]["value"])
+        ]
+
+    workbook = Workbook()
+
+    sheet = workbook.active
+    sheet.title = "By location"
+    sheet.append(["Hotel", "Location"] + loss_headers)
+    for group in report["by_location"]:
+        sheet.append([group["hotel"], group["location"]] + loss_numbers(group))
+
+    sheet = workbook.create_sheet("By item")
+    sheet.append(["Item", "Details", "Code", "Department"] + loss_headers)
+    for group in report["by_item"]:
+        sheet.append([group["item"], group["item_details"], group["item_code"], group["department"]] + loss_numbers(group))
+
+    sheet = workbook.create_sheet("By month")
+    sheet.append(["Month"] + loss_headers)
+    for group in report["by_month"]:
+        sheet.append([date(report["year"], group["month"], 1).strftime("%B")] + loss_numbers(group))
+
+    sheet = workbook.create_sheet("All entries")
+    sheet.append(["Date", "Item", "Details", "Hotel", "Location", "Department", "Type", "Units", "Unit cost €", "Value €", "By", "Note"])
+    for entry in report["entries"]:
+        sheet.append([
+            #saved in UTC, written in the server's local (Greek) time, like the page shows it
+            entry["date"].replace(tzinfo=timezone.utc).astimezone().strftime("%d/%m/%Y %H:%M") if entry["date"] else "",
+            entry["item"], entry["item_details"], entry["hotel"], entry["location"], entry["department"],
+            entry["reason"].capitalize(), entry["units"], entry["unit_cost"], entry["value"],
+            entry["created_by"], entry["notes"]
+        ])
+
+    #text that starts with "=" (e.g. a note) must stay text, never become an Excel formula
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows(min_row=2):
+            for cell in row:
+                if isinstance(cell.value, str) and cell.value.startswith("="):
+                    cell.data_type = "s"
+
+    file = BytesIO()
+    workbook.save(file)
+    file.seek(0)
+
+    return StreamingResponse(
+        file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=losses_{report['year']}.xlsx"}
+    )
+
 #-----------------------------------------------------------------------------------------
 #get locations
 @app.get("/locations")
@@ -851,15 +1080,17 @@ def delete_location(
     has_history = db.query(models.ItemMovement).filter(
         (models.ItemMovement.from_location_id == location_id)
         | (models.ItemMovement.to_location_id == location_id)
+    ).first() is not None or db.query(models.StockAdjustment).filter(
+        models.StockAdjustment.location_id == location_id
     ).first() is not None
 
-    #a location with movement history is archived instead, so the history keeps its name
+    #a location with movement or loss history is archived instead, so the history keeps its name
     if has_history:
         location.is_active = False
         db.commit()
 
         return {
-            "message": "Location removed. It has movement history, so it was archived to keep that history."
+            "message": "Location removed. It has movement or loss history, so it was archived to keep that history."
         }
 
     db.delete(location)
@@ -2471,7 +2702,7 @@ def get_dashboard(
         }
 
     #---- spend: quantity x unit cost, this month and this year, per hotel (by document date, else the logged date)
-    if has("purchases_access") or has("reports_access"):
+    if has("purchases_access") or has("spend_report_access"):
         now = datetime.utcnow()
         purchases = db.query(models.Purchase).options(joinedload(models.Purchase.hotel))
 
@@ -3532,16 +3763,17 @@ def delete_item(
             detail="Item not found"
         )
 
-    #an item with purchase or movement history can't be deleted, that history would point at an item that no longer exists
+    #an item with purchase, movement or loss history can't be deleted, that history would point at an item that no longer exists
     has_history = (
         db.query(models.Purchase).filter(models.Purchase.item_id == item_id).first() is not None
         or db.query(models.ItemMovement).filter(models.ItemMovement.item_id == item_id).first() is not None
+        or db.query(models.StockAdjustment).filter(models.StockAdjustment.item_id == item_id).first() is not None
     )
 
     if has_history:
         raise HTTPException(
             status_code=400,
-            detail="This item has purchase or movement history, so it can't be deleted."
+            detail="This item has purchase, movement or loss history, so it can't be deleted."
         )
     
     location_names = [
@@ -3623,6 +3855,10 @@ def delete_item_with_history(
 
     purchases_deleted = db.query(models.Purchase).filter(
         models.Purchase.item_id == item_id
+    ).delete(synchronize_session=False)
+
+    db.query(models.StockAdjustment).filter(
+        models.StockAdjustment.item_id == item_id
     ).delete(synchronize_session=False)
 
     db.query(models.ItemLocation).filter(
@@ -4207,6 +4443,75 @@ def dismiss_item_location_count(
         "staff_counted_at": None,
         "staff_counted_by": None
     }
+
+#----------------------------------------------------------------------------------------
+#report items broken at one location (Items page or Quick Count):
+#the stock there goes down, and the loss is saved as a stock adjustment with reason "broken"
+@app.post("/item-locations/{item_location_id}/broken")
+def report_broken(
+    item_location_id: int,
+    report: schemas.BrokenReport,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_items_or_quickcount_access)
+):
+
+    db_item_location = db.query(models.ItemLocation).filter(
+        models.ItemLocation.id == item_location_id
+    ).first()
+
+    if db_item_location is None:
+        raise HTTPException(status_code=404, detail="This item isn't at this location anymore. Go back and try again.")
+
+    item = db_item_location.item
+    location = db_item_location.location
+
+    if not item or not user_can_access_department_items(user, item.department_id):
+        raise HTTPException(status_code=403, detail="You don't have access to items in this department")
+
+    if not user_can_use_location(location, user_hotel_scope(user)):
+        raise HTTPException(status_code=404, detail="Item location not found")
+
+    stock = db_item_location.total_quantity or 0
+
+    if report.quantity <= 0:
+        raise HTTPException(status_code=400, detail="How many broke? Enter a number greater than 0.")
+
+    if report.quantity > stock:
+        raise HTTPException(status_code=400, detail=f"That's more than there are at {location.name}. Check the number.")
+
+    note = (report.note or "").strip() or None
+
+    db.add(models.StockAdjustment(
+        item_id=item.id,
+        location_id=location.id,
+        hotel_id=location.hotel_id,
+        department_id=item.department_id,
+        quantity=-report.quantity,
+        reason="broken",
+        unit_cost=item.cost_per_unit,
+        notes=note,
+        created_by=user["username"]
+    ))
+
+    db_item_location.total_quantity = stock - report.quantity
+
+    #a count already saved here included the broken ones: lower it too,
+    #otherwise closing the count would report them again, as missing
+    if db_item_location.staff_counted_quantity is not None:
+        db_item_location.staff_counted_quantity = max(0, db_item_location.staff_counted_quantity - report.quantity)
+
+    #nothing left here and nothing counted: the row goes (like closing a count)
+    if db_item_location.total_quantity <= 0 and not db_item_location.staff_counted_quantity:
+        db.delete(db_item_location)
+
+    db.commit()
+
+    log_action(
+        db, user, "reported broken", "Item Location", item.name, item.id,
+        details=f"At {location.name}: {report.quantity} broken" + (f" ({note})" if note else "")
+    )
+
+    return {"message": f"{report.quantity} broken at {location.name} saved"}
 #--------------------------------------------------------------------------------------
 #admin: clear staff counts for a hotel / department / location / item (any combination, empty = all)
 #preview=True only says how many counts would be cleared, nothing changes

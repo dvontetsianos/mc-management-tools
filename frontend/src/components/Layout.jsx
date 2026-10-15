@@ -47,6 +47,7 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { getSettings } from "../services/systemService";
 import { NAVY } from "../theme";
+import { REPORT_PERMISSIONS } from "../pages/reports/reportList";
 
 
 const OPEN_WIDTH = 248;
@@ -70,7 +71,7 @@ const NAV_SECTIONS = [
         links: [
             { label: "Dashboard", path: "/dashboard", icon: <DashboardIcon />, show: () => true },
             { label: "Requests", path: "/requests", icon: <AssignmentIcon />, show: has("requests_access"), badge: "requests" },
-            { label: "Reports", path: "/reports", icon: <AssessmentIcon />, show: has("reports_access") }
+            { label: "Reports", path: "/reports", icon: <AssessmentIcon />, show: (user) => REPORT_PERMISSIONS.some((permission) => has(permission)(user)) }
         ]
     },
     {

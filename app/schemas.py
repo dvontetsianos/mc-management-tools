@@ -204,6 +204,12 @@ class CountClose(BaseModel):
     preview: bool = True
 
 
+#items broken at one location: how many, and an optional note ("dropped tray")
+class BrokenReport(BaseModel):
+    quantity: int
+    note: str | None = None
+
+
 class ItemResponse(BaseModel):
     id: int
     name: str

@@ -21,7 +21,7 @@ After the update, **Close count** turns the October counts into the new stock (p
 - [ ] 1. On the server, copy `C:\MC Management Tools\assets.db` (and `uploads` if you want photos) to a USB / shared folder.
 - [ ] 2. On the laptop, keep the laptop's own `assets.db` aside in a **separate** folder (not the project folder).
 - [ ] 3. With the backend stopped, put the server copy in the laptop project folder as `assets.db`.
-- [ ] 4. Run the 3 scripts from step 9d, in order. Each should finish without errors.
+- [ ] 4. Run the 4 scripts from step 9d, in order. Each should finish without errors.
 - [ ] 5. Start the backend and frontend. **Log in with your server admin account** (the laptop login isn't in this copy). Check:
   - [ ] F&B Items loads, staff counts are there (Staff Count, Missing).
   - [ ] Dashboard loads.
@@ -52,6 +52,8 @@ After the update, **Close count** turns the October counts into the new stock (p
   1. `python migrate_add_items_specs.py` → adds code, specification, material, size, color, supplier description (+ unique codes)
   2. `python migrate_item_names_not_unique.py` → item names may repeat (IDs and codes stay unique)
   3. `python migrate_department_item_fields.py` → the "Shown in Table" setting per department
+  4. `python migrate_report_permissions.py` → `reports_access` becomes one permission per report
+     (whoever had it gets `spend_report_access`)
   - `migrate_item_names_with_code.py` is **not needed**.
 - [ ] 9e. Run `update.bat` (it backs up again, installs, builds the frontend and starts the service).
   - Created automatically when the app starts, no script needed:
@@ -62,6 +64,8 @@ After the update, **Close count** turns the October counts into the new stock (p
 
 - [ ] 10. **Users → Edit Permissions**: tick **edit_items_access** for everyone who should keep
   adding/editing items. Until then, everyone except admins is view-only on the item pages.
+- [ ] 10b. **Users → Edit Permissions**: tick **losses_report_access** for the managers who should see
+  the Losses report (broken / missing / found). Everyone has to **log out and in** once to get new permissions.
 - [ ] 11. **Departments**: check the "Shown in Table" boxes for F&B, Housekeeping and Kitchen.
 - [ ] 12. Quick checks:
   - [ ] F&B Items loads, staff counts are still there (Staff Count column, Missing).
@@ -95,6 +99,9 @@ After the update, **Close count** turns the October counts into the new stock (p
 - Running it twice never doubles anything: codes that already exist are skipped.
 
 ## G. Later (not on update day)
+
+- Optional: delete `C:\MC Management Tools\logs\user_feedback.txt` (old feedback, the app doesn't use it anymore;
+  new feedback is on the Feedback page).
 
 - `broken_quantity` is **NOT all 0** on the server (found 14 Oct 2026): 4 F&B rows at Marbella → Deck
   (MENU DECK ΒΡΑΔΙ 5, MENU DECK ΜΕΣΗΜΕΡΙ 16, MENU DECK ΜΕΣΗΜΕΡΙ ΠΟΤΑ 18, WINE LIST DECK ΒΡΑΔΙ 2).

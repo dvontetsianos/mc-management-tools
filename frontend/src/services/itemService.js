@@ -355,3 +355,25 @@ export async function closeCounts(filters, preview = true) {
 
     return data;
 }
+
+
+
+//items broken at one location: the stock there gies down, and it shows in the losses report
+export async function reportBroken(itemLocationId, quantity, note = "") {
+
+    const response = await fetch(`${API_URL}/item-locations/${itemLocationId}/broken`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ quantity, note })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to report broken items");
+    }
+
+    return data;
+}
+
+

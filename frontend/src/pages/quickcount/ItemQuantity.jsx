@@ -14,11 +14,13 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
+import RemoveCircleOutlinedIcon from "@mui/icons-material/RemoveCircleOutlined";
 import { getItemLocations, submitItemLocationCount, dismissItemLocationCount } from "../../services/itemService";
 import { formatCountedAt } from "../../utils/countedAt";
 import { API_URL } from "../../config";
 import { renewSession } from "../../services/auth";
 import { itemDetailsLine } from "../../utils/itemFields";
+import ReportBrokenDialog from "../../components/items/ReportBrokenDialog";
 
 
 
@@ -43,6 +45,7 @@ function ItemQuantity() {
     const [resetting, setResetting] = useState(false);
     const [error, setError] = useState("");
     const [imageOpen, setImageOpen] = useState(false);
+    const [brokenOpen, setBrokenOpen] = useState(false);
 
 
     //always get the latest count from the server, the list we came from can be minutes old
@@ -312,7 +315,37 @@ function ItemQuantity() {
                         {resetting ? "Resetting..." : "Actually, not counted yet"}
                     </Button>
                 )}
+
+                <Button
+                    fullWidth
+                    variant="outlined"
+                    color="error"
+                    startIcon={<RemoveCircleOutlinedIcon />}
+                    onClick={() => setBrokenOpen(true)}
+                    sx={{ mt: 3 }}
+                >
+                    Report broken
+                </Button>
             </Box>
+
+            {/* only this location (the one being counted), without showing the system's quantity */}
+            <ReportBrokenDialog
+                open={brokenOpen}
+                showStock={false}
+                onClose={() => setBrokenOpen(false)}
+                item={itemLocation && {
+                    name: itemLocation.item_name,
+                    locations: [{
+                        id: itemLocation.id,
+                        location: locationName,
+                        total_quantity: itemLocation.total_quantity
+                    }]
+                }}
+                onReported={async () => {
+                    await renewSession();
+                    navigate(`/quick-count/${locationId}`, { state: { locationName } });
+                }}
+            />
         </Box>
     );
 }

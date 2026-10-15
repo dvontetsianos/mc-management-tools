@@ -4,6 +4,7 @@ import ItemTable from "../components/items/ItemTable";
 import ItemFormDialog from "../components/items/ItemFormDialog";
 import ItemDeleteConfirmDialog from "../components/items/ItemDeleteConfirmDialog";
 import MoveItemDialog from "../components/items/MoveItemDialog";
+import ReportBrokenDialog from "../components/items/ReportBrokenDialog";
 import CountResetDialog from "../components/items/CountResetDialog";
 import CountCloseDialog from "../components/items/CountCloseDialog";
 import {
@@ -101,6 +102,7 @@ function KitchenItems() {
 
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [movingItemId, setMovingItemId] = useState(null);
+  const [brokenItem, setBrokenItem] = useState(null);
   const [countResetOpen, setCountResetOpen] = useState(false);
   const [countCloseOpen, setCountCloseOpen] = useState(false);
 
@@ -842,6 +844,19 @@ function KitchenItems() {
             }}
           />
 
+          
+          <ReportBrokenDialog
+            open={Boolean(brokenItem)}
+            item={brokenItem}
+            onClose={() => setBrokenItem(null)}
+            onReported={(message) => {
+              fetchItems();
+              setSnackbarSeverity("success");
+              setSnackbarMessage(message);
+              setSnackbarOpen(true);
+            }}
+          />
+
           <ItemTable
             items={paginatedItems}
             selectedLocations={selectedItemLocations}
@@ -850,6 +865,7 @@ function KitchenItems() {
             hiddenColumns={hiddenColumns}
             onDelete={handleItemDelete}
             onMove={handleMoveClick}
+            onReportBroken={(item) => setBrokenItem(item)}
             onHistory={(item, type) =>
               navigate(`/items/${item.id}/${type}`, {
                 state: { itemName: item.name }
