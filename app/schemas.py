@@ -203,6 +203,17 @@ class CountClose(BaseModel):
     preview: bool = True
 
 
+#a new name for a location or a category
+class NameUpdate(BaseModel):
+    name: str
+
+
+#a supplier: its name and the hotels it delivers to
+class SupplierSave(BaseModel):
+    name: str
+    hotel_ids: list[int] = []
+
+
 #items broken at one location: how many, and an optional note ("dropped tray")
 class BrokenReport(BaseModel):
     quantity: int

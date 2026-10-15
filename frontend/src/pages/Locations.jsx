@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { getLocations, createLocation, deleteLocation } from "../services/locationService";
+import { getLocations, createLocation, deleteLocation, renameLocation } from "../services/locationService";
 import { getHotels } from "../services/hotelService";
 import { getUser } from "../services/auth";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import RenameDialog from "../components/RenameDialog";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import {
@@ -51,6 +53,10 @@ function Locations() {
 
     const [creating, setCreating] = useState(false);
 
+    //the table can show one hotel only ("" = all hotels)
+    const [hotelFilter, setHotelFilter] = useState("");
+    const [locationToRename, setLocationToRename] = useState(null);
+
     //admins and all-hotels users can add locations to every hotel, everyone else only to their own
     const user = getUser();
     const hasAllHotels = user?.role === "admin" || user?.permissions?.includes("all_hotels_access");
@@ -78,6 +84,23 @@ function Locations() {
             setNewLocationHotelId(myHotels[0].id);
         }
 
+    };
+
+    const visibleLocations = hotelFilter
+        ? locations.filter((location) => location.hotel_id === hotelFilter)
+        : locations;
+
+    //only the hotels that have locations this user can see
+    const filterHotels = hotels.filter((hotel) => 
+        locations.some((location) => location.hotel_id === hotel.id)
+    );
+
+    const handleRename = async (newName) => {
+        await renameLocation(locationToRename.id, newName);
+        await fetchLocations();
+        setSnackbarMessage("Location renamed");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
     };
 
     const getHotelName = (hotelId) => {
@@ -228,9 +251,26 @@ function Locations() {
 
             </Box>
 
-            <Typography sx={{ mt: 2 }}>
-                Locations currently loaded: {locations.length}
-            </Typography>
+            <Box sx={{ display: "flex", gap: 2, mt: 3, alignItems: "center" }}>
+                <TextField
+                    select
+                    label="Show"
+                    value={hotelFilter}
+                    onChange={(e) => setHotelFilter(e.target.value)}
+                    sx={{ minWidth: 200 }}
+                >
+                    <MenuItem value="">All hotels</MenuItem>
+                    {filterHotels.map((hotel) => (
+                        <MenuItem key={hotel.id} value={hotel.id}>
+                            {hotel.name}
+                        </MenuItem>
+                    ))}
+                </TextField>
+
+                <Typography color="text.secondary">
+                    {visibleLocations.length} location{visibleLocations.length !== 1 ? "s" : ""}
+                </Typography>
+            </Box>
 
             <TableContainer
                 component={Paper}
@@ -266,7 +306,7 @@ function Locations() {
                     </TableHead>
 
                     <TableBody>
-                        {locations.map((location) => (
+                        {visibleLocations.map((location) => (
 
                             <TableRow key={location.id}>
                                 <TableCell>
@@ -281,18 +321,28 @@ function Locations() {
                                     {getHotelName(location.hotel_id)}
                                 </TableCell>
 
+                                {/* every hotel needs its Unassigned: it can't be renamed or deleted */}
                                 <TableCell>
-                                    <IconButton
-                                    color="error"
-                                        onClick={() => {
-                                            setLocationToDelete(location);
-                                            setDeleteDialogOpen(true);
-                                        }}
-                                    >
-                                        <DeleteIcon />
+                                    {location.name !== "Unassigned" && (
+                                        <>
+                                            <IconButton
+                                                color="primary"
+                                                onClick={() => setLocationToRename(location)}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
 
-                                    </IconButton>
-
+                                            <IconButton
+                                                color="error"
+                                                onClick={() => {
+                                                    setLocationToDelete(location);
+                                                    setDeleteDialogOpen(true);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </>
+                                    )}
                                 </TableCell>
 
                             </TableRow>
@@ -341,6 +391,14 @@ function Locations() {
                 </DialogActions>
 
             </Dialog>
+
+            <RenameDialog
+                open={Boolean(locationToRename)}
+                title="Rename location"
+                currentName={locationToRename?.name}
+                onSave={handleRename}
+                onClose={() => setLocationToRename(null)}
+            />
 
             <Snackbar
                 open={snackbarOpen}

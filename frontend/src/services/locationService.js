@@ -88,3 +88,21 @@ export async function deleteLocation(id) {
     return data;
 
 }
+
+
+export async function renameLocation(id, name) {
+
+    const response = await fetch(`${API_URL}/locations/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name})
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to rename location");
+    }
+
+    return data;
+}

@@ -1099,6 +1099,48 @@ def delete_location(
     return {
         "message": "Location deleted successfully"
     }
+#--------------------------------------------------------------------------------------
+#rename a location (fixing a typo keeps all its stock and history, unlike delete + add)
+@app.put("/locations/{location_id}")
+def rename_location(
+    location_id: int,
+    update: schemas.NameUpdate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_locations_access)
+):
+
+    location = db.query(models.Location).filter(
+        models.Location.id == location_id,
+        models.Location.is_active == True
+    ).first()
+
+    hotel_scope = user_hotel_scope(user)
+
+    if not location or (hotel_scope is not None and location.hotel_id not in hotel_scope):
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    new_name = update.name.strip()
+
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Enter a name")
+
+    #every hotel's Unassigned is found by its name, so it keeps it, and no other location can take it
+    if location.name == "Unassigned" or new_name == "Unassigned":
+        raise HTTPException(status_code=400, detail="Unassigned can't be renamed, and no other location can be called that.")
+
+    old_name = location.name
+    location.name = new_name
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="This hotel already has a location with that name (maybe an archived one)")
+
+    log_action(db, user, "renamed", "Location", new_name, location.id, details=f"{old_name} -> {new_name}")
+
+    return {"id": location.id, "name": location.name, "hotel_id": location.hotel_id}
+
 #------------------------------------------------------------------------------------
 #get category
 @app.get("/categories")
@@ -1203,6 +1245,38 @@ def delete_category(
         "message": "Category deleted successfully"
     }
 
+#-----------------------------------------------------------------------------
+#rename a category (admins, like adding one)
+@app.put("/categories/{category_id}")
+def rename_category(
+    category_id: int,
+    update: schemas.NameUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    category = db.query(models.Category).filter(models.Category.id == category_id).first()
+
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    new_name = update.name.strip()
+
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Enter a name")
+
+    old_name = category.name
+    category.name = new_name
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="This department already has a category with that name")
+
+    log_action(db, admin, "renamed", "Category", new_name, category.id, details=f"{old_name} -> {new_name}")
+
+    return {"id": category.id, "name": category.name, "department_id": category.department_id}
 #----------------------------------------------------------------------------
 #get subcategories
 @app.get("/subcategories")
@@ -1305,26 +1379,74 @@ def get_suppliers(
     db: Session = Depends(get_db),
     user: dict = Depends(require_suppliers_read_access)
 ):
-    
-    return db.query(models.Supplier).all()
+
+    suppliers = db.query(models.Supplier).options(
+        joinedload(models.Supplier.hotel_links).joinedload(models.SupplierHotel.hotel)
+    ).order_by(models.Supplier.name).all()
+
+    return [supplier_to_dict(supplier) for supplier in suppliers]
+
+
+#a supplier as the pages need it: its name and the hotels it delivers to
+def supplier_to_dict(supplier):
+
+    hotels = sorted(
+        (link.hotel for link in supplier.hotel_links if link.hotel),
+        key=lambda hotel: hotel.name
+    )
+
+    return {
+        "id": supplier.id,
+        "name": supplier.name,
+        "hotel_ids": [hotel.id for hotel in hotels],
+        "hotels": [hotel.name for hotel in hotels]
+    }
+
+
+#save which hotels a supplier delivers to.
+#users who don't cover every hotel can only tick or untick their own hotels, the other hotels stay as they were
+def set_supplier_hotels(db, supplier, hotel_ids, user):
+
+    hotel_ids = set(hotel_ids)
+    get_hotels_or_404(db, list(hotel_ids))
+
+    current_ids = {link.hotel_id for link in supplier.hotel_links}
+    hotel_scope = user_hotel_scope(user)
+
+    if hotel_scope is not None:
+        if hotel_ids - hotel_scope:
+            raise HTTPException(status_code=403, detail="You can only choose your own hotels")
+
+        hotel_ids |= current_ids - hotel_scope
+
+    for link in list(supplier.hotel_links):
+        if link.hotel_id not in hotel_ids:
+            db.delete(link)
+
+    for hotel_id in hotel_ids - current_ids:
+        db.add(models.SupplierHotel(supplier_id=supplier.id, hotel_id=hotel_id))
 
 #-------------------------------------------------------------------------------
-#create supplier
+#create supplier (name + the hotels it delivers to)
 @app.post("/suppliers")
 def create_supplier(
-    supplier_name: str,
+    supplier: schemas.SupplierSave,
     db: Session = Depends(get_db),
     user: dict = Depends(require_admin_or_suppliers_access)
 ):
 
-    supplier_name = supplier_name.strip()
+    name = supplier.name.strip()
 
-    new_supplier = models.Supplier(name=supplier_name)
+    if not name:
+        raise HTTPException(status_code=400, detail="Enter a name")
+
+    new_supplier = models.Supplier(name=name)
 
     try:
         db.add(new_supplier)
+        db.flush()
+        set_supplier_hotels(db, new_supplier, supplier.hotel_ids, user)
         db.commit()
-        db.refresh(new_supplier)
 
     except IntegrityError:
         db.rollback()
@@ -1333,13 +1455,56 @@ def create_supplier(
             detail="Supplier already exists"
         )
 
-    return {
-        "id": new_supplier.id,
-        "name": new_supplier.name
-    }
+    db.refresh(new_supplier)
+
+    return supplier_to_dict(new_supplier)
 
 
-#------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#edit a supplier: rename it and/or change its hotels
+@app.put("/suppliers/{supplier_id}")
+def update_supplier(
+    supplier_id: int,
+    supplier: schemas.SupplierSave,
+    db: Session = Depends(get_db),
+    user: dict = Depends(require_admin_or_suppliers_access)
+):
+
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    name = supplier.name.strip()
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Enter a name")
+
+    old = supplier_to_dict(db_supplier)
+    db_supplier.name = name
+
+    try:
+        set_supplier_hotels(db, db_supplier, supplier.hotel_ids, user)
+        db.commit()
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Another supplier already has that name")
+
+    db.refresh(db_supplier)
+    new = supplier_to_dict(db_supplier)
+
+    changes = []
+    if old["name"] != new["name"]:
+        changes.append(f"Name: {old['name']} -> {new['name']}")
+    if old["hotels"] != new["hotels"]:
+        changes.append(f"Hotels: {', '.join(old['hotels']) or 'none'} -> {', '.join(new['hotels']) or 'none'}")
+
+    log_action(db, user, "updated", "Supplier", new["name"], db_supplier.id, details=", ".join(changes) or "No changes")
+
+    return new
+
+#------------------------------------------------------------------------------------
 #delete supplier
 @app.delete("/suppliers/{supplier_id}")
 def delete_supplier(

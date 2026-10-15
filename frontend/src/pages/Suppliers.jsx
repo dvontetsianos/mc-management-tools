@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import { getSuppliers, createSupplier, deleteSupplier } from "../services/supplierService";
+import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from "../services/supplierService";
+import { getHotels } from "../services/hotelService";
+import { getUser } from "../services/auth";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import {
@@ -19,35 +22,94 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Chip,
+    Stack,
+    FormGroup,
+    FormControlLabel,
+    Checkbox
 } from "@mui/material";
+
+
+//the hotel checkboxes, used when adding and when editing a supplier
+function HotelChecks({ hotels, selected, onChange }) {
+
+    const toggle = (hotelId) =>
+        onChange(
+            selected.includes(hotelId)
+                ? selected.filter((id) => id !== hotelId)
+                : [...selected, hotelId]
+        );
+
+    return (
+        <FormGroup row>
+            {hotels.map((hotel) => (
+                <FormControlLabel
+                    key={hotel.id}
+                    label={hotel.name}
+                    control={
+                        <Checkbox
+                            checked={selected.includes(hotel.id)}
+                            onChange={() => toggle(hotel.id)}
+                        />
+                    }
+                />
+            ))}
+        </FormGroup>
+    );
+}
 
 
 function Suppliers() {
 
     const [suppliers, setSuppliers] = useState([]);
+    const [hotels, setHotels] = useState([]);
 
     const [newSupplier, setNewSupplier] = useState("");
+    const [newSupplierHotelIds, setNewSupplierHotelIds] = useState([]);
+    const [creating, setCreating] = useState(false);
+
+    //the supplier being edited: { id, name, hotel_ids }
+    const [editing, setEditing] = useState(null);
+    const [editError, setEditError] = useState("");
+    const [saving, setSaving] = useState(false);
 
     const [supplierToDelete, setSupplierToDelete] = useState(null);
-
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const [snackbarOpen, setSnackbarOpen] = useState(false);
-
     const [snackbarMessage, setSnackbarMessage] = useState("");
-
     const [snackbarSeverity, setSnackbarSeverity] = useState("error");
 
-    const [creating, setCreating] = useState(false);
+    //admins and all-hotels users can tick every hotel, everyone else only their own
+    //(the backend keeps the other hotels as they were)
+    const user = getUser();
+    const isAdmin = user?.role === "admin";
+    const hasAllHotels = isAdmin || user?.permissions?.includes("all_hotels_access");
+    const myHotels = hotels.filter(
+        (hotel) => hasAllHotels || (user?.hotel_ids || []).includes(hotel.id)
+    );
+
+    const notify = (message, severity) => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
 
     const fetchSuppliers = async () => {
-
         const data = await getSuppliers();
-
         setSuppliers(data);
-
     };
+
+    const fetchHotels = async () => {
+        const data = await getHotels();
+        setHotels(data);
+    };
+
+    useEffect(() => {
+        fetchSuppliers();
+        fetchHotels();
+    }, []);
 
     const handleCreate = async () => {
 
@@ -58,31 +120,37 @@ function Suppliers() {
         setCreating(true);
 
         try {
-
-            await createSupplier(newSupplier);
-
+            await createSupplier(newSupplier.trim(), newSupplierHotelIds);
             setNewSupplier("");
-
+            setNewSupplierHotelIds([]);
             await fetchSuppliers();
-
-            setSnackbarMessage("Supplier created successfully");
-
-            setSnackbarSeverity("success");
-
-            setSnackbarOpen(true);
-
+            notify("Supplier created successfully", "success");
         } catch (error) {
-
-            setSnackbarMessage(error.message);
-
-            setSnackbarSeverity("error");
-
-            setSnackbarOpen(true);
-
+            notify(error.message, "error");
         } finally {
-
             setCreating(false);
+        }
+    };
 
+    const handleSaveEdit = async () => {
+
+        if (!editing.name.trim()) {
+            setEditError("Enter a name.");
+            return;
+        }
+
+        setSaving(true);
+        setEditError("");
+
+        try {
+            await updateSupplier(editing.id, editing.name.trim(), editing.hotel_ids);
+            await fetchSuppliers();
+            setEditing(null);
+            notify("Supplier saved", "success");
+        } catch (error) {
+            setEditError(error.message);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -93,35 +161,15 @@ function Suppliers() {
         }
 
         try {
-
             await deleteSupplier(supplierToDelete.id);
-
             await fetchSuppliers();
-
-            setSnackbarMessage("Supplier deleted successfully");
-
-            setSnackbarSeverity("success");
-
-            setSnackbarOpen(true);
-
+            notify("Supplier deleted successfully", "success");
             setDeleteDialogOpen(false);
-
             setSupplierToDelete(null);
-            
         } catch (error) {
-
-            setSnackbarMessage(error.message);
-
-            setSnackbarSeverity("error");
-
-            setSnackbarOpen(true);
-
+            notify(error.message, "error");
         }
     };
-
-    useEffect(() => {
-        fetchSuppliers();
-    }, []);
 
     return (
         <>
@@ -130,34 +178,32 @@ function Suppliers() {
                     Supplier Management
                 </Typography>
 
-                <Box
-                    sx={{
-                        display: "flex",
-                        gap: 2,
-                        mt: 3
-                    }}
-                >
-                    <TextField
-                        label="New Supplier"
-                        value={newSupplier}
-                        onChange={(e) =>
-                            setNewSupplier(e.target.value)
-                        }
-                    />
+                {/* add a supplier: name + the hotels it delivers to */}
+                <Paper sx={{ p: 2, mt: 3 }}>
+                    <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+                        <TextField
+                            label="New Supplier"
+                            value={newSupplier}
+                            onChange={(e) => setNewSupplier(e.target.value)}
+                        />
 
-                    <Button
-                        variant="contained"
-                        onClick={handleCreate}
-                        disabled={creating}
-                    >
-                        {creating ? "Adding..." : "Add Supplier"}
-                    </Button>
-                </Box>
+                        <HotelChecks
+                            hotels={myHotels}
+                            selected={newSupplierHotelIds}
+                            onChange={setNewSupplierHotelIds}
+                        />
 
-                <TableContainer
-                    component={Paper}
-                    sx={{ mt: 3 }}
-                >
+                        <Button
+                            variant="contained"
+                            onClick={handleCreate}
+                            disabled={creating}
+                        >
+                            {creating ? "Adding..." : "Add Supplier"}
+                        </Button>
+                    </Box>
+                </Paper>
+
+                <TableContainer component={Paper} sx={{ mt: 3 }}>
                     <Table>
                         <TableHead
                             sx={{
@@ -168,109 +214,129 @@ function Suppliers() {
                             }}
                         >
                             <TableRow>
-                                <TableCell>
-                                    ID
-                                </TableCell>
-
-                                <TableCell>
-                                    Supplier Name
-                                </TableCell>
-
-                                <TableCell>
-                                    Actions
-                                </TableCell>
-
+                                <TableCell>ID</TableCell>
+                                <TableCell>Supplier Name</TableCell>
+                                <TableCell>Hotels</TableCell>
+                                <TableCell>Actions</TableCell>
                             </TableRow>
                         </TableHead>
 
                         <TableBody>
                             {suppliers.map((supplier) => (
-
                                 <TableRow key={supplier.id}>
-                                    <TableCell>
-                                        {supplier.id}
-                                    </TableCell>
+                                    <TableCell>{supplier.id}</TableCell>
+
+                                    <TableCell>{supplier.name}</TableCell>
 
                                     <TableCell>
-                                        {supplier.name}
+                                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                            {supplier.hotels.length > 0
+                                                ? supplier.hotels.map((name) => (
+                                                    <Chip key={name} label={name} size="small" />
+                                                ))
+                                                : <Typography variant="body2" color="text.secondary">No hotels yet</Typography>}
+                                        </Stack>
                                     </TableCell>
 
                                     <TableCell>
                                         <IconButton
-                                        color="error"
+                                            color="primary"
                                             onClick={() => {
-                                                setSupplierToDelete(supplier);
-                                                setDeleteDialogOpen(true);
+                                                setEditError("");
+                                                setEditing({ id: supplier.id, name: supplier.name, hotel_ids: supplier.hotel_ids });
                                             }}
                                         >
-                                            <DeleteIcon />
+                                            <EditIcon />
                                         </IconButton>
-                                    </TableCell>
 
+                                        {/* only admins can delete a supplier */}
+                                        {isAdmin && (
+                                            <IconButton
+                                                color="error"
+                                                onClick={() => {
+                                                    setSupplierToDelete(supplier);
+                                                    setDeleteDialogOpen(true);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        )}
+                                    </TableCell>
                                 </TableRow>
                             ))}
+
+                            {suppliers.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={4} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                                        No suppliers yet. Add the first one above.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
             </Box>
 
-            <Dialog
-                open={deleteDialogOpen}
-                onClose={() => setDeleteDialogOpen(false)}
-            >
-                <DialogTitle>
-                    Delete Supplier
-                </DialogTitle>
+            {/* edit: rename and/or change hotels */}
+            <Dialog open={Boolean(editing)} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+                <DialogTitle>Edit supplier</DialogTitle>
 
                 <DialogContent>
-                    Are you sure you want to delete Supplier
+                    {editing && (
+                        <Stack spacing={2} sx={{ mt: 1 }}>
+                            <TextField
+                                label="Name"
+                                value={editing.name}
+                                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                                fullWidth
+                            />
 
-                    <b>
-                        {" "}
-                        {supplierToDelete?.name}
-                    </b>
+                            <Box>
+                                <Typography variant="subtitle2">Delivers to</Typography>
+                                <HotelChecks
+                                    hotels={myHotels}
+                                    selected={editing.hotel_ids}
+                                    onChange={(hotelIds) => setEditing({ ...editing, hotel_ids: hotelIds })}
+                                />
+                            </Box>
 
-                    ?
-
-
+                            {editError && <Alert severity="error">{editError}</Alert>}
+                        </Stack>
+                    )}
                 </DialogContent>
 
                 <DialogActions>
-                    <Button
-                        onClick={() => setDeleteDialogOpen(false)}
-                    >
-                        Cancel
+                    <Button onClick={() => setEditing(null)}>Cancel</Button>
+                    <Button variant="contained" disabled={saving} onClick={handleSaveEdit}>
+                        {saving ? "Saving..." : "Save"}
                     </Button>
+                </DialogActions>
+            </Dialog>
 
-                    <Button
-                        color="error"
-                        variant="contained"
-                        onClick={confirmDelete}
-                    >
+            <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+                <DialogTitle>Delete Supplier</DialogTitle>
+
+                <DialogContent>
+                    Are you sure you want to delete Supplier <b>{supplierToDelete?.name}</b>?
+                </DialogContent>
+
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+                    <Button color="error" variant="contained" onClick={confirmDelete}>
                         Delete
                     </Button>
-
                 </DialogActions>
-
             </Dialog>
 
             <Snackbar
                 open={snackbarOpen}
                 autoHideDuration={10000}
                 onClose={() => setSnackbarOpen(false)}
-                anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "center"
-                }}
+                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
             >
-
-                <Alert
-                    severity={snackbarSeverity}
-                    onClose={() => setSnackbarOpen(false)}
-                >
+                <Alert severity={snackbarSeverity} onClose={() => setSnackbarOpen(false)}>
                     {snackbarMessage}
                 </Alert>
-
             </Snackbar>
         </>
     );

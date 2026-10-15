@@ -74,3 +74,23 @@ export async function deleteCategory(id) {
     return data;
     
 }
+
+
+
+
+export async function renameCategory(id, name) {
+
+    const response = await fetch(`${API_URL}/categories/${id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.detail || "Failed to rename category");
+    }
+
+    return data;
+}

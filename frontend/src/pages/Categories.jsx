@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { getCategories, createCategory, deleteCategory } from "../services/categoryService";
+import { getCategories, createCategory, deleteCategory, renameCategory } from "../services/categoryService";
 import { getSubcategories, createSubcategory, deleteSubcategory } from "../services/subcategoryService";
 import { getDepartments } from "../services/departmentService";
 import { getUser } from "../services/auth";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import RenameDialog from "../components/RenameDialog";
 import AddIcon from "@mui/icons-material/Add";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -70,6 +72,16 @@ function Categories() {
     const [subcategoryToDelete, setSubcategoryToDelete] = useState(null);
     const [deleteSubcategoryDialogOpen, setDeleteSubcategoryDialogOpen] = useState(false);
 
+    const [categoryToRename, setCategoryToRename] = useState(null);
+
+    const handleRename = async (newName) => {
+        await renameCategory(categoryToRename.id, newName);
+        await fetchCategories();
+        setSnackbarMessage("Category renamed");
+        setSnackbarSeverity("success");
+        setSnackbarOpen(true);
+    };
+    
     const fetchCategories = async () => {
 
         const data = await getCategories();
@@ -486,6 +498,13 @@ function Categories() {
                                     {isAdmin && (
                                         <TableCell>
                                             <IconButton
+                                                color="primary"
+                                                onClick={() => setCategoryToRename(category)}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+
+                                            <IconButton
                                                 color="error"
                                                 onClick={() => {
                                                     setCategoryToDelete(category);
@@ -513,6 +532,14 @@ function Categories() {
             </Box>
 
 
+            <RenameDialog
+                open={Boolean(categoryToRename)}
+                title="Rename category"
+                currentName={categoryToRename?.name}
+                onSave={handleRename}
+                onClose={() => setCategoryToRename(null)}
+            />
+            
             <Dialog
                 open={deleteDialogOpen}
                 onClose={() => setDeleteDialogOpen(false)}
