@@ -60,7 +60,7 @@ function ItemDeleteConfirmDialog({
                             {itemLocations.map((loc) => (
                                 <ListItem key={loc.id} disablePadding sx={{ pl: 2 }}>
                                     <ListItemText
-                                        primary={`${loc.location} (Qty: ${loc.total_quantity}, Broken: ${loc.broken_quantity})`}
+                                        primary={`${loc.location} (Qty: ${loc.total_quantity})`}
                                     />
                                 </ListItem>
                             ))}

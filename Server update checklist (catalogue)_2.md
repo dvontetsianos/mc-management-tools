@@ -103,9 +103,8 @@ After the update, **Close count** turns the October counts into the new stock (p
 - Optional: delete `C:\MC Management Tools\logs\user_feedback.txt` (old feedback, the app doesn't use it anymore;
   new feedback is on the Feedback page).
 
-- `broken_quantity` is **NOT all 0** on the server (found 14 Oct 2026): 4 F&B rows at Marbella → Deck
-  (MENU DECK ΒΡΑΔΙ 5, MENU DECK ΜΕΣΗΜΕΡΙ 16, MENU DECK ΜΕΣΗΜΕΡΙ ΠΟΤΑ 18, WINE LIST DECK ΒΡΑΔΙ 2).
-  Decide what to do with them **before** the broken column is removed from the code (close count step 6).
+- Done 15 Oct 2026: the old `broken_quantity` was removed from the code. The column stays in the database,
+  unused (the 4 Deck menu numbers are simply ignored). Nothing to do on the server for this.
 - Opening quantity becomes a one-time setup tool (hide or lock it after the setup year, decision pending).
 
 ## If something goes wrong

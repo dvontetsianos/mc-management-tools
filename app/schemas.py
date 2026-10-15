@@ -174,7 +174,6 @@ class ItemLocationResponse(BaseModel):
     location: str | None = None
     hotel_name: str | None = None
     total_quantity: int
-    broken_quantity: int
     staff_counted_quantity: int | None = None
     staff_counted_at: datetime | None = None
     staff_counted_by: str | None = None
@@ -223,7 +222,6 @@ class ItemResponse(BaseModel):
     image_url: str | None = None
     total_quantity: int
     assigned_quantity: int = 0
-    broken_quantity: int
     opening_quantity: int = 0
     total_purchased_quantity: int = 0
     expected_total: int = 0
@@ -251,12 +249,10 @@ class ItemLocationCreate(BaseModel):
     item_id: int
     location_id: int
     total_quantity: int = 0
-    broken_quantity: int = 0
 
 
 class ItemLocationUpdate(BaseModel):
     total_quantity: int
-    broken_quantity: int
 
 
 

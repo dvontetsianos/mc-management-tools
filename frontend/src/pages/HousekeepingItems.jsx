@@ -551,7 +551,6 @@ function HousekeepingItems() {
     );
 
     const total = relevant.reduce((sum, loc) => sum + (loc.total_quantity || 0), 0);
-    const broken = relevant.reduce((sum, loc) => sum + (loc.broken_quantity || 0), 0);
 
     const countedLocs = relevant.filter(
       (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
@@ -569,7 +568,6 @@ function HousekeepingItems() {
       ...item,
       total_quantity: total,
       assigned_quantity: total,
-      broken_quantity: broken,
       staff_counted_quantity: staffCounted,
       countable_item_location_id: singleLocationId,
       count_locations: relevant,

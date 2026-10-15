@@ -294,7 +294,7 @@ def get_unassigned_row(db, item_id, hotel_id):
     ).first()
 
     if row is None:
-        row = models.ItemLocation(item_id=item_id, location_id=unassigned.id, total_quantity=0, broken_quantity=0)
+        row = models.ItemLocation(item_id=item_id, location_id=unassigned.id, total_quantity=0)
         db.add(row)
 
     return row
@@ -1063,7 +1063,7 @@ def delete_location(
 
     items_with_stock = db.query(models.ItemLocation).filter(
         models.ItemLocation.location_id == location_id,
-        (models.ItemLocation.total_quantity > 0) | (models.ItemLocation.broken_quantity > 0)
+        (models.ItemLocation.total_quantity > 0)
     ).count()
 
     if items_with_stock > 0:
@@ -3071,7 +3071,6 @@ def get_items(
 
         locations = []
         total_quantity = 0
-        broken_quantity = 0
         assigned_quantity = 0
         staff_counted_total = 0
         staff_counted_locations = 0
@@ -3095,14 +3094,12 @@ def get_items(
                 "location": item_location.location.name if item_location.location else None,
                 "hotel_name": item_location.location.hotel.name if item_location.location and item_location.location.hotel else None,
                 "total_quantity": item_location.total_quantity,
-                "broken_quantity": item_location.broken_quantity,
                 "staff_counted_quantity": item_location.staff_counted_quantity,
                 "staff_counted_at": item_location.staff_counted_at,
                 "staff_counted_by": item_location.staff_counted_by
             })
 
             total_quantity += item_location.total_quantity
-            broken_quantity += item_location.broken_quantity
 
             if location_name != "Unassigned":
                 assigned_quantity += item_location.total_quantity
@@ -3147,7 +3144,6 @@ def get_items(
             "image_url": item.image_url,
             "total_quantity": total_quantity,
             "assigned_quantity": assigned_quantity,
-            "broken_quantity": broken_quantity,
             "opening_quantity": opening_quantity,
             "total_purchased_quantity": total_purchased_quantity,
             "expected_total": expected_total,
@@ -3424,7 +3420,6 @@ def create_item(
         **spec_fields_of(new_item),
         "image_url": new_item.image_url,
         "total_quantity": 0,
-        "broken_quantity": 0,
         "opening_quantity": new_item.opening_quantity,
         "locations": [],
         "department_id": new_item.department_id,
@@ -3586,7 +3581,7 @@ def update_item(
             stock_in_removed = db.query(models.ItemLocation).join(models.Location).filter(
                 models.ItemLocation.item_id == db_item.id,
                 models.Location.hotel_id.in_(removed_ids),
-                (models.ItemLocation.total_quantity > 0) | (models.ItemLocation.broken_quantity > 0)
+                (models.ItemLocation.total_quantity > 0)
             ).first()
 
             if stock_in_removed:
@@ -3787,7 +3782,7 @@ def delete_item(
         for item_location in db_item.locations
         if item_location.location
         and item_location.location.name != "Unassigned"
-        and (item_location.total_quantity > 0 or item_location.broken_quantity > 0)
+        and (item_location.total_quantity > 0)
     ]
 
     if other_locations:
@@ -4084,7 +4079,6 @@ def get_item_locations(
             "location_id": item_location.location_id,
             "location": item_location.location.name if item_location.location else None,
             "total_quantity": item_location.total_quantity,
-            "broken_quantity": item_location.broken_quantity,
             "staff_counted_quantity": item_location.staff_counted_quantity,
             "staff_counted_at": item_location.staff_counted_at,
             "staff_counted_by": item_location.staff_counted_by
@@ -4102,10 +4096,10 @@ def create_item_location(
     user: dict = Depends(require_admin_or_items_access)
 ):
 
-    if item_location.total_quantity < 0 or item_location.broken_quantity < 0:
+    if item_location.total_quantity < 0:
         raise HTTPException(
             status_code=400,
-            detail="Quantities cannot be negative"
+            detail="Quantity cannot be negative"
         )
 
     item = db.query(models.Item).filter(
@@ -4156,8 +4150,7 @@ def create_item_location(
     new_item_location = models.ItemLocation(
         item_id=item_location.item_id,
         location_id=item_location.location_id,
-        total_quantity=item_location.total_quantity,
-        broken_quantity=item_location.broken_quantity
+        total_quantity=item_location.total_quantity
     )
 
 
@@ -4181,7 +4174,7 @@ def create_item_location(
         "Item",
         item.name,
         item.id,
-        details=f"Assigned to {location.name} (Qty: {new_item_location.total_quantity}, Broken: {new_item_location.broken_quantity})"
+        details=f"Assigned to {location.name} (Qty: {new_item_location.total_quantity})"
     )
 
     return {
@@ -4190,8 +4183,7 @@ def create_item_location(
         "item_name": item.name,
         "location_id": new_item_location.location_id,
         "location": location.name,
-        "total_quantity": new_item_location.total_quantity,
-        "broken_quantity": new_item_location.broken_quantity
+        "total_quantity": new_item_location.total_quantity
     }
 
 
@@ -4205,10 +4197,10 @@ def update_item_location(
     user: dict = Depends(require_admin_or_items_access)
 ):
 
-    if item_location.total_quantity < 0 or item_location.broken_quantity < 0:
+    if item_location.total_quantity < 0:
         raise HTTPException(
             status_code=400,
-            detail="Quantities cannot be negative"
+            detail="Quantity cannot be negative"
         )
 
     db_item_location = db.query(models.ItemLocation).filter(
@@ -4245,10 +4237,8 @@ def update_item_location(
         )
     
     old_total_quantity = db_item_location.total_quantity
-    old_broken_quantity = db_item_location.broken_quantity
 
     db_item_location.total_quantity = item_location.total_quantity
-    db_item_location.broken_quantity = item_location.broken_quantity
 
     db.commit()
     db.refresh(db_item_location)
@@ -4258,10 +4248,6 @@ def update_item_location(
 
     if old_total_quantity != item_location.total_quantity:
         changes.append(f"Total Quantity: {old_total_quantity} -> {item_location.total_quantity}")
-
-
-    if old_broken_quantity != item_location.broken_quantity:
-        changes.append(f"Broken Quantity: {old_broken_quantity} -> {item_location.broken_quantity}")
 
 
     details = ", ".join(changes) if changes else "No changes"
@@ -4285,7 +4271,6 @@ def update_item_location(
         "location_id": db_item_location.location_id,
         "location": db_item_location.location.name if db_item_location.location else None,
         "total_quantity": db_item_location.total_quantity,
-        "broken_quantity": db_item_location.broken_quantity
     }
 
 
@@ -4375,7 +4360,6 @@ def submit_item_location_count(
         "location_id": db_item_location.location_id,
         "location": db_item_location.location.name if db_item_location.location else None,
         "total_quantity": db_item_location.total_quantity,
-        "broken_quantity": db_item_location.broken_quantity,
         "staff_counted_quantity": db_item_location.staff_counted_quantity,
         "staff_counted_at": db_item_location.staff_counted_at,
         "staff_counted_by": db_item_location.staff_counted_by
@@ -4438,7 +4422,6 @@ def dismiss_item_location_count(
         "location_id": db_item_location.location_id,
         "location": db_item_location.location.name if db_item_location.location else None,
         "total_quantity": db_item_location.total_quantity,
-        "broken_quantity": db_item_location.broken_quantity,
         "staff_counted_quantity": None,
         "staff_counted_at": None,
         "staff_counted_by": None
@@ -4554,7 +4537,7 @@ def reset_counts(
         item_location.staff_counted_by = None
 
         #a row with no stock only existed to keep its count, so it goes too
-        if (item_location.total_quantity or 0) <= 0 and (item_location.broken_quantity or 0) <= 0:
+        if (item_location.total_quantity or 0) <= 0:
             db.delete(item_location)
 
 
@@ -4756,7 +4739,7 @@ def close_counts(
         item_location.staff_counted_by = None
 
         #a row left with no stock only existed to keep its count, so it goes too (like Reset counts)
-        if (item_location.total_quantity or 0) <= 0 and (item_location.broken_quantity or 0) <= 0:
+        if (item_location.total_quantity or 0) <= 0:
             db.delete(item_location)
 
     db.commit()
@@ -4808,7 +4791,7 @@ def delete_item_location(
         )
 
     #a row that still holds stock can't just be deleted, the stock would vanish without any record
-    if (db_item_location.total_quantity or 0) > 0 or (db_item_location.broken_quantity or 0) > 0:
+    if (db_item_location.total_quantity or 0) > 0:
         raise HTTPException(
             status_code=400,
             detail="This location still holds stock of the item. Move it to another location first."
@@ -5018,7 +5001,6 @@ def create_item_movement(
     #an empty stock row is removed, but not while it holds a staff count (the count must stay)
     if (
         from_item_location.total_quantity <= 0
-        and from_item_location.broken_quantity <= 0
         and from_item_location.staff_counted_quantity is None
     ):
         db.delete(from_item_location)
@@ -5036,7 +5018,6 @@ def create_item_movement(
             item_id=movement.item_id,
             location_id=movement.to_location_id,
             total_quantity=movement.quantity,
-            broken_quantity=0
         )
         db.add(to_item_location)
 
@@ -5316,7 +5297,6 @@ def create_purchase(
             item_id=purchase.item_id,
             location_id=purchase.location_id,
             total_quantity=purchase.quantity,
-            broken_quantity=0
         )
         db.add(item_location)
 
