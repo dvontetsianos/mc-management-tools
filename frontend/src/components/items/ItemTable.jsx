@@ -424,8 +424,9 @@ function ItemTable({
                                             return (
                                                 <Tooltip
                                                     arrow
+                                                    slotProps={{ tooltip: { sx: { maxWidth: "none" } } }}
                                                     title={
-                                                        <Box>
+                                                        <Box sx={{ whiteSpace: "nowrap" }}>
                                                             {summary.counted.map((loc) => {
                                                                 const difference = loc.staff_counted_quantity - (loc.total_quantity || 0);
 
