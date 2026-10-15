@@ -51,7 +51,7 @@ function ItemList() {
                 il.staff_counted_quantity !== null && il.staff_counted_quantity !== undefined;
 
             filtered.sort((a, b) =>
-                Number(isCounted(b)) - Number(isCounted(a)) ||
+                Number(isCounted(a)) - Number(isCounted(b)) ||
                 (a.item_name || "").localeCompare(b.item_name || "") ||
                 (a.item_size || "").localeCompare(b.item_size || "", undefined, { numeric: true }) ||
                 (a.item_color || "").localeCompare(b.item_color || "")
