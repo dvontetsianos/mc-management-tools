@@ -7,7 +7,6 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ImageNotSupportedIcon from "@mui/icons-material/ImageNotSupported";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import HistoryIcon from "@mui/icons-material/History";
-import RemoveCircleOutlinedIcon from "@mui/icons-material/RemoveCircleOutlined";
 import {
     Paper,
     Table,
@@ -125,7 +124,6 @@ function ItemTable({
     onDelete,
     onEdit,
     onMove,
-    onReportBroken,
     onHistory,
     onSort,
     sortColumn,
@@ -520,17 +518,6 @@ function ItemTable({
                                                     onClick={() => onMove(item)}
                                                 >
                                                     <SwapHorizIcon fontSize="large"/>
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
-
-                                        {onReportBroken && item.locations?.some((loc) => loc.total_quantity > 0) && (
-                                            <Tooltip title="Report broken">
-                                                <IconButton
-                                                    color="error"
-                                                    onClick={() => onReportBroken(item)}
-                                                >
-                                                    <RemoveCircleOutlinedIcon fontSize="large"/>
                                                 </IconButton>
                                             </Tooltip>
                                         )}
