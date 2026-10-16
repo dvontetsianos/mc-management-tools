@@ -253,6 +253,7 @@ function CountCloseDialog({ open, onClose, onDone, defaultDepartmentId }) {
                                                 <TableCell>Location</TableCell>
                                                 <TableCell>Item</TableCell>
                                                 <TableCell align="right">System</TableCell>
+                                                <TableCell align="right">Broken</TableCell>
                                                 <TableCell align="right">Counted</TableCell>
                                                 <TableCell align="right">Difference</TableCell>
                                             </TableRow>
@@ -270,6 +271,7 @@ function CountCloseDialog({ open, onClose, onDone, defaultDepartmentId }) {
                                                         )}
                                                     </TableCell>
                                                     <TableCell align="right">{change.system}</TableCell>
+                                                    <TableCell align="right">{change.broken || "-"}</TableCell>
                                                     <TableCell align="right">{change.counted}</TableCell>
                                                     <TableCell
                                                         align="right"

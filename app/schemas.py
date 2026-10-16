@@ -177,6 +177,8 @@ class ItemLocationResponse(BaseModel):
     staff_counted_quantity: int | None = None
     staff_counted_at: datetime | None = None
     staff_counted_by: str | None = None
+    #reported broken here, not in a closed count yet (still inside total_quantity)
+    broken_pending: int = 0
 
     class Config:
         from_attributes = True
@@ -232,6 +234,8 @@ class ItemResponse(BaseModel):
     cost_per_unit: float | None = None
     #the latestpurchase with a cost, when there is one: {"unit_cost": 12.5, "date": ...}
     cost_from_purchase: dict | None = None
+    #broken reports no closed count has taken yet: {"units": 3, "reports": [{units, location, hotel, by, at, note}]}
+    broken_pending: dict | None = None
     image_url: str | None = None
     total_quantity: int
     assigned_quantity: int = 0

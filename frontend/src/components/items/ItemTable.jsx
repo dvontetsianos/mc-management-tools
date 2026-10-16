@@ -80,12 +80,15 @@ function getCountSummary(item) {
         (loc) => loc.staff_counted_quantity !== null && loc.staff_counted_quantity !== undefined
     );
 
+    //what should be found at a location: Assigned minus what was reported broken there (not missing)
+    const shouldFind = (loc) => (loc.total_quantity || 0) - (loc.broken_pending || 0);
+
     const countedTotal = counted.reduce((sum, loc) => sum + loc.staff_counted_quantity, 0);
-    const systemTotal = counted.reduce((sum, loc) => sum + (loc.total_quantity || 0), 0);
+    const systemTotal = counted.reduce((sum, loc) => sum + shouldFind(loc), 0);
 
     //the total matches, but some locations have more and others less(items moved around)
     const moved = countedTotal === systemTotal
-        && counted.some((loc) => loc.staff_counted_quantity !== (loc.total_quantity || 0));
+        && counted.some((loc) => loc.staff_counted_quantity !== shouldFind(loc));
 
 
     //locations that have stock but no count yet
@@ -410,7 +413,37 @@ function ItemTable({
                                     <TableCell align="center" sx={{ width: 140 }}>{item.expected_total}</TableCell>
                                     )}
                                     {show("assigned_quantity") && (
-                                    <TableCell align="center" sx={{ width: 140}}>{item.assigned_quantity}</TableCell>
+                                    <TableCell align="center" sx={{ width: 140}}>
+                                        {item.assigned_quantity}
+
+                                        {/* stock taken away by this month's broken reports, details on hover */}
+                                        {item.broken_pending && (
+                                            <Tooltip
+                                                arrow
+                                                slotProps={{ tooltip: { sx: { maxWidth: "none" } } }}
+                                                title={
+                                                    <Box sx={{ whiteSpace: "nowrap" }}>
+                                                        <Box sx={{ fontWeight: "bold", mb: 0.5 }}>Reported broken, until the count is closed</Box>
+                                                        {item.broken_pending.reports.map((report, index) => (
+                                                            <div key={index}>
+                                                                {report.units} at {report.location}{report.hotel ? ` (${report.hotel})` : ""}, by {report.by || "unknown"}, {formatCountedAt(report.at)}{report.note ? ` - ${report.note}` : ""}
+                                                            </div>
+                                                        ))}
+                                                    </Box>
+                                                }
+                                            >
+                                                <Box>
+                                                    <Chip
+                                                        label={`-${item.broken_pending.units} broken`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="error"
+                                                        sx={{ mt: 0.5, fontWeight: "bold" }}
+                                                    />
+                                                </Box>
+                                            </Tooltip>
+                                        )}
+                                    </TableCell>
                                     )}
                                     {show("staff_count") && (
                                     <TableCell align="center" sx={{ width: 140 }}>
@@ -428,11 +461,11 @@ function ItemTable({
                                                     title={
                                                         <Box sx={{ whiteSpace: "nowrap" }}>
                                                             {summary.counted.map((loc) => {
-                                                                const difference = loc.staff_counted_quantity - (loc.total_quantity || 0);
+                                                                const difference = loc.staff_counted_quantity - (loc.total_quantity || 0) + (loc.broken_pending || 0);
 
                                                                 return (
                                                                     <div key={loc.id}>
-                                                                        {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: counted {loc.staff_counted_quantity}, assigned {loc.total_quantity || 0}{difference !== 0 ? ` (${difference > 0 ? "+" : ""}${difference})` : ""}, by {loc.staff_counted_by || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
+                                                                        {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: counted {loc.staff_counted_quantity}, assigned {loc.total_quantity || 0}{loc.broken_pending ? `, broken ${loc.broken_pending}` : ""}{difference !== 0 ? ` (${difference > 0 ? "+" : ""}${difference})` : ""}, by {loc.staff_counted_by || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
                                                                     </div>
                                                                 );
                                                             })}

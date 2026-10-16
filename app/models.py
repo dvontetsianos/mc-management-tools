@@ -424,6 +424,10 @@ class StockAdjustment(Base):
     created_by = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    
+    #when it was taken into Assigned: a broken report stays empty until a count closes at that location
+    settled_at = Column(DateTime, nullable=True)
+
 
 class Feedback(Base):
     __tablename__ = "feedback"

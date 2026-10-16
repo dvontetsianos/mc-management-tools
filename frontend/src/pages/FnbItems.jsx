@@ -563,7 +563,7 @@ function FnbItems() {
     );
 
     const missing = countedInView.length > 0
-      ? countedInView.reduce((sum, loc) => sum + (loc.total_quantity || 0) - loc.staff_counted_quantity, 0)
+      ? countedInView.reduce((sum, loc) => sum + (loc.total_quantity || 0) - (loc.broken_pending || 0) - loc.staff_counted_quantity, 0)
       : null;
 
       if (!locationFilterOn) {

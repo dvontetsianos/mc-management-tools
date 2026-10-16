@@ -2805,6 +2805,9 @@ def get_dashboard(
         unassigned_by_department = {}
         missing_by_department = {}
 
+        #broken reports still inside Assigned: they're broken, not missing
+        broken_waiting = pending_broken(db)
+        
         for item_location, location, item in rows.all():
             total = item_location.total_quantity or 0
             counted = item_location.staff_counted_quantity
@@ -2831,7 +2834,7 @@ def get_dashboard(
 
             #only shortages count as missing, extra items found are kept apart
             if counted is not None:
-                difference = counted - total
+                difference = counted - (total - broken_waiting.get((item.id, location.id), 0))
 
                 #the same numbers per department, only for departments where the count found a difference
                 if difference != 0:
@@ -3326,6 +3329,38 @@ def get_items(
         if hotel_scope is None or adjustment_hotel_id in hotel_scope:
             adjustments_by_item[adjustment_item_id] = adjustments_by_item.get(adjustment_item_id, 0) + (adjusted or 0)
     
+    
+    #broken reports no closed count has taken yet, per item: the table shows "-3 broken" under Assigned
+    broken_pending = {}
+    broken_by_location = {}
+
+    broken_rows = db.query(models.StockAdjustment).options(
+        joinedload(models.StockAdjustment.location),
+        joinedload(models.StockAdjustment.hotel)
+    ).filter(
+        models.StockAdjustment.reason == "broken",
+        models.StockAdjustment.settled_at.is_(None)
+    ).order_by(models.StockAdjustment.created_at.desc(), models.StockAdjustment.id.desc())
+
+    for row in broken_rows:
+        if hotel_scope is not None and row.hotel_id not in hotel_scope:
+            continue
+
+        units = abs(row.quantity or 0)
+        key = (row.item_id, row.location_id)
+        broken_by_location[key] = broken_by_location.get(key, 0) + units
+
+        entry = broken_pending.setdefault(row.item_id, {"units": 0, "reports": []})
+        entry["units"] += units
+        entry["reports"].append({
+            "units": units,
+            "location": row.location.name if row.location else None,
+            "hotel": row.hotel.name if row.hotel else None,
+            "by": row.created_by,
+            "at": row.created_at,
+            "note": row.notes
+        })
+    
     #stock moved between hotels counts as leaving one hotel and arriving at the other
     transfers_by_item = {}
 
@@ -3389,7 +3424,8 @@ def get_items(
                 "total_quantity": item_location.total_quantity,
                 "staff_counted_quantity": item_location.staff_counted_quantity,
                 "staff_counted_at": item_location.staff_counted_at,
-                "staff_counted_by": item_location.staff_counted_by
+                "staff_counted_by": item_location.staff_counted_by,
+                "broken_pending": broken_by_location.get((item.id, item_location.location_id), 0)
             })
 
             total_quantity += item_location.total_quantity
@@ -3434,6 +3470,7 @@ def get_items(
             "supplier_id": item.supplier_id,
             "cost_per_unit": item.cost_per_unit,
             "cost_from_purchase": cost_from_purchase.get(item.id),
+            "broken_pending": broken_pending.get(item.id),
             **spec_fields_of(item),
             "image_url": item.image_url,
             "total_quantity": total_quantity,
@@ -4724,8 +4761,30 @@ def dismiss_item_location_count(
     }
 
 #----------------------------------------------------------------------------------------
-#report items broken at one location (Items page or Quick Count):
-#the stock there goes down, and the loss is saved as a stock adjustment with reason "broken"
+#broken reports that no closed count has taken yet: Assigned (the manager's plan) still includes them
+#{(item_id, location_id): units}, only for item_ids when given
+def pending_broken(db, item_ids=None):
+
+    query = db.query(
+        models.StockAdjustment.item_id,
+        models.StockAdjustment.location_id,
+        func.sum(models.StockAdjustment.quantity)
+    ).filter(
+        models.StockAdjustment.reason == "broken",
+        models.StockAdjustment.settled_at.is_(None)
+    )
+
+    if item_ids is not None:
+        query = query.filter(models.StockAdjustment.item_id.in_(item_ids))
+
+    rows = query.group_by(models.StockAdjustment.item_id, models.StockAdjustment.location_id).all()
+
+    return {(item_id, location_id): -(quantity or 0) for item_id, location_id, quantity in rows}
+
+#----------------------------------------------------------------------------------------
+#report items broken at one location (Quick Count):
+#Assigned (the plan) stays, the loss is saved as a stock adjustment with reason "broken",
+#and the next closed count at that location takes it into Assigned (so it's never counted as missing too)
 @app.post("/item-locations/{item_location_id}/broken")
 def report_broken(
     item_location_id: int,
@@ -4755,7 +4814,10 @@ def report_broken(
     if report.quantity <= 0:
         raise HTTPException(status_code=400, detail="How many broke? Enter a number greater than 0.")
 
-    if report.quantity > stock:
+    #the ones already reported broken here can't break again
+    already_broken = pending_broken(db, [item.id]).get((item.id, location.id), 0)
+
+    if report.quantity > stock - already_broken:
         raise HTTPException(status_code=400, detail=f"That's more than there are at {location.name}. Check the number.")
 
     note = (report.note or "").strip() or None
@@ -4772,16 +4834,10 @@ def report_broken(
         created_by=user["username"]
     ))
 
-    db_item_location.total_quantity = stock - report.quantity
-
     #a count already saved here included the broken ones: lower it too,
-    #otherwise closing the count would report them again, as missing
+    #the count is what's still usable
     if db_item_location.staff_counted_quantity is not None:
         db_item_location.staff_counted_quantity = max(0, db_item_location.staff_counted_quantity - report.quantity)
-
-    #nothing left here and nothing counted: the row goes (like closing a count)
-    if db_item_location.total_quantity <= 0 and not db_item_location.staff_counted_quantity:
-        db.delete(db_item_location)
 
     db.commit()
 
@@ -4943,13 +4999,17 @@ def close_counts(
     units_found = 0
     value_missing = 0.0
 
+    #broken reports still inside Assigned: they're broken, not missing
+    broken_waiting = pending_broken(db)
+    
     for item_location in counted_rows:
         item = item_location.item
         location = item_location.location
 
         system = item_location.total_quantity or 0
         counted = item_location.staff_counted_quantity
-        difference = counted - system
+        broken = broken_waiting.get((item_location.item_id, item_location.location_id), 0)
+        difference = counted - (system - broken)
 
         if difference == 0:
             continue
@@ -4969,6 +5029,7 @@ def close_counts(
             "location": location.name if location else None,
             "hotel": location.hotel.name if location and location.hotel else None,
             "system": system,
+            "broken": broken,
             "counted": counted,
             "difference": difference,
             "reason": "missing" if difference < 0 else "found",
@@ -5009,10 +5070,13 @@ def close_counts(
             detail="The safety backup failed, so nothing was changed. Try System Monitor -> Back up now to see why."
         )
 
+    now = datetime.utcnow()
+
     for item_location in counted_rows:
         item = item_location.item
         location = item_location.location
-        difference = item_location.staff_counted_quantity - (item_location.total_quantity or 0)
+        broken = broken_waiting.get((item_location.item_id, item_location.location_id), 0)
+        difference = item_location.staff_counted_quantity - ((item_location.total_quantity or 0) - broken)
 
         if difference != 0:
             db.add(models.StockAdjustment(
@@ -5024,11 +5088,20 @@ def close_counts(
                 reason="missing" if difference < 0 else "found",
                 unit_cost=item.cost_per_unit if item else None,
                 notes="Count closed",
-                created_by=admin["username"]
+                created_by=admin["username"],
+                settled_at=now
             ))
 
-            #the count becomes the new truth
-            item_location.total_quantity = item_location.staff_counted_quantity
+        #the count becomes the new plan, the broken reports here are now part of it
+        item_location.total_quantity = item_location.staff_counted_quantity
+
+        if broken:
+            db.query(models.StockAdjustment).filter(
+                models.StockAdjustment.item_id == item_location.item_id,
+                models.StockAdjustment.location_id == item_location.location_id,
+                models.StockAdjustment.reason == "broken",
+                models.StockAdjustment.settled_at.is_(None)
+            ).update({"settled_at": now}, synchronize_session=False)
 
         item_location.staff_counted_quantity = None
         item_location.staff_counted_at = None
@@ -5287,6 +5360,16 @@ def create_item_movement(
         raise HTTPException(
             status_code=400,
             detail="Not enough stock of this item at the source location"
+        )
+
+    
+    #broken ones stay in the plan until the count closes there, but they can't be moved
+    broken_here = pending_broken(db, [movement.item_id]).get((movement.item_id, movement.from_location_id), 0)
+
+    if from_item_location.total_quantity - broken_here < movement.quantity:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only {from_item_location.total_quantity - broken_here} can be moved from here, {broken_here} were reported broken (they stay until the count is closed)"
         )
 
 
