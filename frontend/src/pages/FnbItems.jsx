@@ -7,6 +7,7 @@ import MoveItemDialog from "../components/items/MoveItemDialog";
 import CountResetDialog from "../components/items/CountResetDialog";
 import CountCloseDialog from "../components/items/CountCloseDialog";
 import { useTableZoom } from "../hooks/useTableZoom";
+import { usePageState } from "../hooks/usePageState";
 import TableZoomToggle from "../components/TableZoomToggle";
 import ColumnsButton from "../components/items/ColumnsButton";
 import { useHiddenColumns } from "../hooks/useHiddenColumns";
@@ -74,13 +75,13 @@ function FnbItems() {
 
   // ---items tab state -----
 
-  const [itemSearch, setItemSearch] = useState("");
+  const [itemSearch, setItemSearch] = usePageState("fnb:search", "");
   const [itemFiltersOpen, setItemFiltersOpen] = useState(false);
-  const [itemSearchField, setItemSearchField] = useState("all");
-  const [itemSortColumn, setItemSortColumn] = useState(null);
-  const [itemSortDirection, setItemSortDirection] = useState("asc");
+  const [itemSearchField, setItemSearchField] = usePageState("fnb:search_field", "all");
+  const [itemSortColumn, setItemSortColumn] = usePageState("fnb:sort_column", null);
+  const [itemSortDirection, setItemSortDirection] = usePageState("fnb:sort_direction", "asc");
   const [itemPage, setItemPage] = useState(0);
-  const [itemRowsPerPage, setItemRowsPerPage] = useState(25);
+  const [itemRowsPerPage, setItemRowsPerPage] = usePageState("fnb:rows_per_page", 25);
   const [itemZoom, setItemZoom] = useTableZoom();
 
   const [itemForm, setItemForm] = useState({
@@ -108,12 +109,12 @@ function FnbItems() {
   const [countResetOpen, setCountResetOpen] = useState(false);
   const [countCloseOpen, setCountCloseOpen] = useState(false);
 
-  const [selectedItemCategories, setSelectedItemCategories] = useState([]);
-  const [selectedItemSubcategories, setSelectedItemSubcategories] = useState([]);
-  const [selectedItemLocations, setSelectedItemLocations] = useState([]);
-  const [selectedItemSuppliers, setSelectedItemSuppliers] = useState([]);
-  const [selectedItemHotels, setSelectedItemHotels] = useState([]);
-  const [itemQtyAtLocation, setItemQtyAtLocation] = useState(true);
+  const [selectedItemCategories, setSelectedItemCategories] = usePageState("fnb:categories", []);
+  const [selectedItemSubcategories, setSelectedItemSubcategories] = usePageState("fnb:subcategories", []);
+  const [selectedItemLocations, setSelectedItemLocations] = usePageState("fnb:locations", []);
+  const [selectedItemSuppliers, setSelectedItemSuppliers] = usePageState("fnb:suppliers", []);
+  const [selectedItemHotels, setSelectedItemHotels] = usePageState("fnb:hotels", []);
+  const [itemQtyAtLocation, setItemQtyAtLocation] = usePageState("fnb:qty_at_location", true);
 
 
   //-------fetchers-----------
@@ -123,6 +124,12 @@ function FnbItems() {
     if (!fbDepartmentId) {
       return;
     }
+
+    //a hotel filter kept from before the refresh needs the hotel list first (the effect below runs again then)
+    if (selectedItemHotels.length > 0 && hotels.length === 0) {
+      return;
+    }
+
     try {
       //the hotel filter goes to the backend, so the numbers only count those hotels
       const selectedHotelIds = hotels
@@ -225,7 +232,7 @@ function FnbItems() {
   //reload the items when the hotel filter changes
   useEffect(() => {
     fetchItems();
-  }, [selectedItemHotels]);
+  }, [selectedItemHotels, hotels]);
 
 
   //-----item handlers----------

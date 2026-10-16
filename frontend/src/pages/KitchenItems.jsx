@@ -41,6 +41,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ItemsHelpButton from "../components/items/ItemsHelpButton";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { useTableZoom } from "../hooks/useTableZoom";
+import { usePageState } from "../hooks/usePageState";
 import TableZoomToggle from "../components/TableZoomToggle";
 import ColumnsButton from "../components/items/ColumnsButton";
 import { useHiddenColumns } from "../hooks/useHiddenColumns";
@@ -70,13 +71,13 @@ function KitchenItems() {
 
   // ---items tab state -----
 
-  const [itemSearch, setItemSearch] = useState("");
+  const [itemSearch, setItemSearch] = usePageState("kitchen:search", "");
   const [itemFiltersOpen, setItemFiltersOpen] = useState(false);
-  const [itemSearchField, setItemSearchField] = useState("all");
-  const [itemSortColumn, setItemSortColumn] = useState(null);
-  const [itemSortDirection, setItemSortDirection] = useState("asc");
+  const [itemSearchField, setItemSearchField] = usePageState("kitchen:search_field", "all");
+  const [itemSortColumn, setItemSortColumn] = usePageState("kitchen:sort_column", null);
+  const [itemSortDirection, setItemSortDirection] = usePageState("kitchen:sort_direction", "asc");
   const [itemPage, setItemPage] = useState(0);
-  const [itemRowsPerPage, setItemRowsPerPage] = useState(25);
+  const [itemRowsPerPage, setItemRowsPerPage] = usePageState("kitchen:rows_per_page", 25);
   const [itemZoom, setItemZoom] = useTableZoom();
 
   const [itemForm, setItemForm] = useState({
@@ -104,12 +105,12 @@ function KitchenItems() {
   const [countResetOpen, setCountResetOpen] = useState(false);
   const [countCloseOpen, setCountCloseOpen] = useState(false);
 
-  const [selectedItemCategories, setSelectedItemCategories] = useState([]);
-  const [selectedItemSubcategories, setSelectedItemSubcategories] = useState([]);
-  const [selectedItemLocations, setSelectedItemLocations] = useState([]);
-  const [selectedItemSuppliers, setSelectedItemSuppliers] = useState([]);
-  const [selectedItemHotels, setSelectedItemHotels] = useState([]);
-  const [itemQtyAtLocation, setItemQtyAtLocation] = useState(true);
+  const [selectedItemCategories, setSelectedItemCategories] = usePageState("kitchen:categories", []);
+  const [selectedItemSubcategories, setSelectedItemSubcategories] = usePageState("kitchen:subcategories", []);
+  const [selectedItemLocations, setSelectedItemLocations] = usePageState("kitchen:locations", []);
+  const [selectedItemSuppliers, setSelectedItemSuppliers] = usePageState("kitchen:suppliers", []);
+  const [selectedItemHotels, setSelectedItemHotels] = usePageState("kitchen:hotels", []);
+  const [itemQtyAtLocation, setItemQtyAtLocation] = usePageState("kitchen:qty_at_location", true);
 
 
   //-------fetchers-----------
@@ -119,6 +120,13 @@ function KitchenItems() {
     if (!kitchenDepartmentId) {
       return;
     }
+
+    
+    //a hotel filter kept from before the refresh needs the hotel list first (the effect below runs again then)
+    if (selectedItemHotels.length > 0 && hotels.length === 0) {
+      return;
+    }
+
     try {
       //the hotel filter goes to the backend, so the numbers only count those hotels
       const selectedHotelIds = hotels
@@ -221,7 +229,7 @@ function KitchenItems() {
   //reload the items when the hotel filter changes
   useEffect(() => {
     fetchItems();
-  }, [selectedItemHotels]);
+  }, [selectedItemHotels, hotels]);
 
 
   //-----item handlers----------
