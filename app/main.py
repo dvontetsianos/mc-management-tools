@@ -2647,7 +2647,8 @@ DEFAULT_SETTINGS = {
     "dashboard_lost_found": True,
     "dashboard_spend": True,
     "dashboard_broken": True,
-    "quickcount_notice_on": False
+    "quickcount_notice_on": False,
+    "quickcount_leaderboard_on": False
 }
 
 #settings that hold text instead of on/off (e.g. the message shown in Quick Count)
@@ -2673,6 +2674,43 @@ def get_settings(
     user: dict = Depends(get_current_user)
 ):
     return read_settings(db)
+
+
+#Quick Count's "who counted the most" message: the top 3 of the last 7 days, while the switch is on
+#every item counted at a location counts once per person (counting it again doesn't add)
+@app.get("/quickcount/leaderboard")
+def get_count_leaderboard(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+
+    if not read_settings(db)["quickcount_leaderboard_on"]:
+        return {"top": []}
+
+    since = datetime.utcnow() - timedelta(days=7)
+
+    #admins test the app, they don't take part
+    admins = {name for (name,) in db.query(models.User.username).filter(func.lower(models.User.role) == "admin")}
+
+    counts = db.query(
+        models.ActionsLog.username, models.ActionsLog.entity_id, models.ActionsLog.details
+    ).filter(
+        models.ActionsLog.action == "submitted a count for",
+        models.ActionsLog.timestamp >= since
+    ).all()
+
+    #the details start with "At <location>:", so item + location is one counted item
+    counted = {}
+    for username, item_id, details in counts:
+        if username in admins:
+            continue
+
+        location = (details or "").split(":")[0]
+        counted.setdefault(username, set()).add((item_id, location))
+
+    top = sorted(counted.items(), key=lambda pair: (-len(pair[1]), pair[0].lower()))[:3]
+
+    return {"top": [{"username": username, "items": len(items)} for username, items in top]}
 
 
 @app.put("/settings")

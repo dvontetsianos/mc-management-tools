@@ -16,7 +16,7 @@ import FeedbackDialog from "../../components/feedback/FeedbackDialog";
 import { getLocations } from "../../services/locationService";
 import { logout, getUser } from "../../services/auth";
 import { getHotels } from "../../services/hotelService";
-import { getSettings } from "../../services/systemService";
+import { getSettings, getCountLeaderboard } from "../../services/systemService";
 
 
 
@@ -39,10 +39,17 @@ function LocationPicker() {
     //the message an admin can switch on i System Monitor ("" = nothing to show)
     const [notice, setNotice] = useState("");
 
+    //the top 3 counters of the last 7 days, also switched on in System Monitor ([] = nothing to show)
+    const [leaders, setLeaders] = useState([]);
+
     useEffect(() => {
         getSettings()
             .then((settings) => setNotice(settings.quickcount_notice_on ? (settings.quickcount_notice_text || "") : ""))
             .catch(() => setNotice(""));
+        
+        getCountLeaderboard()
+            .then((data) => setLeaders(data.top || []))
+            .catch(() => setLeaders([]));
     }, []);
 
     useEffect(() => {
@@ -144,6 +151,18 @@ function LocationPicker() {
                     sx={{ mx: 2, mb: 2, whiteSpace: "pre-line" }}
                 >
                     {notice}
+                </Alert>
+            )}
+
+            
+            {leaders.length > 0 && (
+                <Alert severity="success" icon={false} sx={{ mx: 2, mb: 2 }}>
+                    <Box sx={{ fontWeight: 600, mb: 0.5 }}>🏆 Περισσότερα είδη μετρήθηκαν τις τελευταίες 7 μέρες από:</Box>
+                    {leaders.map((leader, index) => (
+                        <Box key={leader.username}>
+                            {["🥇", "🥈", "🥉"][index]} {leader.username}: {leader.items} είδη
+                        </Box>
+                    ))}
                 </Alert>
             )}
 

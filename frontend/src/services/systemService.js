@@ -58,6 +58,24 @@ export async function getSettings() {
     return await response.json();
 }
 
+//Quick Count's top 3 counters of the last 7 days (empty while the switch is off)
+export async function getCountLeaderboard() {
+
+    const response = await fetch(`${API_URL}/quickcount/leaderboard`, {
+        headers: {
+            Authorization: `Bearer ${getToken()}`
+        }
+    });
+
+    await handleResponse(response);
+
+    if (!response.ok) {
+        throw new Error("Can't load the leaderboard.");
+    }
+
+    return await response.json();
+}
+
 export async function updateSettings(changes) {
 
     const response = await fetch(`${API_URL}/settings`, {

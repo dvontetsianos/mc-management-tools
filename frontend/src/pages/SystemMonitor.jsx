@@ -624,6 +624,20 @@ function SystemMonitor() {
                             }
                         />
 
+                        
+                        {/* the top 3 of the last 7 days, worked out by the server (admins don't take part) */}
+                        <FormControlLabel
+                            sx={{ mt: 1 }}
+                            label="Show the top 3 counters of the last 7 days"
+                            control={
+                                <Switch
+                                    checked={settings?.quickcount_leaderboard_on ?? false}
+                                    disabled={!settings}
+                                    onChange={(event) => handleSettingChange("quickcount_leaderboard_on", event.target.checked)}
+                                />
+                            }
+                        />
+
                         <Divider sx={{ my: 2 }} />
 
                         <Typography sx={{ fontWeight: 600, fontSize: "0.9rem" }}>Dashboard tiles</Typography>

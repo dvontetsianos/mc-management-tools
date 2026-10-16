@@ -349,6 +349,7 @@ class AppSettingsUpdate(BaseModel):
     dashboard_broken: bool | None = None
     quickcount_notice_on: bool | None = None
     quickcount_notice_text: str | None = None
+    quickcount_leaderboard_on: bool | None = None
 
 
 
