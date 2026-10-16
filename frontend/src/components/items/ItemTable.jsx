@@ -210,7 +210,7 @@ function ItemTable({
                                 )}
 
                                 {show("image") && (
-                                <TableCell align="left" sx={{ width: 100, maxWidth: 100, px: 1 }}>
+                                <TableCell align="left" sx={{ width: 120, maxWidth: 120, px: 1 }}>
                                     Image
                                 </TableCell>
                                 )}

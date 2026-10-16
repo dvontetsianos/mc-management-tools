@@ -186,7 +186,7 @@ function Users() {
         "categories_access",
         "locations_access",
         "suppliers_access",
-        "view_excel_access",
+        "import_items_access",
         "lost_found_access",
         "spend_report_access",
         "losses_report_access",

@@ -46,11 +46,11 @@ const NAVY = "#080125";
 const DASHBOARD_TILES = [
     { key: "dashboard_count_progress", label: "Count Progress" },
     { key: "dashboard_missing", label: "Missing" },
+    { key: "dashboard_broken", label: "Broken" },
     { key: "dashboard_unassigned", label: "In Unassigned" },
     { key: "dashboard_requests", label: "Requests" },
     { key: "dashboard_lost_found", label: "Lost & Found" },
-    { key: "dashboard_spend", label: "Spend" },
-    { key: "dashboard_broken", label: "Broken" }
+    { key: "dashboard_spend", label: "Spend" }
 ];
 
 

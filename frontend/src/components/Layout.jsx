@@ -29,7 +29,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import CategoryIcon from "@mui/icons-material/Category";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
-import TableChartIcon from "@mui/icons-material/TableChart";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import MenuIcon from "@mui/icons-material/Menu";
 import Calculator from "../components/Calculator";
@@ -91,6 +91,7 @@ const NAV_SECTIONS = [
             { label: "Categories", path: "/categories", icon: <CategoryIcon />, show: has("categories_access") },
             { label: "Locations", path: "/locations", icon: <LocationOnIcon />, show: has("locations_access") },
             { label: "Suppliers", path: "/suppliers", icon: <LocalShippingIcon />, show: has("suppliers_access") },
+            { label: "Import Items", path: "/import-items", icon: <UploadFileIcon />, show: has("import_items_access") },
             { label: "Departments", path: "/departments", icon: <BusinessIcon />, show: isAdmin }
         ]
     },
@@ -100,7 +101,6 @@ const NAV_SECTIONS = [
             { label: "User Management", path: "/users", icon: <PeopleIcon />, show: isAdmin },
             { label: "History", path: "/history", icon: <HistoryIcon />, show: isAdmin },
             { label: "Feedback", path: "/feedback", icon: <InboxIcon />, show: isAdmin, badge: "feedback" },
-            { label: "Excel Viewer", path: "/excel", icon: <TableChartIcon />, show: has("view_excel_access") },
             { label: "System Monitor", path: "/system-monitor", icon: <MonitorHeartIcon />, show: isAdmin }
         ]
     }

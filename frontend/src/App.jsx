@@ -18,7 +18,7 @@ const SystemMonitor = lazy(() => import("./pages/SystemMonitor"));
 const Categories = lazy(() => import("./pages/Categories"));
 const Locations = lazy(() => import("./pages/Locations"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
-const Excel = lazy(() => import("./pages/Excel"));
+const ImportItems = lazy(() => import("./pages/ImportItems"));
 const Departments = lazy(() => import("./pages/Departments"));
 const Requests = lazy(() => import("./pages/Requests"));
 const History = lazy(() => import("./pages/History"));
@@ -173,10 +173,10 @@ function App() {
                 />
 
                 <Route
-                    path="/excel"
+                    path="/import-items"
                     element={
-                        <PermissionRoute permission="view_excel_access">
-                            <Excel />
+                        <PermissionRoute permission="import_items_access">
+                            <ImportItems />
                         </PermissionRoute>
                     }
                 />

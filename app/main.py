@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine, get_db, SessionLocal
-from . import models, schemas
+from . import models, schemas, item_import
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta, date, timezone
@@ -505,7 +505,7 @@ def create_default_permissions():
         "categories_access",
         "locations_access",
         "suppliers_access",
-        "view_excel_access",
+        "import_items_access",
         "lost_found_access",
         "spend_report_access",
         "losses_report_access",
@@ -539,76 +539,67 @@ def home():
 
 
 #-----------------------------------------------------------------------------------
-#import excel
-@app.post("/excel/preview")
-async def preview_excel(
-    file: UploadFile = File(...),
-    sheet_name: str | None = Form(None),
+#Import Items: an empty template to fill in, a check of the filled file, then the import (the work is in item_import.py)
+def require_import_items(db, user: dict):
+    if not user_has_live_permission(db, user, "import_items_access"):
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to import items"
+        )
+
+@app.get("/item-import/template")
+def download_import_template(
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user)
 ):
-    max_file_size = 10 * 1024 * 1024
-    max_cells = 50_000
 
-    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+    require_import_items(db, user)
+
+    contents = item_import.build_template(db, user_hotel_scope(user), department_item_fields)
+
+    return StreamingResponse(
+        BytesIO(contents),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="Import Items template.xlsx"'}
+    )
+
+#shows what would happen, saves nothing
+@app.post("/item-import/check")
+async def check_import_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+
+    require_import_items(db, user)
+
+    workbook = await item_import.read_upload(file)
+    report, to_add = item_import.check_workbook(db, workbook, user_hotel_scope(user), department_item_fields)
+
+    return report
+
+#checks the file again (it could have changed), then adds the items that passed
+@app.post("/item-import")
+async def import_items_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+
+    require_import_items(db, user)
+
+    workbook = await item_import.read_upload(file)
+    report, to_add = item_import.check_workbook(db, workbook, user_hotel_scope(user), department_item_fields)
+
+    if not to_add:
         raise HTTPException(
             status_code=400,
-            detail="Only .xlsx files are supported."
+            detail="There are no new items to import in this file"
         )
 
-    file_contents = await file.read(max_file_size + 1)
+    added = item_import.add_items(db, to_add, user["username"], get_unassigned_row)
 
-    if len(file_contents) > max_file_size:
-        raise HTTPException(
-            status_code=400,
-            detail="The workbook must be 10 MB or smaller."
-        )
-
-    try:
-        workbook = load_workbook(
-            BytesIO(file_contents),
-            read_only=True,
-            data_only=True
-        )
-
-    except (InvalidFileException, BadZipFile):
-        raise HTTPException(
-            status_code=400,
-            detail="The selected file is not a valid Excel workbook."
-        )
-
-    try:
-        if sheet_name and sheet_name in workbook.sheetnames:
-            worksheet = workbook[sheet_name]
-        else:
-            worksheet = workbook.active
-
-        total_cells = worksheet.max_row * worksheet.max_column
-
-        if total_cells > max_cells:
-            raise HTTPException(
-                status_code=400,
-                detail="This worksheet is too large to preview."
-            )
-
-        rows = []
-
-        for row in worksheet.iter_rows(values_only=True):
-            rows.append([
-                "" if cell is None else str(cell)
-                for cell in row
-            ])
-
-        return {
-            "file_name": file.filename,
-            "sheet_names": workbook.sheetnames,
-            "selected_sheet": worksheet.title,
-            "rows": rows,
-            "row_count": len(rows),
-            "column_count": worksheet.max_column
-        }
-
-    finally:
-        workbook.close()
+    return {**report, "added": added}
 #---------------------------------------------------------------------
 #get action history
 @app.get("/history")
