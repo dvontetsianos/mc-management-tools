@@ -230,6 +230,8 @@ class ItemResponse(BaseModel):
     supplier: str | None = None
     supplier_id: int | None = None
     cost_per_unit: float | None = None
+    #the latestpurchase with a cost, when there is one: {"unit_cost": 12.5, "date": ...}
+    cost_from_purchase: dict | None = None
     image_url: str | None = None
     total_quantity: int
     assigned_quantity: int = 0
@@ -344,6 +346,7 @@ class AppSettingsUpdate(BaseModel):
     dashboard_requests: bool | None = None
     dashboard_lost_found: bool | None = None
     dashboard_spend: bool | None = None
+    dashboard_broken: bool | None = None
 
 
 

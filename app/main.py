@@ -2654,7 +2654,8 @@ DEFAULT_SETTINGS = {
     "dashboard_unassigned": True,
     "dashboard_requests": True,
     "dashboard_lost_found": True,
-    "dashboard_spend": True
+    "dashboard_spend": True,
+    "dashboard_broken": True
 }
 
 def read_settings(db):
@@ -2909,6 +2910,70 @@ def get_dashboard(
                 for name, value in sorted(by_hotel.items(), key=lambda pair: pair[1], reverse=True)
             ],
             "purchases_without_cost": without_cost
+        }
+
+        #---- broken: what was reported broken this month (the same records as the Losses report)
+    if can_see_items:
+        now = datetime.utcnow()
+
+        broken = db.query(models.StockAdjustment).options(
+            joinedload(models.StockAdjustment.item),
+            joinedload(models.StockAdjustment.location),
+            joinedload(models.StockAdjustment.hotel),
+            joinedload(models.StockAdjustment.department)
+        ).filter(
+            models.StockAdjustment.reason == "broken",
+            models.StockAdjustment.created_at >= datetime(now.year, now.month, 1)
+        )
+
+        if department_ids is not None:
+            broken = broken.filter(models.StockAdjustment.department_id.in_(department_ids))
+
+        if hotel_scope is not None:
+            broken = broken.filter(models.StockAdjustment.hotel_id.in_(hotel_scope))
+
+        #newest first, so the first 3 are the latest reports
+        rows = broken.order_by(models.StockAdjustment.created_at.desc(), models.StockAdjustment.id.desc()).all()
+
+        broken_units = 0
+        broken_value = 0.0
+        reports_without_cost = 0
+        broken_by_department = {}
+
+        for row in rows:
+            units = abs(row.quantity or 0)
+            department_name = row.department.name if row.department else "No department"
+            department_broken = broken_by_department.setdefault(department_name, {"units": 0, "value": 0.0})
+
+            broken_units += units
+            department_broken["units"] += units
+
+            if row.unit_cost is None:
+                reports_without_cost += 1
+            else:
+                broken_value += units * row.unit_cost
+                department_broken["value"] += units * row.unit_cost
+
+        result["broken"] = {
+            "units": broken_units,
+            "value": round(broken_value, 2),
+            "reports_without_cost": reports_without_cost,
+            "by_department": [
+                {"department": name, "units": values["units"], "value": round(values["value"], 2)}
+                for name, values in sorted(broken_by_department.items())
+            ],
+            "latest": [
+                {
+                    "item": row.item.name if row.item else "Deleted item",
+                    "location": row.location.name if row.location else "-",
+                    "hotel": row.hotel.name if row.hotel else None,
+                    "units": abs(row.quantity or 0),
+                    "by": row.created_by,
+                    "at": row.created_at,
+                    "note": row.notes
+                }
+                for row in rows[:3]
+            ]
         }
 
     return result
@@ -3171,6 +3236,19 @@ def get_items(
 
     items = query.all()
 
+    #where each item's cost comes from: its latest purchase with a cost
+    #(newest first, so the first one found for an item is its latest)
+    cost_from_purchase = {}
+
+    for purchase in db.query(models.Purchase).filter(models.Purchase.unit_cost.isnot(None)).order_by(
+        func.coalesce(models.Purchase.document_date, models.Purchase.created_at).desc(),
+        models.Purchase.id.desc()
+    ):
+        cost_from_purchase.setdefault(purchase.item_id, {
+            "unit_cost": purchase.unit_cost,
+            "date": purchase.document_date or purchase.created_at
+        })
+
     #purchased quantity per item per hotel, so totals only count the user's hotel
     purchases_by_item_hotel = (
         db.query(models.Purchase.item_id, models.Purchase.hotel_id, func.sum(models.Purchase.quantity))
@@ -3305,6 +3383,7 @@ def get_items(
             "supplier": item.supplier.name if item.supplier else None,
             "supplier_id": item.supplier_id,
             "cost_per_unit": item.cost_per_unit,
+            "cost_from_purchase": cost_from_purchase.get(item.id),
             **spec_fields_of(item),
             "image_url": item.image_url,
             "total_quantity": total_quantity,
@@ -3710,7 +3789,9 @@ def update_item(
     db_item.category_id = item.category_id
     db_item.subcategory_id = item.subcategory_id
     db_item.supplier_id = item.supplier_id
-    db_item.cost_per_unit = item.cost_per_unit
+    #an item bought with a cost takes its cost from the latest purchase, so a typed cost is ignored
+    latest_purchase = latest_costed_purchase(db, db_item.id)
+    db_item.cost_per_unit = latest_purchase.unit_cost if latest_purchase else item.cost_per_unit
 
     if user["role"].lower() == "admin":
         if item.department_id is not None:
@@ -3862,8 +3943,8 @@ def update_item(
         changes.append(f"Supplier: {old_supplier_name} -> {new_supplier_name}")
 
 
-    if old_cost_per_unit != item.cost_per_unit:
-        changes.append(f"Cost per Unit: {old_cost_per_unit} -> {item.cost_per_unit}")
+    if old_cost_per_unit != db_item.cost_per_unit:
+        changes.append(f"Cost per Unit: {old_cost_per_unit} -> {db_item.cost_per_unit}")
 
     for field, label in ITEM_SPEC_FIELDS.items():
         if old_specs[field] != getattr(db_item, field):
@@ -5323,19 +5404,24 @@ def get_purchases(
 
     return result
 
+#-------------------------------------------------------------------------------------
+#the purchase an item's cost comes from: its latest one with a cost (None = never bought with a cost)
+def latest_costed_purchase(db: Session, item_id: int):
+
+    return db.query(models.Purchase).filter(
+        models.Purchase.item_id == item_id,
+        models.Purchase.unit_cost.isnot(None)
+    ).order_by(
+        func.coalesce(models.Purchase.document_date, models.Purchase.created_at).desc(),
+        models.Purchase.id.desc()
+    ).first()
 #--------------------------------------------------------------------------------------
 #an item's Cost per Unit follows its latest purchase (by invoice date, or the day it was logged if there's no invoice date)
 #purchases without a cost are skipped; with no costed purchases the cost stays as it is
 #returns a short note for History, or "" when nothing changed
 def update_cost_from_purchases(db: Session, item):
 
-    latest = db.query(models.Purchase).filter(
-        models.Purchase.item_id == item.id,
-        models.Purchase.unit_cost.isnot(None)
-    ).order_by(
-        func.coalesce(models.Purchase.document_date, models.Purchase.created_at).desc(),
-        models.Purchase.id.desc()
-    ).first()
+    latest = latest_costed_purchase(db, item.id)
 
     if latest is None or latest.unit_cost == item.cost_per_unit:
         return ""

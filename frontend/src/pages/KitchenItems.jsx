@@ -670,6 +670,7 @@ function KitchenItems() {
             selectedImage={selectedImage}
             currentImageName={currentImageName}
             onRemoveImage={handleItemRemoveImage}
+            costSource={items.find((item) => item.id === itemEditingId)?.cost_from_purchase}
           />
 
           <Box

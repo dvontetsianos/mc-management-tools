@@ -26,6 +26,8 @@ import AssignmentIcon from "@mui/icons-material/Assignment";
 import FindInPageIcon from "@mui/icons-material/FindInPage";
 import EuroIcon from "@mui/icons-material/Euro";
 import ImageIcon from "@mui/icons-material/Image";
+import RemoveCircleOutlinedIcon from "@mui/icons-material/RemoveCircleOutlined";
+import { formatDateTime } from "../utils/formatDate";
 import { APP_TITLE } from "../config";
 import marbellaelixbg from "../assets/marbellaelixbg.jpg";
 
@@ -45,7 +47,8 @@ const TILE_COLORS = {
     unassigned: "#0b7a5a",
     requests: "#b8336a",
     lost_found: "#a0522d",
-    spend: "#1f7a1f"
+    spend: "#1f7a1f",
+    broken: "#c62828"
 };
 
 //true when the computer is set to "reduce motion": then nothing animates
@@ -247,7 +250,7 @@ function Dashboard() {
     const showTile = (name) =>
         dashboard?.[name] && settings?.[`dashboard_${name}`] !== false;
 
-    const tileNames = ["count_progress", "missing", "unassigned", "requests", "lost_found", "spend"];
+    const tileNames = ["count_progress", "missing", "unassigned", "requests", "lost_found", "spend", "broken"];
     const anyTile = tileNames.some(showTile);
 
     const itemButtons = ITEM_PAGES.filter((page) => hasPermission(page.permission));
@@ -268,6 +271,11 @@ function Dashboard() {
     if (hasPermission("spend_report_access")) {
         spendButtons.push({ label: "Spend Report", path: "/reports/spend" });
     }
+
+    //Broken opens the Losses report already showing only broken (for users who have that report)
+    const brokenButtons = hasPermission("losses_report_access")
+        ? [{ label: "Losses Report", path: "/reports/losses?reason=broken" }]
+        : [];
 
 
     return (
@@ -470,6 +478,48 @@ function Dashboard() {
                                 <Typography variant="body2" sx={{ color: "warning.main" }}>
                                     {dashboard.spend.purchases_without_cost} purchase(s) this year have no unit cost
                                 </Typography>
+                            )}
+                        </Tile>
+                    )}
+
+                    
+                    {/* ---- 7. broken this month, with the 3 latest reports ---- */}
+                    {showTile("broken") && (
+                        <Tile icon={<RemoveCircleOutlinedIcon />} title="Broken" color={TILE_COLORS.broken} index={6} buttons={brokenButtons}>
+                            <BigNumber
+                                value={dashboard.broken.units}
+                                label="units reported broken this month"
+                                color={dashboard.broken.units > 0 ? "error.main" : "text.primary"}
+                            />
+                            <Typography>
+                                Value: <b>{currencyFormatter.format(dashboard.broken.value)}</b>
+                            </Typography>
+                            {dashboard.broken.reports_without_cost > 0 && (
+                                <Typography variant="body2" sx={{ color: "warning.main" }}>
+                                    {dashboard.broken.reports_without_cost} report(s) have no cost, so the value is incomplete
+                                </Typography>
+                            )}
+
+                            <Box sx={{ mt: 1 }}>
+                                {dashboard.broken.by_department.map((row) => (
+                                    <Typography key={row.department} variant="body2">
+                                        <b>{row.department}</b>: {row.units} broken · {currencyFormatter.format(row.value)}
+                                    </Typography>
+                                ))}
+                            </Box>
+
+                            {dashboard.broken.latest.length > 0 && (
+                                <Box sx={{ mt: 1.5 }}>
+                                    <Typography variant="caption" color="text.secondary">Latest</Typography>
+                                    {dashboard.broken.latest.map((report, index) => (
+                                        <Typography key={index} variant="body2" sx={{ lineHeight: 1.4, mb: 0.5 }}>
+                                            <b>{report.units} × {report.item}</b> · {report.location}{report.hotel ? ` (${report.hotel})` : ""}
+                                            <Box component="span" sx={{ display: "block", color: "text.secondary", fontSize: "0.8rem" }}>
+                                                {report.by}, {formatDateTime(report.at)}{report.note ? ` · "${report.note}"` : ""}
+                                            </Box>
+                                        </Typography>
+                                    ))}
+                                </Box>
                             )}
                         </Tile>
                     )}

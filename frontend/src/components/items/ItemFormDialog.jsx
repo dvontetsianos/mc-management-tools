@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getUser } from "../../services/auth";
 import { ITEM_SPEC_FIELDS } from "../../utils/itemFields";
 import ClearIcon from "@mui/icons-material/Clear";
+import { formatDateOnly } from "../../utils/formatDate";
 import {
     Button,
     Alert,
@@ -35,7 +36,8 @@ function ItemFormDialog({
     onImageChange,
     selectedImage,
     currentImageName,
-    onRemoveImage
+    onRemoveImage,
+    costSource
 }) {
 
 
@@ -238,12 +240,15 @@ function ItemFormDialog({
                     </FormControl>
 
 
+                    {/* bought with a cost: the cost comes from the latest purchase and can't be typed */}
                     <TextField
                         label="Cost per unit"
-                        disabled={detailsLocked}
+                        disabled={detailsLocked || Boolean(costSource)}
                         type="number"
-                        value={form.cost_per_unit}
-                        helperText="Updated automatically by the latest purchase"
+                        value={costSource ? costSource.unit_cost : form.cost_per_unit}
+                        helperText={costSource
+                            ? `From the purchase of ${formatDateOnly(costSource.date)}`
+                            : "Filled in automatically once a purchase with a cost is logged"}
                         onChange={(e) => 
                             setForm({
                                 ...form,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     Box,
     Typography,
@@ -67,12 +68,15 @@ const reasonHeaders = REASONS.map((reason) => (
 
 function LossesReport() {
 
+    //the Dadhboard's Broken card opens this page with ?reason=broken
+    const [searchParams] = useSearchParams();
+
     const [filters, setFilters] = useState({
         year: new Date().getFullYear(),
         hotel_id: "",
         department_id: "",
         location_id: "",
-        reason: ""
+        reason: searchParams.get("reason") || ""
     });
 
     const [report, setReport] = useState(null);
