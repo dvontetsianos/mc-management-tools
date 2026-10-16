@@ -2655,16 +2655,24 @@ DEFAULT_SETTINGS = {
     "dashboard_requests": True,
     "dashboard_lost_found": True,
     "dashboard_spend": True,
-    "dashboard_broken": True
+    "dashboard_broken": True,
+    "quickcount_notice_on": False
+}
+
+#settings that hold text instead of on/off (e.g. the message shown in Quick Count)
+TEXT_SETTINGS = {
+    "quickcount_notice_text": ""
 }
 
 def read_settings(db):
-    #starts from the defaults, so a setting nobody has changed yet is simply "on"
-    settings = dict(DEFAULT_SETTINGS)
+    #starts from the defaults, so a setting nobody has changed yet keeps its default"
+    settings = {**DEFAULT_SETTINGS, **TEXT_SETTINGS}
 
     for row in db.query(models.AppSetting).all():
-        if row.key in settings:
+        if row.key in DEFAULT_SETTINGS:
             settings[row.key] = row.value == "true"
+        elif row.key in TEXT_SETTINGS:
+            settings[row.key] = row.value or ""
 
     return settings
 
@@ -2694,8 +2702,12 @@ def update_settings(
             row = models.AppSetting(key=key)
             db.add(row)
 
-        row.value = "true" if value else "false"
-        changes.append(f"{key}: {'on' if value else 'off'}")
+        if key in TEXT_SETTINGS:
+            row.value = value.strip()[:300]
+            changes.append(f"{key}: {row.value or 'empty'}")
+        else:
+            row.value = "true" if value else "false"
+            changes.append(f"{key}: {'on' if value else 'off'}")
 
     db.commit()
 

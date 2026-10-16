@@ -347,6 +347,8 @@ class AppSettingsUpdate(BaseModel):
     dashboard_lost_found: bool | None = None
     dashboard_spend: bool | None = None
     dashboard_broken: bool | None = None
+    quickcount_notice_on: bool | None = None
+    quickcount_notice_text: str | None = None
 
 
 

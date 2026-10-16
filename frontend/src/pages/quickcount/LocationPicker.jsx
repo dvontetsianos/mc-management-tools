@@ -16,6 +16,7 @@ import FeedbackDialog from "../../components/feedback/FeedbackDialog";
 import { getLocations } from "../../services/locationService";
 import { logout, getUser } from "../../services/auth";
 import { getHotels } from "../../services/hotelService";
+import { getSettings } from "../../services/systemService";
 
 
 
@@ -34,6 +35,15 @@ function LocationPicker() {
 
     //the chosen hotel lives in the address (?hotel=3), so going back from a location returns to that hotel
     const [searchParams, setSearchParams] = useSearchParams();
+
+    //the message an admin can switch on i System Monitor ("" = nothing to show)
+    const [notice, setNotice] = useState("");
+
+    useEffect(() => {
+        getSettings()
+            .then((settings) => setNotice(settings.quickcount_notice_on ? (settings.quickcount_notice_text || "") : ""))
+            .catch(() => setNotice(""));
+    }, []);
 
     useEffect(() => {
         Promise.all([getHotels(), getLocations()])
@@ -126,6 +136,16 @@ function LocationPicker() {
                     </Button>
                 </Box>
             </Box>
+
+            {notice && (
+                <Alert
+                    severity="info"
+                    icon={<FeedbackIcon />}
+                    sx={{ mx: 2, mb: 2, whiteSpace: "pre-line" }}
+                >
+                    {notice}
+                </Alert>
+            )}
 
             <FeedbackDialog
                 open={feedbackOpen}

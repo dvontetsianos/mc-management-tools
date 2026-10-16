@@ -19,7 +19,8 @@ import {
     Button,
     Switch,
     FormControlLabel,
-    Divider
+    Divider,
+    TextField
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import MemoryIcon from "@mui/icons-material/Memory";
@@ -256,6 +257,8 @@ function SystemMonitor() {
     const [backupResult, setBackupResult] = useState(null);
     const [settings, setSettings] = useState(null);
     const [settingsError, setSettingsError] = useState("");
+    //the Quick Count message while it's being typed (saved with "Save message")
+    const [noticeText, setNoticeText] = useState("");
 
 
     async function loadStatus() {
@@ -317,6 +320,11 @@ function SystemMonitor() {
             setSettingsError(err.message || "Can't save the setting.");
         }
     }
+
+    //when the settings arrive (or change), the box shows the saved message
+    useEffect(() => {
+        setNoticeText(settings?.quickcount_notice_text || "");
+    }, [settings?.quickcount_notice_text]);
 
     useEffect(() => {
 
@@ -576,6 +584,45 @@ function SystemMonitor() {
                             />
                         </Box>
 
+                        <Divider sx={{ my: 2 }} />
+
+                        <Typography sx={{ fontWeight: 600, fontSize: "0.9rem" }}>Quick Count message</Typography>
+                        <Typography sx={{ fontSize: "0.85rem", color: "text.secondary", mb: 1 }}>
+                            Shown at the top of Quick Count while the switch is on. Switch it off and it disappears.
+                        </Typography>
+
+                        <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start", flexWrap: "wrap" }}>
+                            <TextField
+                                label="Message"
+                                value={noticeText}
+                                onChange={(event) => setNoticeText(event.target.value)}
+                                multiline
+                                minRows={2}
+                                slotProps={{ htmlInput: { maxLength: 300 } }}
+                                sx={{ flex: 1, minWidth: 260 }}
+                            />
+
+                            <Button
+                                variant="outlined"
+                                disabled={!settings || noticeText === (settings.quickcount_notice_text || "")}
+                                onClick={() => handleSettingChange("quickcount_notice_text", noticeText)}
+                            >
+                                Save message
+                            </Button>
+                        </Box>
+
+                        {/* can only be switched on once there is a saved message */}
+                        <FormControlLabel
+                            sx={{ mt: 1 }}
+                            label="Show it to Quick Count users"
+                            control={
+                                <Switch
+                                    checked={settings?.quickcount_notice_on ?? false}
+                                    disabled={!settings || !(settings.quickcount_notice_text || "").trim()}
+                                    onChange={(event) => handleSettingChange("quickcount_notice_on", event.target.checked)}
+                                />
+                            }
+                        />
 
                         <Divider sx={{ my: 2 }} />
 
