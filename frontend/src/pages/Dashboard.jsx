@@ -395,97 +395,9 @@ function Dashboard() {
                         </Tile>
                     )}
 
-                    {/* ---- 3. stock waiting in Unassigned ---- */}
-                    {showTile("unassigned") && (
-                        <Tile icon={<InventoryIcon />} title="In Unassigned" color={TILE_COLORS.unassigned} index={2} buttons={unassignedButtons}>
-                            <BigNumber
-                                value={dashboard.unassigned.units}
-                                label="units waiting to be placed"
-                                color={dashboard.unassigned.units > 0 ? "warning.main" : "text.primary"}
-                            />
-                            
-                            {dashboard.unassigned.by_department.length === 0 && (
-                                <Typography>
-                                    Everything is placed in a location
-                                </Typography>
-                            )}
-                            {dashboard.unassigned.by_department.map((row) => (
-                                <Typography key={row.department}>
-                                    <b>{row.department}</b>: {row.units} units ({row.items} item(s))
-                                </Typography>
-                            ))}
-                        </Tile>
-                    )}
-
-                    {/* ---- 4. requests ---- */}
-                    {showTile("requests") && (
-                        <Tile icon={<AssignmentIcon />} title="Requests" color={TILE_COLORS.requests} index={3} buttons={[{ label: "Requests", path: "/requests" }]}>
-                            <BigNumber
-                                value={dashboard.requests.pending}
-                                label="pending for your department"
-                                color={dashboard.requests.pending > 0 ? "warning.main" : "text.primary"}
-                            />
-                        </Tile>
-                    )}
-
-                    {/* ---- 5. lost & found ---- */}
-                    {showTile("lost_found") && (
-                        <Tile icon={<FindInPageIcon />} title="Lost & Found" color={TILE_COLORS.lost_found} index={4} buttons={[{ label: "Lost & Found", path: "/lost-found" }]}>
-                            <BigNumber
-                                value={dashboard.lost_found.unclaimed}
-                                label="unclaimed items"
-                            />
-                            {dashboard.lost_found.older_than_30_days > 0 && (
-                                <Chip
-                                    size="small"
-                                    color="warning"
-                                    label={`${dashboard.lost_found.older_than_30_days} older than 30 days`}
-                                />
-                            )}
-                        </Tile>
-                    )}
-
-                    {/* ---- 6. spend, with a small bar per hotel ---- */}
-                    {showTile("spend") && (
-                        <Tile icon={<EuroIcon />} title="Spend" color={TILE_COLORS.spend} index={5} buttons={spendButtons}>
-                            <BigNumber
-                                value={dashboard.spend.this_month}
-                                format={(number) => currencyFormatter.format(number)}
-                                label="spent this month"
-                            />
-                            <Typography sx={{ mb: 1.5 }}>
-                                This year: <b>{currencyFormatter.format(dashboard.spend.this_year)}</b>
-                            </Typography>
-
-                            {dashboard.spend.by_hotel.map((row) => (
-                                <Box key={row.hotel} sx={{ mb: 1 }}>
-                                    <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                                        <span>{row.hotel}</span>
-                                        <span>{currencyFormatter.format(row.value)}</span>
-                                    </Box>
-                                    {/* the biggest hotel is the full bar, the others are compared to it */}
-                                    <LinearProgress
-                                        variant="determinate"
-                                        value={dashboard.spend.by_hotel[0].value
-                                            ? row.value / dashboard.spend.by_hotel[0].value * 100
-                                            : 0}
-                                        sx={{ height: 6, borderRadius: 3 }}
-                                    />
-                                </Box>
-                            ))}
-
-                            {dashboard.spend.purchases_without_cost > 0 && (
-                                <Typography variant="body2" sx={{ color: "warning.main" }}>
-                                    {dashboard.spend.purchases_without_cost} purchase(s) this year have no unit cost
-                                </Typography>
-                            )}
-                        </Tile>
-                    )}
-
-                    
                     {/* ---- 7. broken this month, with the 3 latest reports ---- */}
                     {showTile("broken") && (
-                        <Tile icon={<RemoveCircleOutlinedIcon />} title="Broken" color={TILE_COLORS.broken} index={6} buttons={brokenButtons}>
+                        <Tile icon={<RemoveCircleOutlinedIcon />} title="Broken" color={TILE_COLORS.broken} index={2} buttons={brokenButtons}>
                             <BigNumber
                                 value={dashboard.broken.units}
                                 label="units reported broken this month"
@@ -520,6 +432,93 @@ function Dashboard() {
                                         </Typography>
                                     ))}
                                 </Box>
+                            )}
+                        </Tile>
+                    )}
+
+                    {/* ---- 3. stock waiting in Unassigned ---- */}
+                    {showTile("unassigned") && (
+                        <Tile icon={<InventoryIcon />} title="In Unassigned" color={TILE_COLORS.unassigned} index={3} buttons={unassignedButtons}>
+                            <BigNumber
+                                value={dashboard.unassigned.units}
+                                label="units waiting to be placed"
+                                color={dashboard.unassigned.units > 0 ? "warning.main" : "text.primary"}
+                            />
+                            
+                            {dashboard.unassigned.by_department.length === 0 && (
+                                <Typography>
+                                    Everything is placed in a location
+                                </Typography>
+                            )}
+                            {dashboard.unassigned.by_department.map((row) => (
+                                <Typography key={row.department}>
+                                    <b>{row.department}</b>: {row.units} units ({row.items} item(s))
+                                </Typography>
+                            ))}
+                        </Tile>
+                    )}
+
+                    {/* ---- 4. requests ---- */}
+                    {showTile("requests") && (
+                        <Tile icon={<AssignmentIcon />} title="Requests" color={TILE_COLORS.requests} index={4} buttons={[{ label: "Requests", path: "/requests" }]}>
+                            <BigNumber
+                                value={dashboard.requests.pending}
+                                label="pending for your department"
+                                color={dashboard.requests.pending > 0 ? "warning.main" : "text.primary"}
+                            />
+                        </Tile>
+                    )}
+
+                    {/* ---- 5. lost & found ---- */}
+                    {showTile("lost_found") && (
+                        <Tile icon={<FindInPageIcon />} title="Lost & Found" color={TILE_COLORS.lost_found} index={5} buttons={[{ label: "Lost & Found", path: "/lost-found" }]}>
+                            <BigNumber
+                                value={dashboard.lost_found.unclaimed}
+                                label="unclaimed items"
+                            />
+                            {dashboard.lost_found.older_than_30_days > 0 && (
+                                <Chip
+                                    size="small"
+                                    color="warning"
+                                    label={`${dashboard.lost_found.older_than_30_days} older than 30 days`}
+                                />
+                            )}
+                        </Tile>
+                    )}
+
+                    {/* ---- 6. spend, with a small bar per hotel ---- */}
+                    {showTile("spend") && (
+                        <Tile icon={<EuroIcon />} title="Spend" color={TILE_COLORS.spend} index={6} buttons={spendButtons}>
+                            <BigNumber
+                                value={dashboard.spend.this_month}
+                                format={(number) => currencyFormatter.format(number)}
+                                label="spent this month"
+                            />
+                            <Typography sx={{ mb: 1.5 }}>
+                                This year: <b>{currencyFormatter.format(dashboard.spend.this_year)}</b>
+                            </Typography>
+
+                            {dashboard.spend.by_hotel.map((row) => (
+                                <Box key={row.hotel} sx={{ mb: 1 }}>
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                                        <span>{row.hotel}</span>
+                                        <span>{currencyFormatter.format(row.value)}</span>
+                                    </Box>
+                                    {/* the biggest hotel is the full bar, the others are compared to it */}
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={dashboard.spend.by_hotel[0].value
+                                            ? row.value / dashboard.spend.by_hotel[0].value * 100
+                                            : 0}
+                                        sx={{ height: 6, borderRadius: 3 }}
+                                    />
+                                </Box>
+                            ))}
+
+                            {dashboard.spend.purchases_without_cost > 0 && (
+                                <Typography variant="body2" sx={{ color: "warning.main" }}>
+                                    {dashboard.spend.purchases_without_cost} purchase(s) this year have no unit cost
+                                </Typography>
                             )}
                         </Tile>
                     )}
