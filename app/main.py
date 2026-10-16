@@ -2678,8 +2678,10 @@ def get_settings(
 
 #Quick Count's "who counted the most" message: the top 3 of the last 7 days, while the switch is on
 #every item counted at a location counts once per person (counting it again doesn't add)
+#with department_id (e.g. the F&B Items page) only that department's items count
 @app.get("/quickcount/leaderboard")
 def get_count_leaderboard(
+    department_id: int | None = None,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user)
 ):
@@ -2699,10 +2701,17 @@ def get_count_leaderboard(
         models.ActionsLog.timestamp >= since
     ).all()
 
+    department_items = None
+    if department_id is not None:
+        department_items = {item_id for (item_id,) in db.query(models.Item.id).filter(models.Item.department_id == department_id)}
+
     #the details start with "At <location>:", so item + location is one counted item
     counted = {}
     for username, item_id, details in counts:
         if username in admins:
+            continue
+
+        if department_items is not None and item_id not in department_items:
             continue
 
         location = (details or "").split(":")[0]

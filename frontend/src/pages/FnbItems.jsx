@@ -25,6 +25,7 @@ import { getCategories } from "../services/categoryService";
 import { getLocations } from "../services/locationService";
 import { getSuppliers } from "../services/supplierService";
 import { getDepartments } from "../services/departmentService";
+import CountLeaderboard from "../components/CountLeaderboard";
 import { getSubcategories } from "../services/subcategoryService";
 import { getHotels } from "../services/hotelService";
 import { getUser, canEditItems } from "../services/auth";
@@ -672,6 +673,9 @@ function FnbItems() {
           </Button>
         </Box>
       </Box>
+
+      {/* the top 3 counters of F&B items (System Monitor switch) */}
+      <CountLeaderboard departmentId={fbDepartmentId} departmentName="F&B" sx={{ mb: 3 }} />
 
       {/* ITEMS TAB */}
       {tab === 0 && (

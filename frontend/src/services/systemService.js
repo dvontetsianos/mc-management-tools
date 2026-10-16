@@ -59,9 +59,12 @@ export async function getSettings() {
 }
 
 //Quick Count's top 3 counters of the last 7 days (empty while the switch is off)
-export async function getCountLeaderboard() {
+//with a departmentId only that department's items count (e.g. on the F&B Items page)
+export async function getCountLeaderboard(departmentId = null) {
 
-    const response = await fetch(`${API_URL}/quickcount/leaderboard`, {
+    const query = departmentId ? `?department_id=${departmentId}` : "";
+
+    const response = await fetch(`${API_URL}/quickcount/leaderboard${query}`, {
         headers: {
             Authorization: `Bearer ${getToken()}`
         }
