@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useUserNames } from "../../hooks/useUserNames";
 import { formatDateTime } from "../../utils/formatDate";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
@@ -21,6 +22,8 @@ import LocationLabel from "../../components/LocationLabel";
 
 
 function ItemMovementHistory() {
+
+    const nameOf = useUserNames();
 
     const navigate = useNavigate();
     const { itemId } = useParams();
@@ -114,7 +117,7 @@ function ItemMovementHistory() {
                                         <LocationLabel name={movement.to_location} hotel={movement.to_hotel_name} />
                                     </TableCell>
                                     <TableCell align="center">{movement.quantity}</TableCell>
-                                    <TableCell>{movement.moved_by}</TableCell>
+                                    <TableCell>{nameOf(movement.moved_by)}</TableCell>
                                     <TableCell>{movement.reason || "-"}</TableCell>
                                 </TableRow>
                             ))}

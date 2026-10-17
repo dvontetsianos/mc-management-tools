@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUserNames } from "../hooks/useUserNames";
 import { formatDateTime } from "../utils/formatDate";
 import { getHistory } from "../services/historyService";
 import {
@@ -16,6 +17,8 @@ import {
 
 
 function History() {
+
+    const nameOf = useUserNames();
 
     const [logs, setLogs] = useState([]);
 
@@ -159,7 +162,7 @@ function History() {
                                     </TableCell>
 
                                     <TableCell>
-                                        {log.username}
+                                        {nameOf(log.username)}
                                     </TableCell>
 
                                     <TableCell

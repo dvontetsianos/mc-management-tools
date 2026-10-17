@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useUserNames } from "../../hooks/useUserNames";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
     Box,
@@ -26,6 +27,8 @@ import ReportBrokenDialog from "../../components/items/ReportBrokenDialog";
 
 
 function ItemQuantity() {
+
+    const nameOf = useUserNames();
 
     const navigate = useNavigate();
     const { locationId, itemLocationId } = useParams();
@@ -283,7 +286,7 @@ function ItemQuantity() {
 
                     {itemLocation?.staff_counted_by && (
                         <Typography variant="body2" sx={{ mt: 2, textAlign: "center", color: "text.secondary" }}>
-                            Counted by {itemLocation.staff_counted_by}
+                            Counted by {nameOf(itemLocation.staff_counted_by)}
                             {itemLocation.staff_counted_at ? `, ${formatCountedAt(itemLocation.staff_counted_at)}` : ""}
                         </Typography>
                     )}

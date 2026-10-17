@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useUserNames } from "../hooks/useUserNames";
 import {
     Alert,
     Box,
@@ -32,6 +33,8 @@ const STATUS_LABELS = {
 
 //admin only: every feedback people sent, with a status so you know what's still open
 function Feedback() {
+
+    const nameOf = useUserNames();
 
     const [feedback, setFeedback] = useState([]);
     const [filter, setFilter] = useState("open");
@@ -126,7 +129,7 @@ function Feedback() {
                             <Chip size="small" label={item.type} color={TYPE_COLORS[item.type] || "default"} />
 
                             <Typography sx={{ fontWeight: 700 }}>
-                                {item.username}
+                                {nameOf(item.username)}
                             </Typography>
 
                             {item.role === "quickcount" && (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUserNames } from "../hooks/useUserNames";
 import { formatDateTime } from "../utils/formatDate";
 import {
     Box,
@@ -17,6 +18,8 @@ import LocationLabel from "../components/LocationLabel";
 
 
 function Movements() {
+
+    const nameOf = useUserNames();
 
     const [movements, setMovements] = useState([]);
 
@@ -79,7 +82,7 @@ function Movements() {
                                     <LocationLabel name={movement.to_location} hotel={movement.to_hotel_name} />
                                 </TableCell>
                                 <TableCell align="center">{movement.quantity}</TableCell>
-                                <TableCell>{movement.moved_by}</TableCell>
+                                <TableCell>{nameOf(movement.moved_by)}</TableCell>
                                 <TableCell>{movement.reason || "-"}</TableCell>
                             </TableRow>
                         ))}

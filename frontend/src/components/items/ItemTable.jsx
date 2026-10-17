@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUserNames } from "../../hooks/useUserNames";
 import { IconButton, Tooltip, Button } from "@mui/material"
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -137,6 +138,7 @@ function ItemTable({
 }) {
 
     const user = getUser();
+    const nameOf = useUserNames();
     const zoom = (ZOOM_PRESETS[zoomLevel] || ZOOM_PRESETS.medium).zoom;
 
     //a column shows unless this user hid it (Columns button),
@@ -426,7 +428,7 @@ function ItemTable({
                                                         <Box sx={{ fontWeight: "bold", mb: 0.5 }}>Reported broken, until the count is closed</Box>
                                                         {item.broken_pending.reports.map((report, index) => (
                                                             <div key={index}>
-                                                                {report.units} at {report.location}{report.hotel ? ` (${report.hotel})` : ""}, by {report.by || "unknown"}, {formatCountedAt(report.at)}{report.note ? ` - ${report.note}` : ""}
+                                                                {report.units} at {report.location}{report.hotel ? ` (${report.hotel})` : ""}, by {nameOf(report.by) || "unknown"}, {formatCountedAt(report.at)}{report.note ? ` - ${report.note}` : ""}
                                                             </div>
                                                         ))}
                                                     </Box>
@@ -465,7 +467,7 @@ function ItemTable({
 
                                                                 return (
                                                                     <div key={loc.id}>
-                                                                        {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: counted {loc.staff_counted_quantity}, assigned {loc.total_quantity || 0}{loc.broken_pending ? `, broken ${loc.broken_pending}` : ""}{difference !== 0 ? ` (${difference > 0 ? "+" : ""}${difference})` : ""}, by {loc.staff_counted_by || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
+                                                                        {loc.location}{loc.hotel_name ? ` (${loc.hotel_name})` : ""}: counted {loc.staff_counted_quantity}, assigned {loc.total_quantity || 0}{loc.broken_pending ? `, broken ${loc.broken_pending}` : ""}{difference !== 0 ? ` (${difference > 0 ? "+" : ""}${difference})` : ""}, by {nameOf(loc.staff_counted_by) || "unknown"}{loc.staff_counted_at ? `, ${formatCountedAt(loc.staff_counted_at)}` : ""}
                                                                     </div>
                                                                 );
                                                             })}

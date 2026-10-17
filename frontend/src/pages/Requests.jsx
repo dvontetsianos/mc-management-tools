@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUserNames } from "../hooks/useUserNames";
 import { formatDateTime } from "../utils/formatDate";
 import { getRequests, createRequest, updateRequestStatus, deleteRequest } from "../services/requestService";
 import { getDepartments } from "../services/departmentService";
@@ -32,6 +33,8 @@ import {
 
 
 function Requests() {
+
+    const nameOf = useUserNames();
 
     const user = getUser();
 
@@ -283,7 +286,7 @@ function Requests() {
                                         <TableCell>{req.title}</TableCell>
                                         <TableCell sx={{ maxWidth: 200, whiteSpace: "normal", wordBreak: "break-word" }}>{req.description}</TableCell>
                                         <TableCell>
-                                            <b>{req.sender_username}</b>
+                                            <b>{nameOf(req.sender_username)}</b>
                                               {"\u00A0\u00A0\u00A0"}|{"\u00A0\u00A0\u00A0"}
                                             {req.sender_department && (
                                                 <Typography variant="caption" display="block" color="text.primary" sx={{ fontWeight: "bold", fontSize: 18 }}>
@@ -344,7 +347,7 @@ function Requests() {
                                         <TableCell>{req.title}</TableCell>
                                         <TableCell sx={{ maxWidth: 200, whiteSpace: "normal", wordBreak: "break-word" }}>{req.description}</TableCell>
                                         <TableCell>
-                                            <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 14}}>{req.sender_username}</Typography>
+                                            <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 14}}>{nameOf(req.sender_username)}</Typography>
                                             {"\u00A0\u00A0\u00A0"}|{"\u00A0\u00A0\u00A0"}
                                             {req.sender_department && (
                                                 <Typography variant="caption" display="block" color="text.secondary" sx={{ fontWeight: "bold", fontSize: 18}}>

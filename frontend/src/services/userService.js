@@ -158,6 +158,31 @@ export async function updateUserDepartment(userId, departmentId) {
 }
 
 
+//first name, last name and position (empty = not filled in)
+export async function updateUserDetails(userId, details) {
+
+    const token = getToken();
+
+    const response = await fetch(
+        `${API_URL}/users/${userId}/details`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(details)
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to update the details");
+    }
+
+    return await response.json();
+}
+
+
 export async function updateUserHotels(userId, hotelIds) {
 
     const token = getToken();

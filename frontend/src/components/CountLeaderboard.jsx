@@ -26,7 +26,7 @@ function CountLeaderboard({ departmentId, departmentName, sx }) {
             </Box>
             {leaders.map((leader, index) => (
                 <Box key={leader.username}>
-                    {["🥇", "🥈", "🥉"][index]} {leader.username}: {leader.items} είδη
+                    {["🥇", "🥈", "🥉"][index]} {leader.name || leader.username}: {leader.items} είδη
                 </Box>
             ))}
         </Alert>

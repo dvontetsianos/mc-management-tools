@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUserNames } from "../../hooks/useUserNames";
 import { useSearchParams } from "react-router-dom";
 import {
     Box,
@@ -68,7 +69,9 @@ const reasonHeaders = REASONS.map((reason) => (
 
 function LossesReport() {
 
-    //the Dadhboard's Broken card opens this page with ?reason=broken
+    const nameOf = useUserNames();
+
+    //the Dashboard's Broken card opens this page with ?reason=broken
     const [searchParams] = useSearchParams();
 
     const [filters, setFilters] = useState({
@@ -352,7 +355,7 @@ function LossesReport() {
                                                         <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums" }}>
                                                             {entry.unit_cost === null ? "-" : euro.format(entry.value)}
                                                         </TableCell>
-                                                        <TableCell>{entry.created_by}</TableCell>
+                                                        <TableCell>{nameOf(entry.created_by)}</TableCell>
                                                         <TableCell sx={{ color: "text.secondary" }}>{entry.notes || ""}</TableCell>
                                                     </TableRow>
                                                 );

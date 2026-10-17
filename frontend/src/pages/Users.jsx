@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getUsers, createUser, deleteUser, updateUserPermissions, updateUserDepartment, updateUserHotels } from "../services/userService";
+import { getUsers, createUser, deleteUser, updateUserPermissions, updateUserDepartment, updateUserHotels, updateUserDetails } from "../services/userService";
+import { clearUserNames } from "../hooks/useUserNames";
 import { getDepartments } from "../services/departmentService";
 import { getHotels } from "../services/hotelService";
 import { getUser } from "../services/auth";
@@ -36,6 +37,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import BusinessIcon from "@mui/icons-material/Business";
 import DeleteIcon from "@mui/icons-material/Delete";
 import HotelIcon from "@mui/icons-material/Hotel";
+import BadgeIcon from "@mui/icons-material/Badge";
 
 function Users() {
 
@@ -45,8 +47,12 @@ function Users() {
 
     const [searchTerm, setSearchTerm] = useState("");
 
+    //"First Last", or nothing when no name was filled in
+    const fullName = (user) => [user.first_name, user.last_name].filter(Boolean).join(" ");
+
+    //the search looks at the username and the name
     const filteredUsers = users.filter((user) =>
-        user.username
+        `${user.username} ${fullName(user)}`
             .toLowerCase()
             .includes(searchTerm.toLowerCase()));
 
@@ -56,6 +62,9 @@ function Users() {
 
     const [newUser, setNewUser] = useState({
         username: "",
+        first_name: "",
+        last_name: "",
+        position: "",
         password: "",
         role: "user",
         department_id: "",
@@ -88,6 +97,11 @@ function Users() {
     const [userToEditHotels, setUserToEditHotels] = useState(null);
 
     const [editHotelIds, setEditHotelIds] = useState([]);
+
+    //Edit Details: first name, last name, position
+    const [userToEditDetails, setUserToEditDetails] = useState(null);
+
+    const [editDetails, setEditDetails] = useState({ first_name: "", last_name: "", position: "" });
 
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
@@ -330,6 +344,37 @@ function Users() {
         }
     }
 
+    function openDetailsDialog(user) {
+
+        setUserToEditDetails(user);
+
+        setEditDetails({
+            first_name: user.first_name || "",
+            last_name: user.last_name || "",
+            position: user.position || ""
+        });
+    }
+
+    async function handleUpdateDetails() {
+
+        try {
+
+            await updateUserDetails(userToEditDetails.id, editDetails);
+
+            setUserToEditDetails(null);
+
+            //every page shows the new name from now on
+            clearUserNames();
+
+            loadUsers();
+
+            showNotification("Details updated successfully", "success");
+
+        } catch (error) {
+            showNotification(error.message || "Failed to update the details", "error");
+        }
+    }
+
     function openHotelsDialog(user) {
 
         setUserToEditHotels(user);
@@ -407,6 +452,7 @@ function Users() {
             });
 
             setOpen(false);
+            clearUserNames();
 
             const isUnderProvisionedQuickCount =
                 newUser.role === "quickcount" &&
@@ -415,6 +461,9 @@ function Users() {
 
             setNewUser({
                 username: "",
+                first_name: "",
+                last_name: "",
+                position: "",
                 password: "",
                 role: "user",
                 department_id: "",
@@ -538,6 +587,10 @@ return (
                     <TableRow>
 
                         <TableCell>
+                            Name
+                        </TableCell>
+
+                        <TableCell>
                             Username
                         </TableCell>
 
@@ -571,6 +624,16 @@ return (
                     {filteredUsers.map((user) => (
 
                         <TableRow key={user.id}>
+
+                            <TableCell>
+                                {fullName(user) || "-"}
+
+                                {user.position && (
+                                    <Typography variant="body2" color="text.secondary">
+                                        {user.position}
+                                    </Typography>
+                                )}
+                            </TableCell>
 
                             <TableCell>
                                 {user.username}
@@ -641,6 +704,17 @@ return (
                             </TableCell>
 
                             <TableCell>
+
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="inherit"
+                                    startIcon={<BadgeIcon />}
+                                    onClick={() => openDetailsDialog(user)}
+                                    sx={{ mr: 1, mb: 0.5, borderColor: "divider" }}
+                                >
+                                    Edit Details
+                                </Button>
 
                                 <Button
                                     variant="outlined"
@@ -727,6 +801,37 @@ return (
                     fullWidth
                     value={newUser.username}
                     onChange={handleInputChange}
+                    helperText="For logging in. The name below is what the app shows."
+                />
+
+                <Box sx={{ display: "flex", gap: 1 }}>
+                    <TextField
+                        margin="dense"
+                        label="First name"
+                        name="first_name"
+                        fullWidth
+                        value={newUser.first_name}
+                        onChange={handleInputChange}
+                    />
+
+                    <TextField
+                        margin="dense"
+                        label="Last name"
+                        name="last_name"
+                        fullWidth
+                        value={newUser.last_name}
+                        onChange={handleInputChange}
+                    />
+                </Box>
+
+                <TextField
+                    margin="dense"
+                    label="Position (optional)"
+                    name="position"
+                    fullWidth
+                    value={newUser.position}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Bartender"
                 />
 
                 <TextField
@@ -973,6 +1078,64 @@ return (
                     Save
                 </Button>
 
+            </DialogActions>
+
+        </Dialog>
+
+        <Dialog
+            open={Boolean(userToEditDetails)}
+            onClose={() => setUserToEditDetails(null)}
+            fullWidth
+            maxWidth="sm"
+        >
+
+            <DialogTitle>
+                Edit Details
+            </DialogTitle>
+
+            <DialogContent>
+
+                <Typography sx={{ mb: 1, color: "text.secondary" }}>
+                    Username: <b>{userToEditDetails?.username}</b> (stays the same, it's for logging in)
+                </Typography>
+
+                <Box sx={{ display: "flex", gap: 1 }}>
+                    <TextField
+                        margin="dense"
+                        label="First name"
+                        fullWidth
+                        value={editDetails.first_name}
+                        onChange={(e) => setEditDetails({ ...editDetails, first_name: e.target.value })}
+                    />
+
+                    <TextField
+                        margin="dense"
+                        label="Last name"
+                        fullWidth
+                        value={editDetails.last_name}
+                        onChange={(e) => setEditDetails({ ...editDetails, last_name: e.target.value })}
+                    />
+                </Box>
+
+                <TextField
+                    margin="dense"
+                    label="Position (optional)"
+                    fullWidth
+                    value={editDetails.position}
+                    onChange={(e) => setEditDetails({ ...editDetails, position: e.target.value })}
+                    placeholder="e.g. Bartender"
+                />
+
+            </DialogContent>
+
+            <DialogActions>
+                <Button onClick={() => setUserToEditDetails(null)}>
+                    Cancel
+                </Button>
+
+                <Button variant="contained" onClick={handleUpdateDetails}>
+                    Save
+                </Button>
             </DialogActions>
 
         </Dialog>

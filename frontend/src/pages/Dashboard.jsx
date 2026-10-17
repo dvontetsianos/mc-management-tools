@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useUserNames } from "../hooks/useUserNames";
 import { useNavigate } from "react-router-dom";
 import { getUser } from "../services/auth";
 import { getDashboard } from "../services/dashboardService";
@@ -198,6 +199,8 @@ function greeting() {
 
 
 function Dashboard() {
+
+    const nameOf = useUserNames();
 
     const user = getUser();
 
@@ -427,7 +430,7 @@ function Dashboard() {
                                         <Typography key={index} variant="body2" sx={{ lineHeight: 1.4, mb: 0.5 }}>
                                             <b>{report.units} × {report.item}</b> · {report.location}{report.hotel ? ` (${report.hotel})` : ""}
                                             <Box component="span" sx={{ display: "block", color: "text.secondary", fontSize: "0.8rem" }}>
-                                                {report.by}, {formatDateTime(report.at)}{report.note ? ` · "${report.note}"` : ""}
+                                                {nameOf(report.by)}, {formatDateTime(report.at)}{report.note ? ` · "${report.note}"` : ""}
                                             </Box>
                                         </Typography>
                                     ))}

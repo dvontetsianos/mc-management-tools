@@ -2011,6 +2011,26 @@ def delete_request(
         "message": "Request deleted successfully"
     }
 
+#------------------------------------------------------------------------
+#the name the app shows for a person: "First Last", or the username when no name was filled in
+def display_name(user) -> str:
+    full = " ".join(part for part in [user.first_name, user.last_name] if part)
+    return full or user.username
+
+
+#every username with its name, so pages can show names instead of usernames (old records keep working)
+@app.get("/users/names")
+def get_user_names(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    return {db_user.username: display_name(db_user) for db_user in db.query(models.User).all()}
+
+
+#text from a form box: trimmed, empty becomes None
+def clean_text(value):
+    value = (value or "").strip()
+    return value or None
 #--------------------------------------------------------------------------
 #get users
 @app.get("/users", response_model=list[schemas.UserOut])
@@ -2037,6 +2057,9 @@ def get_users(
         result.append({
             "id": user.id,
             "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "position": user.position,
             "role": user.role,
             "department": user.department.name if user.department else None,
             "department_id": user.department_id,
@@ -2070,7 +2093,10 @@ def create_user(
         username=user_data.username,
         password_hash=hashed_password,
         role=user_data.role,
-        department_id=user_data.department_id
+        department_id=user_data.department_id,
+        first_name=clean_text(user_data.first_name),
+        last_name=clean_text(user_data.last_name),
+        position=clean_text(user_data.position)
     )
 
     db.add(db_user)
@@ -2192,6 +2218,40 @@ def change_user_password(
     }
 
 
+#----------------------------------------------------------------------------
+#update first name, last name and position
+@app.put("/users/{user_id}/details")
+def update_user_details(
+    user_id: int,
+    details: schemas.UserDetailsUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    db_user = db.query(models.User).filter(
+        models.User.id == user_id
+    ).first()
+
+    if not db_user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    db_user.first_name = clean_text(details.first_name)
+    db_user.last_name = clean_text(details.last_name)
+    db_user.position = clean_text(details.position)
+
+    db.commit()
+
+    log_action(
+        db, admin, "updated", "User", db_user.username, db_user.id,
+        details=f"Name: {display_name(db_user)}, position: {db_user.position or '-'}"
+    )
+
+    return {
+        "message": "Details updated successfully"
+    }
 #-------------------------------------------------------------------------
 #update department
 @app.put("/users/{user_id}/department")
@@ -2719,7 +2779,9 @@ def get_count_leaderboard(
 
     top = sorted(counted.items(), key=lambda pair: (-len(pair[1]), pair[0].lower()))[:3]
 
-    return {"top": [{"username": username, "items": len(items)} for username, items in top]}
+    names = {db_user.username: display_name(db_user) for db_user in db.query(models.User).filter(models.User.username.in_([username for username, _ in top]))}
+    
+    return {"top": [{"username": username, "name": names.get(username, username), "items": len(items)} for username, items in top]}
 
 
 @app.put("/settings")
@@ -4668,7 +4730,8 @@ def submit_item_location_count(
             if db_item_location.staff_counted_quantity is None:
                 conflict_message = "Someone reset this count while you were counting, so yours wasn't saved. Check the number in the box and save again."
             else:
-                conflict_message = f"{db_item_location.staff_counted_by or 'Someone'} saved a count of {db_item_location.staff_counted_quantity} while you were counting, so yours wasn't saved. Check the number in the box and save again."
+                counted_by = db.query(models.User).filter(models.User.username == db_item_location.staff_counted_by).first()
+                conflict_message = f"{display_name(counted_by) if counted_by else (db_item_location.staff_counted_by or 'Someone')} saved a count of {db_item_location.staff_counted_quantity} while you were counting, so yours wasn't saved. Check the number in the box and save again."
 
             raise HTTPException(status_code=409, detail=conflict_message)
     

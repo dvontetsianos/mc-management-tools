@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useUserNames } from "../hooks/useUserNames";
 import { formatLocalDateTime } from "../utils/formatDate";
 import {
     Box,
@@ -244,6 +245,8 @@ function InfoCard({ icon, title, rows }) {
 //------------------------------------------------------------ page
 
 function SystemMonitor() {
+
+    const nameOf = useUserNames();
 
     const [status, setStatus] = useState(null);
     const [history, setHistory] = useState([]);
@@ -516,7 +519,7 @@ function SystemMonitor() {
                                         {logins.map((login, index) => (
                                             <TableRow key={`${login.time}-${index}`}>
                                                 <TableCell sx={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{formatLocalDateTime(login.time)}</TableCell>
-                                                <TableCell>{login.user}</TableCell>
+                                                <TableCell>{nameOf(login.user)}</TableCell>
                                                 <TableCell sx={{ fontVariantNumeric: "tabular-nums" }}>{login.ip}</TableCell>
                                             </TableRow>
                                         ))}

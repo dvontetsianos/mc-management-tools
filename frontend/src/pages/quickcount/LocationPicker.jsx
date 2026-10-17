@@ -160,7 +160,7 @@ function LocationPicker() {
                     <Box sx={{ fontWeight: 600, mb: 0.5 }}>🏆 Περισσότερα είδη μετρήθηκαν τις τελευταίες 7 μέρες από:</Box>
                     {leaders.map((leader, index) => (
                         <Box key={leader.username}>
-                            {["🥇", "🥈", "🥉"][index]} {leader.username}: {leader.items} είδη
+                            {["🥇", "🥈", "🥉"][index]} {leader.name || leader.username}: {leader.items} είδη
                         </Box>
                     ))}
                 </Alert>

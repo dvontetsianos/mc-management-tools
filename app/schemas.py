@@ -9,6 +9,9 @@ class UserCreate(BaseModel):
     department_id: int | None = None
     permissions: list[str] = []
     hotel_ids: list[int] = []
+    first_name: str | None = None
+    last_name: str | None = None
+    position: str | None = None
 
 
 
@@ -16,6 +19,9 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
+    first_name: str | None = None
+    last_name: str | None = None
+    position: str | None = None
     role: str
     department: str | None = None
     department_id: int | None = None
@@ -48,6 +54,10 @@ class UserPasswordUpdate(BaseModel):
 class UserDepartmentUpdate(BaseModel):
     department_id: int | None = None
 
+class UserDetailsUpdate(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    position: str | None = None
 
 class UserPermissionsUpdate(BaseModel):
     permissions: list[str] = []
