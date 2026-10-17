@@ -1,194 +1,182 @@
 ================================================================
-MC MANAGEMENT TOOLS - SERVER INSTALLATION GUIDE
+MC MANAGEMENT TOOLS - SERVER SETUP GUIDE
 ================================================================
-Based on the actual working deployment carried out on the
-Marbella Collection server laptop.
+For moving the app to a NEW Windows PC, with the data of the
+current server. Do the parts in order. Each command box is one
+paste: paste it, press Enter, wait for it to finish.
 
-This is written for setting the app up on a NEW Windows
-machine (a "server laptop" or similar always-on PC) from
-scratch. Follow the steps in order.
+Use EXACTLY these two folders (update.bat expects them):
+    C:\MC Management Tools      the app
+    C:\nssm-2.24                the service tool
 
-Wherever you see "C:\MC Management Tools" below, that is the
-project folder used on the current server. Use a plain
-root-level folder like this (not under a personal user
-profile, e.g. not under Desktop) so the install isn't tied to
-one specific Windows account.
+"Admin PowerShell" = Start menu -> type PowerShell -> right-click
+-> "Run as administrator".
 
-Wherever you see an IP address like 192.168.0.84, replace it
-with the actual LAN IP of the machine you are installing on
-(find it by running "ipconfig" and looking for "IPv4 Address").
+PORT: the app uses port 8000. If another program on the new PC
+already uses 8000, use 8080 everywhere this guide says 8000
+(service, firewall, test address) and make a new QR code.
 
 
 ----------------------------------------------------------------
-PART 1 - INSTALL REQUIRED SOFTWARE
+PART 0 - WRITE DOWN FROM THE CURRENT SERVER
 ----------------------------------------------------------------
 
-Open PowerShell AS ADMINISTRATOR (right-click PowerShell ->
-"Run as administrator") and run each of these one at a time:
+On the CURRENT server, open PowerShell and note the versions:
+
+    python --version
+
+    node --version
+
+Copy the file C:\MC Management Tools\.env to a USB stick.
+It holds SECRET_KEY (keeps everyone logged in after the move)
+and BACKUP_DIR (where backups go). Never send it to anyone,
+never put it in git.
+
+Open Task Scheduler and note the backup task(s): the name, the
+times (03:00 and 12:00) and the "When running the task, use the
+following user account" setting. You'll disable them on the
+switch day.
+
+
+----------------------------------------------------------------
+PART 1 - INSTALL THE SOFTWARE (new PC)
+----------------------------------------------------------------
+
+In an Admin PowerShell, one at a time. Use the same Python
+version as the current server (change 3.14 if Part 0 showed
+another one, e.g. 3.13):
 
     winget install -e --id Git.Git --scope machine
+
     winget install -e --id Python.Python.3.14 --scope machine
+
     winget install -e --id OpenJS.NodeJS.LTS --scope machine
+
     winget install -e --id Microsoft.VisualStudioCode --scope machine
 
-Close and reopen PowerShell after these finish, so the newly
-installed programs are recognized on PATH.
+Close PowerShell and open it again, then check:
 
-(VS Code is optional but recommended - it makes editing files,
-using git, and auto-activating the Python virtual environment
-much easier. If you install the "Python" extension inside VS
-Code, opening a new terminal from within the project folder
-will automatically activate the virtual environment for you.)
+    python --version
+
+    node --version
+
+    git --version
+
+All three must print a version. If "python" opens the Microsoft
+Store instead: Settings -> Apps -> Advanced app settings -> App
+execution aliases -> switch OFF both "python" entries, then open
+PowerShell again.
 
 
 ----------------------------------------------------------------
-PART 2 - CLONE THE PROJECT
+PART 2 - GET THE APP
 ----------------------------------------------------------------
+
+In PowerShell (normal is fine):
 
     cd C:\
+
     git clone https://github.com/dvontetsianos/mc-management-tools.git "MC Management Tools"
-    cd "MC Management Tools"
 
-Log into GitHub through VS Code or the git credential prompt
-when asked.
+    cd "C:\MC Management Tools"
+
+This gives the "main" branch, the one servers run.
 
 
 ----------------------------------------------------------------
-PART 3 - PYTHON BACKEND SETUP
+PART 3 - BACKEND
 ----------------------------------------------------------------
 
-Create and activate a virtual environment:
+Still in C:\MC Management Tools:
 
     python -m venv .venv
+
+Allow PowerShell to run the activate script (once per user,
+answer Y if asked):
+
+    Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
     .venv\Scripts\activate
 
-You should see "(.venv)" appear at the start of your prompt.
-
-Install backend dependencies:
+You should now see (.venv) at the start of the line.
 
     pip install -r requirements.txt
 
-Create the secret key file. Create a new file named exactly
-".env" (no other extension) in the project root
-(C:\MC Management Tools\.env) containing:
+Put the .env from the USB stick in C:\MC Management Tools
+(next to requirements.txt). Open it and check BACKUP_DIR: that
+folder must exist on THIS PC. If it doesn't, create it (or
+change BACKUP_DIR to a folder that does).
 
-    SECRET_KEY=<paste a freshly generated value here>
-
-To generate that value, run:
-
-    python -c "import secrets; print(secrets.token_hex(32))"
-
-IMPORTANT: generate a NEW secret for every separate
-installation. Never copy this value from another install.
-
-Create the two runtime folders the backend expects to exist
-(these are gitignored, so a fresh clone won't have them):
+Create the two runtime folders:
 
     mkdir uploads
+
     mkdir logs
 
 
 ----------------------------------------------------------------
-PART 4 - FRONTEND SETUP
+PART 4 - FRONTEND
 ----------------------------------------------------------------
+
+Do NOT create frontend\.env.local. Without it the app talks to
+whatever address it was opened from, so the IP can change any
+time.
 
     cd frontend
+
     npm install
 
-Create the frontend's own environment file. Create a new file
-at frontend\.env.local containing:
-
-    VITE_API_URL=http://<this-machine's-LAN-IP>:8000
-
-Example: VITE_API_URL=http://192.168.0.84:8000
-
-This file is gitignored and specific to this machine - every
-separate install needs its own copy with its own correct IP.
-(The app's code reads this automatically; you should never need
-to hardcode an IP address directly into any source file.)
-
-Build the production frontend bundle:
-
     npm run build
+
     cd ..
 
-This creates frontend\dist, which the backend serves directly -
-there is no separate frontend server needed in production.
+This creates frontend\dist, which the backend serves. (Later,
+update.bat does this for you. The first time it's by hand,
+because update.bat also restarts the service, which doesn't
+exist yet.)
 
 
 ----------------------------------------------------------------
-PART 5 - DATABASE
+PART 5 - TEST DATA
 ----------------------------------------------------------------
 
-Choose ONE of the following:
+For testing, use a COPY of the current server's data (the real
+copy happens on the switch day, Part 11):
 
-  OPTION A - Brand new install, no existing data:
+  1. From the current server's backup folder, take the newest
+     zip from database\daily. Unzip it: inside is assets.db.
+     Put it in C:\MC Management Tools (next to requirements.txt).
+  2. Copy the current server's C:\MC Management Tools\uploads
+     folder over the empty uploads folder here.
 
-    python create_admin.py
-
-  This creates a single admin account:
-      username: admin
-      password: 1234
-  CHANGE THIS PASSWORD IMMEDIATELY after your first login.
-
-  OPTION B - Migrating existing data from another install:
-
-  Copy the existing "assets.db" file directly into the project
-  root (C:\MC Management Tools\assets.db - same folder level as
-  requirements.txt). If the old install has files in its
-  "uploads" folder (item photos, etc.), copy those into this
-  install's "uploads" folder too, overwriting the empty one.
-
-  Skip create_admin.py entirely if using this option - the
-  copied database already has real accounts in it.
-
-NOTE ON DEPARTMENTS: two specific item pages in this app (F&B
-Items and Housekeeping Items) look up their department by exact
-name. When setting up departments for a brand-new install
-(Option A), make sure you create one named exactly "F&B" and
-one named exactly "Housekeeping" (matching is case-sensitive)
-so those two pages can find them correctly.
+No create_admin.py and no migrate scripts: this database
+already has the users and every update.
 
 
 ----------------------------------------------------------------
-PART 6 - MANUAL TEST RUN (before installing as a service)
+PART 6 - TEST RUN
 ----------------------------------------------------------------
+
+In C:\MC Management Tools with (.venv) showing:
 
     uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-From a browser (this machine or another device on the same
-network), visit:
+On this PC open http://localhost:8000 and check:
+  - the login page loads, you can log in
+  - items show with their photos
+  - pressing F5 on an inner page (e.g. F&B Items) still works
 
-    http://<this-machine's-LAN-IP>:8000
-
-Check:
-  - The real login page loads (not raw JSON text)
-  - You can log in
-  - Refreshing an inner page (e.g. /purchases) still works, no 404
-  - http://<ip>:8000/docs loads (this needs the viewing device to
-    have internet access, since it pulls its styling from an
-    external CDN - this is not required for the app itself to work
-    and can be safely ignored if it's blank on an offline device)
-
-Press Ctrl+C to stop the test server once confirmed.
+Press Ctrl+C in PowerShell to stop it.
 
 
 ----------------------------------------------------------------
 PART 7 - INSTALL AS A WINDOWS SERVICE (NSSM)
 ----------------------------------------------------------------
 
-Download NSSM from: https://nssm.cc/download
+Download NSSM 2.24 from https://nssm.cc/download and unzip it so
+that this file exists:  C:\nssm-2.24\win64\nssm.exe
 
-Extract the zip to a STABLE, ACCOUNT-INDEPENDENT location - for
-example C:\nssm-2.24 (a plain folder at the drive root). Do NOT
-put it on a personal user's Desktop - the Windows Service will
-depend on this exact file location forever, and a personal
-profile folder can disappear if that account is ever removed.
-
-Open an ADMINISTRATOR PowerShell window and run each of the
-following ONE AT A TIME (paste and run a single line, wait for
-it to finish, then do the next one - pasting many lines as one
-block can cause PowerShell to execute them out of order):
+In an Admin PowerShell, ONE line at a time:
 
     & "C:\nssm-2.24\win64\nssm.exe" install MCManagementTools "C:\MC Management Tools\.venv\Scripts\uvicorn.exe" "app.main:app --host 0.0.0.0 --port 8000"
 
@@ -204,134 +192,127 @@ block can cause PowerShell to execute them out of order):
 
     & "C:\nssm-2.24\win64\nssm.exe" status MCManagementTools
 
-The last command should print SERVICE_RUNNING.
-
-(Adjust the paths above if your NSSM or project folder is
-somewhere different, and adjust "MCManagementTools" if you want
-a different service name - just keep it consistent across all
-seven commands.)
-
-This service runs as "Local System" by default (NSSM's
-default), which means it starts automatically on boot and keeps
-running regardless of who is logged in, or even with nobody
-logged in at all.
+The last one must print SERVICE_RUNNING. The service starts by
+itself when Windows starts, even with nobody logged in.
 
 
 ----------------------------------------------------------------
-PART 8 - OPEN THE FIREWALL PORT
+PART 8 - FIREWALL
 ----------------------------------------------------------------
 
-In the same Administrator PowerShell:
+In an Admin PowerShell:
 
     netsh advfirewall firewall add rule name="MC Management Tools" dir=in action=allow protocol=TCP localport=8000
 
-
-----------------------------------------------------------------
-PART 9 - FINAL VERIFICATION
-----------------------------------------------------------------
-
-  1. Visit http://<machine-IP>:8000 from the server itself.
-  2. Visit the same address from a second device on the network.
-  3. Restart the machine completely, wait at the Windows lock
-     screen WITHOUT logging in, and confirm the site is still
-     reachable from another device. This proves it is a true
-     always-on service, not dependent on any user session.
+From a phone on the same Wi-Fi open http://<this PC's IP>:8000
+(find the IP with "ipconfig", the IPv4 Address line).
 
 
 ----------------------------------------------------------------
-PART 10 - ONE-CLICK UPDATE SCRIPT (for future code updates)
+PART 9 - AUTOMATIC BACKUPS (03:00 and 12:00)
 ----------------------------------------------------------------
 
-Create a file named update.bat directly in the project root
-(C:\MC Management Tools\update.bat) containing:
+In an Admin PowerShell, ONE box at a time:
 
-------------------------------------------------
-@echo off
-cd /d "C:\MC Management Tools"
+    $action = New-ScheduledTaskAction -Execute "C:\MC Management Tools\.venv\Scripts\python.exe" -Argument "backup_db.py" -WorkingDirectory "C:\MC Management Tools"
 
-echo Pulling latest code...
-git pull
+    $triggers = @((New-ScheduledTaskTrigger -Daily -At 03:00), (New-ScheduledTaskTrigger -Daily -At 12:00))
 
-echo Installing backend dependencies...
-call .venv\Scripts\pip install -r requirements.txt
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
 
-echo Installing and building frontend...
-cd frontend
-call npm install
-call npm run build
-cd ..
+    Register-ScheduledTask -TaskName "MC Management Tools Backup" -Action $action -Trigger $triggers -Settings $settings -User "SYSTEM" -RunLevel Highest
 
-echo Restarting service...
-"C:\nssm-2.24\win64\nssm.exe" restart MCManagementTools
+StartWhenAvailable = if the PC was off at 03:00, the backup runs
+as soon as it's back on.
 
-echo Done.
-pause
-------------------------------------------------
+Test it now:
 
-(Adjust the nssm.exe path and service name to match what you
-used in Part 7.)
+    Start-ScheduledTask -TaskName "MC Management Tools Backup"
 
-From now on, whenever code changes need to be deployed to this
-server:
-  1. On the development machine: commit and push the changes
-     to GitHub as usual.
-  2. On this server: right-click update.bat -> "Run as
-     administrator". Wait for it to print "Done."
+Wait a minute, then check:
+  - BACKUP_DIR\database\daily has a new mc_backup_....zip
+  - BACKUP_DIR\READ ME - backup status.txt says it went fine
+  - if not: C:\MC Management Tools\logs\backup_log.txt says why
 
-This single script pulls the latest code, reinstalls any new
-dependencies, rebuilds the frontend, and restarts the service -
-no manual steps needed.
+Note: the task runs as SYSTEM. If .env has BACKUP_SHARE_DIR
+(a network folder), SYSTEM may not be allowed to write there -
+the status file will say so. Local BACKUP_DIR always works.
 
 
 ----------------------------------------------------------------
-OPTIONAL - DB BROWSER FOR SQLITE (inspecting the database)
+PART 10 - FINAL CHECK
 ----------------------------------------------------------------
 
-To look at the live database directly through a GUI:
-
-    winget install -e --id DBBrowserForSQLite.DBBrowserForSQLite --scope machine
-
-Open it, then File -> Open Database -> browse to
-C:\MC Management Tools\assets.db
-
-Safe to browse and run SELECT queries while the service is
-running. Avoid writing/editing data directly through this tool
-while the app is live - use the app itself for any changes, so
-its own validation logic is respected.
+  1. Restart the PC. Don't log in.
+  2. From a phone, open http://<this PC's IP>:8000. It must load.
+     That proves the app runs on its own.
 
 
 ----------------------------------------------------------------
-IMPORTANT GOTCHAS / LESSONS LEARNED
+PART 11 - THE SWITCH DAY (15-30 minutes, nobody counting)
 ----------------------------------------------------------------
 
-- Any command that controls the Windows Service or the firewall
-  MUST be run from an Administrator PowerShell (right-click ->
-  "Run as administrator"). Simply double-clicking a script, or
-  running PowerShell normally, will fail with "Access is
-  denied" on the service-related steps.
+On the CURRENT server (Admin PowerShell):
 
-- When running a quoted .exe path directly in PowerShell (like
-  nssm.exe), prefix it with "&" (the call operator), e.g.:
-      & "C:\path\to\nssm.exe" status MyService
-  Without it, PowerShell treats the quoted path as plain text
-  and errors out.
+  1. Open the app -> System Monitor -> Back up now.
 
-- When pasting more than 2-3 PowerShell commands at once,
-  PowerShell can sometimes execute them out of order. If
-  something behaves unexpectedly after a multi-line paste
-  (e.g. "service already exists" or "does not exist" errors
-  in a confusing order), stop, run "stop" and "remove" on the
-  service to reset it, and redo the install commands one line
-  at a time instead.
+  2. Stop the app:
 
-- Never hardcode a machine-specific value (like an IP address)
-  into a file that is tracked by git (such as config.js). Use a
-  gitignored .env / .env.local file instead, so each machine
-  keeps its own value and "git pull" never overwrites it.
+    & "C:\nssm-2.24\win64\nssm.exe" stop MCManagementTools
 
-- If "git pull" ever refuses with "your local changes would be
-  overwritten," it means a tracked file was edited locally and
-  never committed. If that local edit is no longer needed
-  (e.g. it's about to be replaced by an incoming change),
-  discard it with "git checkout -- <path-to-file>" and then
-  pull again.
+  3. Copy C:\MC Management Tools\assets.db and the uploads
+     folder to the USB stick (or over the network).
+
+On the NEW PC (Admin PowerShell):
+
+  4. Stop the app:
+
+    & "C:\nssm-2.24\win64\nssm.exe" stop MCManagementTools
+
+  5. Replace C:\MC Management Tools\assets.db and the uploads
+     folder with the ones from step 3.
+
+  6. Start the app:
+
+    & "C:\nssm-2.24\win64\nssm.exe" start MCManagementTools
+
+  7. Check: log in, items, photos, a Quick Count from a phone,
+     the open counts are still there.
+
+Back on the CURRENT server, so it never runs again by mistake:
+
+  8. Disable the service:
+
+    & "C:\nssm-2.24\win64\nssm.exe" set MCManagementTools Start SERVICE_DISABLED
+
+  9. Task Scheduler -> right-click its backup task(s) ->
+     Disable. (Two PCs must never back up into the same folder.)
+
+Keep the old PC untouched for a week or two, as a fallback.
+
+
+----------------------------------------------------------------
+FROM NOW ON - UPDATES
+----------------------------------------------------------------
+
+If an update comes with a database script, run it right after
+update.bat. In PowerShell, in C:\MC Management Tools, type
+python and the script's real name, for example:
+
+    python migrate_user_names.py
+
+
+----------------------------------------------------------------
+GOTCHAS
+----------------------------------------------------------------
+
+- Service and firewall commands need an Admin PowerShell, or
+  they fail with "Access is denied".
+- A quoted .exe path in PowerShell needs & in front:
+      & "C:\nssm-2.24\win64\nssm.exe" status MCManagementTools
+- Paste ONE command at a time. Many lines at once can run out
+  of order.
+- If "git pull" says "your local changes would be overwritten",
+  a file was edited on the server. Undo that edit with
+      git checkout -- <file>
+  and run update.bat again. Never edit code on the server.
