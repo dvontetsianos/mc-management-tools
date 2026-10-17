@@ -66,10 +66,12 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["ID", "Ο αριθμός του είδους στο σύστημα."],
                                 ["Image", "Η φωτογραφία του είδους. Το γκρι εικονίδιο σημαίνει ότι δεν υπάρχει φωτογραφία (προστίθεται με το μολύβι)."],
                                 ["Name, Category, Subcategory", "Τι είναι το είδος. Η παύλα (-) σημαίνει ότι δεν έχει υποκατηγορία."],
-                                ["Expected Total", "Πόσα πρέπει να έχουμε: αρχική ποσότητα + αγορές + ό,τι ήρθε από άλλα ξενοδοχεία − ό,τι έφυγε προς άλλα ξενοδοχεία. Οι μετακινήσεις μέσα στο ίδιο ξενοδοχείο δεν το αλλάζουν."],
-                                ["Assigned Quantity", "Πόσα βρίσκονται αυτή τη στιγμή σε πραγματικές τοποθεσίες: το άθροισμα όλων των τοποθεσιών, εκτός από το Unassigned."],
+                                ["Expected Total", "Πόσα έχουμε στα βιβλία: αρχική ποσότητα + αγορές + ό,τι ήρθε από άλλα ξενοδοχεία − ό,τι έφυγε προς άλλα ξενοδοχεία − σπασμένα − ελλείψεις + όσα βρέθηκαν (από κλεισμένες καταμετρήσεις). Οι μετακινήσεις μέσα στο ίδιο ξενοδοχείο δεν το αλλάζουν."],
+                                ["Assigned Quantity", "Το πλάνο του manager: πόσα πρέπει να βρίσκονται σε πραγματικές τοποθεσίες (το άθροισμα όλων των τοποθεσιών, εκτός από το Unassigned). Οι μετρήσεις και οι αναφορές του προσωπικού δεν το αλλάζουν· αλλάζει με μετακινήσεις, αγορές και όταν κλείνει η καταμέτρηση."],
+                                ["−2 broken", "Το κόκκινο σήμα κάτω από το Assigned Quantity: 2 τεμάχια δηλώθηκαν σπασμένα από το Quick Count και η καταμέτρηση δεν έχει κλείσει ακόμα. Περάστε το ποντίκι για να δείτε πού, ποιος, πότε και τη σημείωση. Φεύγει όταν κλείσει η καταμέτρηση στην τοποθεσία."],
                                 ["Staff Count", "Τι μέτρησε το προσωπικό με το Quick Count. Δείτε την ενότητα «Το Staff Count»."],
-                                ["Missing", "Assigned Quantity − Staff Count, μόνο για τις τοποθεσίες που μετρήθηκαν (και που φαίνονται με τα φίλτρα). Πάνω από 0: το προσωπικό βρήκε λιγότερα από όσα έχει το σύστημα. Κάτω από 0: βρήκε περισσότερα. 0: όλα συμφωνούν. «-»: δεν έχει μετρηθεί ακόμα καμία τοποθεσία."],
+                                ["Missing", "Assigned Quantity − σπασμένα − Staff Count, μόνο για τις τοποθεσίες που μετρήθηκαν (και που φαίνονται με τα φίλτρα). Τα σπασμένα δεν μετράνε ποτέ ως ελλείψεις. Πάνω από 0: λείπουν τεμάχια που κανείς δεν εξηγεί. Κάτω από 0: βρέθηκαν περισσότερα. 0: όλα συμφωνούν. «-»: δεν έχει μετρηθεί ακόμα καμία τοποθεσία."],
+                                ["Code και στοιχεία καταλόγου", "Code, Size, Color, Material, Specification, Supplier Description, Supplier και Cost per Unit. Ποιες στήλες φαίνονται το επιλέγετε με το **Columns**."],
                                 ["Locations", "Πού έχει απόθεμα το είδος αυτή τη στιγμή (μόνο τοποθεσίες με ποσότητα πάνω από 0), μαζί με το ξενοδοχείο. Με πράσινο είναι οι τοποθεσίες που έχετε επιλέξει στο φίλτρο Location."],
                                 ["Τελευταία στήλη", "Τα κουμπιά: επεξεργασία (μολύβι), μετακίνηση (⇄), ιστορικό (ρολόι) και, μόνο για admin, διαγραφή. Εξηγούνται παρακάτω."]
                             ]
@@ -81,7 +83,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                     id: "staffCount",
                     title: "Το Staff Count",
                     blocks: [
-                        "Το Staff Count αθροίζει τις μετρήσεις όλων των τοποθεσιών του είδους που έχουν μετρηθεί και τις συγκρίνει με όσα λέει το σύστημα για τις ίδιες τοποθεσίες.",
+                        "Το Staff Count αθροίζει τις μετρήσεις όλων των τοποθεσιών του είδους που έχουν μετρηθεί και τις συγκρίνει με όσα πρέπει να βρεθούν εκεί: το Assigned των ίδιων τοποθεσιών μείον όσα δηλώθηκαν σπασμένα.",
                         {
                             legend: {
                                 notCounted: "Καμία τοποθεσία του είδους δεν έχει μετρηθεί ακόμα.",
@@ -94,7 +96,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                         },
                         {
                             list: [
-                                "Περάστε το ποντίκι πάνω από τον αριθμό για να δείτε κάθε τοποθεσία χωριστά, π.χ. «Bar (Marbella): counted 12, assigned 10 (+2), by maria, 12/08/2026 14:32». Το counted είναι όσα μετρήθηκαν, το assigned όσα έχει το σύστημα και στην παρένθεση η διαφορά. Οι τοποθεσίες με απόθεμα που δεν μετρήθηκαν φαίνονται ως «not counted, assigned 5».",
+                                "Περάστε το ποντίκι πάνω από τον αριθμό για να δείτε κάθε τοποθεσία χωριστά, π.χ. «Bar (Marbella): counted 7, assigned 10, broken 2 (−1), by maria, 12/08/2026 14:32». Το counted είναι όσα μετρήθηκαν, το assigned το πλάνο, το broken όσα δηλώθηκαν σπασμένα και στην παρένθεση η διαφορά (εδώ λείπει 1). Οι τοποθεσίες με απόθεμα που δεν μετρήθηκαν φαίνονται ως «not counted, assigned 5».",
                                   "Το Staff Count ακολουθεί το φίλτρο Location, όπως και το Assigned Quantity: με επιλεγμένες τοποθεσίες (και Only at checked locations) αθροίζει και συγκρίνει μόνο αυτές, και μόνο αυτές φαίνονται όταν περάσετε το ποντίκι. Χωρίς φίλτρο τοποθεσίας, ή με Hotel-wide total, κοιτάει όλες τις τοποθεσίες.",
                                 "Το Unassigned δεν μετριέται ποτέ.",
                                 "Οι μετρήσεις μένουν μέχρι να μηδενιστούν. Δεν σβήνονται όταν μετακινείται απόθεμα: αν φύγει όλο το απόθεμα από μια τοποθεσία που είχε μετρηθεί, η μέτρησή της μένει και το χρώμα μπορεί να γίνει κίτρινο. Είναι αναμενόμενο· η μέτρηση μπορεί να μηδενιστεί αν δεν χρειάζεται πια."
@@ -113,7 +115,9 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["Φίλτρο Location", "Δείχνει τα είδη που έχουν απόθεμα σε κάποια από τις επιλεγμένες τοποθεσίες και τις χρωματίζει πράσινες στον πίνακα. Ένα όνομα όπως «Store» σημαίνει το Store όλων των ξενοδοχείων που βλέπετε· για ένα μόνο ξενοδοχείο, επιλέξτε το και στο φίλτρο Hotel."],
                                 ["Φίλτρο Hotel", "Μόνο για χρήστες με περισσότερα από ένα ξενοδοχεία. Τα Expected Total, Assigned Quantity και Missing υπολογίζονται ξανά μόνο για τα επιλεγμένα ξενοδοχεία."],
                                 ["Διακόπτης Quantity columns", "Στο κάτω μέρος των φίλτρων. **Only at checked locations** (προεπιλογή): όταν έχετε επιλέξει τοποθεσίες, το Assigned Quantity και το Staff Count δείχνουν μόνο αυτές τις τοποθεσίες, και η ταξινόμηση και το .XLSX χρησιμοποιούν τους ίδιους αριθμούς. **Hotel-wide total**: δείχνουν πάντα όλες τις τοποθεσίες. Το Missing ακολουθεί τις ίδιες τοποθεσίες. Το Expected Total είναι πάντα συνολικό."],
+                                ["Columns", "Επιλέγετε ποιες στήλες φαίνονται. Η επιλογή αποθηκεύεται για εσάς."],
                                 ["Small / Medium / Large", "Μικραίνει ή μεγαλώνει τον πίνακα. Ο browser θυμάται την επιλογή σας."],
+                                ["Τι θυμάται η σελίδα", "Η αναζήτηση, τα φίλτρα, η ταξινόμηση και το Rows per page μένουν όταν κάνετε ανανέωση (F5), χωριστά για κάθε σελίδα ειδών. Αν κλείσετε την καρτέλα, ξεκινάει από την αρχή."],
                                 ["Rows per page", "Στο κάτω μέρος: 25, 50, 100 ή All (όλα)."],
                                 [".XLSX", "Κατεβάζει αρχείο Excel με όλα τα είδη που ταιριάζουν στην αναζήτηση και στα φίλτρα (όλες τις σελίδες, με την τρέχουσα ταξινόμηση). Έχει τις ίδιες στήλες και τους ίδιους αριθμούς με τον πίνακα, μαζί με το φίλτρο τοποθεσίας: ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Staff Count, Missing, Locations."],
                                 ...(hasQuickCountButton
@@ -127,15 +131,16 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                     id: "items",
                     title: "Προσθήκη και επεξεργασία ειδών",
                     blocks: [
-                        "Το **Add Item** ανοίγει μια κενή φόρμα. Υποχρεωτικά είναι μόνο τα **Item Name** και **Category**.",
+                        "Το **Add Item** ανοίγει μια κενή φόρμα. Υποχρεωτικά είναι μόνο τα **Item Name** και **Category**. Προσθήκη και επεξεργασία κάνουν οι admin και όσοι έχουν το δικαίωμα **Edit Items**. Πολλά είδη μαζί μπαίνουν από τη σελίδα **Import Items**.",
                         {
                             terms: [
-                                ["Item Name", "Πρέπει να είναι μοναδικό. Αν υπάρχει ήδη, θα δείτε «An item with this name already exists»."],
+                                ["Item Name", "Δύο είδη μπορούν να έχουν το ίδιο όνομα· τα ξεχωρίζει το Code."],
                                 ["Subcategory (optional)", "Επιλέξτε πρώτα Category· η λίστα δείχνει μόνο τις υποκατηγορίες της. **None** σημαίνει χωρίς υποκατηγορία."],
                                 ["Supplier", "Από πού το αγοράζουμε συνήθως."],
                                 ["Hotels", "Τα ξενοδοχεία που χρησιμοποιούν το είδος· τουλάχιστον ένα. Μπορείτε να προσθέσετε ή να αφαιρέσετε μόνο τα δικά σας ξενοδοχεία (εκτός αν έχετε πρόσβαση σε όλα). Απόθεμα παραλαμβάνεται ή μετακινείται μόνο σε ξενοδοχείο που υπάρχει σε αυτή τη λίστα."],
-                                ["Cost per unit", "Τιμή ανά τεμάχιο."],
-                                ["Opening Quantity - (ξενοδοχείο)", "Μόνο για admin, ένα πεδίο ανά ξενοδοχείο. Η αρχική ποσότητα πάνω στην οποία χτίζεται το Expected Total. Αλλάζει μόνο μετά από πλήρη φυσική καταμέτρηση. Δεν τοποθετεί απόθεμα σε καμία τοποθεσία."],
+                                ["Cost per unit", "Τιμή ανά τεμάχιο. Μόλις καταχωρηθεί αγορά με τιμή, παίρνεται αυτόματα από την πιο πρόσφατη αγορά και δεν αλλάζει με το χέρι (γράφει «From the purchase of …»). Χωρίς αγορές, το συμπληρώνετε εσείς."],
+                                ["Code και στοιχεία καταλόγου", "Code, Specification, Material, Size, Color, Supplier Description: μόνο όσα χρησιμοποιεί το τμήμα (ορίζεται στη σελίδα Departments). Το Code είναι προαιρετικό αλλά μοναδικό· αν το έχει άλλο είδος, θα δείτε «Code … is already used by item #…»."],
+                                ["Opening Quantity - (ξενοδοχείο)", "Για admin και όσους έχουν το δικαίωμα **Edit Opening**, ένα πεδίο ανά ξενοδοχείο. Η αρχική ποσότητα πάνω στην οποία χτίζεται το Expected Total. Αλλάζει μόνο μετά από πλήρη φυσική καταμέτρηση. Δεν τοποθετεί απόθεμα σε καμία τοποθεσία."],
                                 ["Choose Image", "Προσθέτει ή αλλάζει τη φωτογραφία. Το μικρό x δίπλα την αφαιρεί."]
                             ]
                         },
@@ -168,6 +173,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 "Μετακίνηση από το Unassigned σε πραγματική τοποθεσία ανεβάζει το Assigned Quantity.",
                                 "Μετακίνηση σε άλλο ξενοδοχείο μειώνει το Expected Total του ενός ξενοδοχείου και αυξάνει του άλλου.",
                                 "Αν το είδος δεν έχει απόθεμα πουθενά, δεν μετακινείται. Το απόθεμα μπαίνει πρώτα σε τοποθεσία με αγορά (παραλαβή σε τοποθεσία από τη σελίδα Purchases).",
+                                "Τεμάχια που δηλώθηκαν σπασμένα δεν μετακινούνται μέχρι να κλείσει η καταμέτρηση. Θα δείτε «Only N can be moved from here, … were reported broken».",
                                 "Κάθε μετακίνηση καταγράφεται και φαίνεται στο ιστορικό του είδους → Movements."
                             ]
                         }
@@ -187,8 +193,8 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                         {
                             list: [
                                 "Το μαύρο κουμπί με τον κόκκινο κάδο εμφανίζεται μόνο σε admin.",
-                                "Το **Delete** δουλεύει μόνο όταν το απόθεμα του είδους είναι μόνο στο Unassigned και δεν έχει ιστορικό αγορών ή μετακινήσεων.",
-                                "Το **Delete with history** σβήνει το είδος μαζί με όλες τις αγορές και μετακινήσεις του, σαν να μην υπήρξε ποτέ. Πρέπει πρώτα να γράψετε ακριβώς το όνομα του είδους. Δεν αναιρείται: μόνο για δοκιμαστικά είδη ή λάθη."
+                                "Το **Delete** δουλεύει μόνο όταν το απόθεμα του είδους είναι μόνο στο Unassigned και δεν έχει ιστορικό αγορών, μετακινήσεων ή απωλειών (σπασμένα / ελλείψεις / βρέθηκαν).",
+                                "Το **Delete with history** σβήνει το είδος μαζί με όλες τις αγορές, μετακινήσεις και απώλειές του, σαν να μην υπήρξε ποτέ. Πρέπει πρώτα να γράψετε ακριβώς το όνομα του είδους. Δεν αναιρείται: μόνο για δοκιμαστικά είδη ή λάθη."
                             ]
                         }
                     ]
@@ -203,7 +209,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 "Συνδεθείτε με το δικό σας όνομα χρήστη και κωδικό.",
                                 "**Which hotel are you counting?** Επιλέξτε ξενοδοχείο. Βλέπετε μόνο τα δικά σας.",
                                 "**Where are you working right now?** Επιλέξτε την τοποθεσία όπου βρίσκεστε.",
-                                "Η λίστα δείχνει όλα τα είδη με απόθεμα σε αυτή την τοποθεσία, αλφαβητικά, με φωτογραφία. Η αναζήτηση βοηθά να βρείτε γρήγορα ένα είδος. Το πράσινο **Counted: N** σημαίνει ότι έχει ήδη μετρηθεί.",
+                                "Η λίστα δείχνει όλα τα είδη με απόθεμα σε αυτή την τοποθεσία, με φωτογραφία: πρώτα όσα δεν έχουν μετρηθεί, αλφαβητικά, και στο τέλος τα μετρημένα. Η αναζήτηση βοηθά να βρείτε γρήγορα ένα είδος. Το πράσινο **Counted: N** σημαίνει ότι έχει ήδη μετρηθεί.",
                                 "Πατήστε ένα είδος. Πατήστε τη φωτογραφία για να μεγαλώσει. Μετρήστε όλα τα τεμάχια του είδους σε αυτή την τοποθεσία και βάλτε τον αριθμό με τα − / + ή πατώντας πάνω του και πληκτρολογώντας.",
                                 "Πατήστε **Save count**. Επιστρέφετε στη λίστα και το είδος εμφανίζεται ως μετρημένο."
                             ]
@@ -212,6 +218,8 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             list: [
                                 "Νέα αποθήκευση αντικαθιστά την προηγούμενη μέτρηση, δεν προστίθεται σε αυτή. Η οθόνη δείχνει ποιος μέτρησε τελευταίος και πότε.",
                                 "Το **Actually, not counted yet** σβήνει τη μέτρηση του είδους σε αυτή την τοποθεσία (π.χ. μετά από λάθος). Το προσωπικό καταμέτρησης μπορεί να σβήσει μόνο δικές του μετρήσεις.",
+                                "Το **Report broken** (στην οθόνη του είδους) δηλώνει πόσα έσπασαν, με προαιρετική σημείωση. Το πλάνο (Assigned) δεν αλλάζει· στη σελίδα ειδών εμφανίζεται το κόκκινο σήμα «−N broken» μέχρι να κλείσει η καταμέτρηση. Αν το είδος είχε ήδη μετρηθεί, η μέτρηση μειώνεται κατά τα σπασμένα.",
+                                "Στην πρώτη οθόνη μπορεί να βλέπετε ένα μήνυμα από τον admin και τους 3 που μέτρησαν τα περισσότερα είδη τις τελευταίες 7 μέρες (ανοίγουν από το System Monitor). Το κουμπί **Feedback** στέλνει σχόλιο στον admin.",
                                 "Είδος που βρίσκεται στην τοποθεσία αλλά δεν είναι στη λίστα δεν είναι καταχωρημένο εκεί στο σύστημα. Μην το προσπεράσετε: ενημερώστε έναν manager να το μετακινήσει εκεί με το ⇄, ώστε να εμφανιστεί.",
                                 "Βλέπετε μόνο τα είδη του δικού σας τμήματος (ο admin βλέπει όλα).",
                                 "Μετά από 60 λεπτά χωρίς αποθήκευση γίνεται αυτόματη αποσύνδεση. Κάθε αποθήκευση ή αναίρεση δίνει άλλα 60 λεπτά. Στα κοινόχρηστα PDA πατάτε πάντα **Log out** (πάνω δεξιά, στην οθόνη ξενοδοχείου/τοποθεσίας) όταν τελειώσετε."
@@ -228,6 +236,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 ["«… saved a count of N while you were counting, so yours wasn't saved»", "Δύο άτομα μέτρησαν το ίδιο είδος στην ίδια τοποθεσία. Ο δικός σας αριθμός είναι ακόμα στο πεδίο. Συνεννοηθείτε με τον συνάδελφο για τον σωστό αριθμό και πατήστε ξανά Save count."],
                                 ["«Someone reset this count while you were counting…»", "Κάποιος μηδένισε τη μέτρηση στο μεταξύ (admin με το Reset Counts ή συνάδελφος με το Actually, not counted yet). Ελέγξτε τον αριθμό και αποθηκεύστε ξανά."],
                                 ["«This item isn't assigned to this location anymore…»", "Κάποιος μετακίνησε όλο το απόθεμα από αυτή την τοποθεσία την ώρα που μετρούσατε. Γυρίστε πίσω στη λίστα."],
+                                ["«That's more than there are at …»", "Στο Report broken δώσατε περισσότερα από όσα υπάρχουν στην τοποθεσία (μαζί με όσα έχουν ήδη δηλωθεί σπασμένα). Ελέγξτε τον αριθμό."],
                                 ["«Can't reach the server…» / «Check your connection…»", "Η συσκευή δεν είναι συνδεδεμένη στο Wi-Fi. Συνδεθείτε ξανά και δοκιμάστε πάλι."]
                             ]
                         }
@@ -243,8 +252,28 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                                 "Πράσινο: η μέτρηση συμφωνεί, δεν χρειάζεται τίποτα.",
                                 "Κόκκινο ή κίτρινο: περάστε το ποντίκι από πάνω για να δείτε ποια τοποθεσία διαφέρει και, αν χρειάζεται, ξαναμετρήστε επί τόπου.",
                                 "⇄: τα τεμάχια είναι σε άλλη τοποθεσία από αυτή που ξέρει το σύστημα. Καταγράψτε με μετακίνηση (⇄) πού βρίσκονται πραγματικά· μετά το σημάδι φεύγει.",
-                                "Αν λείπουν πραγματικά τεμάχια (μετρήθηκαν λιγότερα και δεν βρίσκονται σε άλλη τοποθεσία), ενημερώστε έναν admin.",
-                                "Οι μετρήσεις δεν σβήνονται μόνες τους. Πριν από την επόμενη καταμέτρηση, ένας admin τις μηδενίζει με το **Reset Counts**."
+                                "Αν λείπουν πραγματικά τεμάχια (μετρήθηκαν λιγότερα και δεν βρίσκονται σε άλλη τοποθεσία), αποθηκεύονται ως Missing όταν ο admin κλείσει την καταμέτρηση.",
+                                "Οι μετρήσεις δεν σβήνονται μόνες τους. Το **Close count** τις κλείνει και κρατάει τα αποτελέσματα· το **Reset Counts** τις σβήνει χωρίς να κρατήσει τίποτα."
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: "closeCount",
+                    title: "Close count (μόνο admin)",
+                    blocks: [
+                        {
+                            steps: [
+                                "Πατήστε **Close count** και επιλέξτε Hotel, Department (το τμήμα της σελίδας είναι ήδη επιλεγμένο), Location και Item. Ό,τι αφήσετε στο All τα περιλαμβάνει όλα.",
+                                "Η προεπισκόπηση δείχνει κάθε μετρημένη τοποθεσία που διαφέρει: **System** (το πλάνο), **Broken** (όσα δηλώθηκαν σπασμένα), **Counted** (όσα μετρήθηκαν) και **Difference** (Missing ή Found). Π.χ. System 10, Broken 2, Counted 7 = −1 Missing.",
+                                "Πατήστε **Yes, close count**. Πρώτα παίρνεται αντίγραφο ασφαλείας."
+                            ]
+                        },
+                        {
+                            list: [
+                                "Σε κάθε μετρημένη τοποθεσία το Assigned γίνεται όσο μετρήθηκε, η διαφορά αποθηκεύεται ως Missing ή Found, τα σπασμένα «κλείνουν» (το κόκκινο σήμα φεύγει) και οι μετρήσεις σβήνονται.",
+                                "Σπασμένα, ελλείψεις και όσα βρέθηκαν φαίνονται στο **Reports → Losses**.",
+                                "Τοποθεσίες που δεν μετρήθηκαν δεν αλλάζουν. Δεν αναιρείται από την εφαρμογή."
                             ]
                         }
                     ]
@@ -270,12 +299,13 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                         {
                             terms: [
                                 ["Να δει τη σελίδα", "Admin και χρήστες με πρόσβαση σε αυτή τη σελίδα."],
-                                ["Προσθήκη και επεξεργασία ειδών", "Όλοι όσοι βλέπουν τη σελίδα, για τα δικά τους ξενοδοχεία. Τα στοιχεία ειδών κοινών με άλλα ξενοδοχεία: μόνο admin."],
+                                ["Προσθήκη και επεξεργασία ειδών", "Admin και όσοι έχουν το δικαίωμα **Edit Items**, για τα δικά τους ξενοδοχεία. Τα στοιχεία ειδών κοινών με άλλα ξενοδοχεία: μόνο admin."],
                                 ["Μετακίνηση και ιστορικό Movements", "Πρόσβαση Movements."],
                                 ["Ιστορικό Purchases", "Πρόσβαση Purchases."],
-                                ["Opening Quantity, Delete, Reset Counts", "Μόνο admin."],
+                                ["Opening Quantity", "Admin και όσοι έχουν το δικαίωμα **Edit Opening**."],
+                                ["Delete, Close count, Reset Counts", "Μόνο admin."],
                                 ["Φίλτρο Hotel", "Χρήστες με περισσότερα από ένα ξενοδοχεία."],
-                                ["Quick Count", "Admin, χρήστες με πρόσβαση σε σελίδα ειδών και το προσωπικό καταμέτρησης (χρήστες Quick Count)."]
+                                ["Quick Count και Report broken", "Admin, χρήστες με πρόσβαση σε σελίδα ειδών και το προσωπικό καταμέτρησης (χρήστες Quick Count)."]
                             ]
                         },
                         "Ποια ξενοδοχεία και ποιο τμήμα βλέπει ο καθένας ορίζεται για κάθε χρήστη στη σελίδα Users."
@@ -309,10 +339,12 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["ID", "The item's number in the system."],
                             ["Image", "The item's photo. A grey icon means there is no photo yet (add one with the pencil)."],
                             ["Name, Category, Subcategory", "What the item is. A dash (-) means it has no subcategory."],
-                            ["Expected Total", "How many we should have: opening quantity + purchases + stock moved in from other hotels − stock moved out to other hotels. Moves inside the same hotel don't change it."],
-                            ["Assigned Quantity", "How many are in real locations right now: all locations added together, except Unassigned."],
+                            ["Expected Total", "How many we have on the books: opening quantity + purchases + stock moved in from other hotels − stock moved out to other hotels − broken − missing + found (from closed counts). Moves inside the same hotel don't change it."],
+                            ["Assigned Quantity", "The manager's plan: how many should be in real locations (all locations added together, except Unassigned). Staff counts and reports don't change it; it changes with moves, purchases and when a count is closed."],
+                            ["−2 broken", "The red chip under Assigned Quantity: 2 units were reported broken in Quick Count and the count hasn't been closed yet. Hover over it to see where, who, when and the note. It goes away when the count is closed at that location."],
                             ["Staff Count", "What staff counted with Quick Count. See “The Staff Count chip”."],
-                            ["Missing", "Assigned Quantity − Staff Count, only for the locations that were counted (and that are in view with the filters). Above 0: staff found fewer than the system has. Below 0: they found more. 0: everything matches. “-”: no location has been counted yet."],
+                            ["Missing", "Assigned Quantity − broken − Staff Count, only for the locations that were counted (and that are in view with the filters). Broken units are never counted as missing. Above 0: units are gone that nobody can explain. Below 0: more were found. 0: everything matches. “-”: no location has been counted yet."],
+                            ["Code and catalogue columns", "Code, Size, Color, Material, Specification, Supplier Description, Supplier and Cost per Unit. Choose which ones you see with **Columns**."],
                             ["Locations", "Where the item has stock right now (only locations with more than 0), with the hotel name. Green locations are the ones you checked in the Location filter."],
                             ["Last column", "The buttons: edit (pencil), move (⇄), history (clock) and, for admins only, delete. Explained below."]
                         ]
@@ -324,7 +356,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                 id: "staffCount",
                 title: "The Staff Count chip",
                 blocks: [
-                    "The chip adds up the counts of every location of the item that was counted, and compares them with what the system says is at those same locations.",
+                    "The chip adds up the counts of every location of the item that was counted, and compares them with what should be found there: the Assigned of those same locations minus what was reported broken.",
                     {
                         legend: {
                             notCounted: "None of the item's locations has been counted yet.",
@@ -337,7 +369,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                     },
                     {
                         list: [
-                            "Hover over the chip to see every location on its own line, for example “Bar (Marbella): counted 12, assigned 10 (+2), by maria, 12/08/2026 14:32”. Counted is what staff counted, assigned is what the system has, and the brackets show the difference. Locations with stock that nobody counted show as “not counted, assigned 5”.",
+                            "Hover over the chip to see every location on its own line, for example “Bar (Marbella): counted 7, assigned 10, broken 2 (−1), by maria, 12/08/2026 14:32”. Counted is what staff counted, assigned is the plan, broken is what was reported broken, and the brackets show the difference (here 1 is missing). Locations with stock that nobody counted show as “not counted, assigned 5”.",
                              "The chip follows the Location filter, like Assigned Quantity: with locations checked (and Only at checked locations), it only adds up and compares those locations, and only those show when you hover. With no location checked, or with Hotel-wide total, it looks at all locations.",
                             "Unassigned is never counted.",
                             "Counts stay until they are reset. They don't disappear when stock is moved: if all the stock leaves a counted location, its count stays and the chip can turn yellow. That's expected; the count can be reset if it's no longer needed."
@@ -356,7 +388,9 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["Location filter", "Shows the items that have stock at any of the checked locations, and turns those locations green in the table. A name like “Store” means the Store of every hotel you see; to look at one hotel only, check it in the Hotel filter too."],
                             ["Hotel filter", "Only for users with more than one hotel. Expected Total, Assigned Quantity and Missing are calculated again for the checked hotels only."],
                             ["Quantity columns switch", "At the bottom of the filter panel. **Only at checked locations** (the default): when locations are checked,   Assigned Quantity and Staff Count only show those locations, and sorting and the .XLSX use the same numbers. **Hotel-wide total**: they always show all locations. Missing follows the same locations. Expected Total is always hotel-wide."],
+                            ["Columns", "Choose which columns are shown. Your choice is saved for you."],
                             ["Small / Medium / Large", "Makes the table smaller or bigger. Your browser remembers the choice."],
+                            ["What the page remembers", "The search, the filters, the sorting and Rows per page stay when you refresh (F5), separately for each items page. Closing the tab starts clean."],
                             ["Rows per page", "At the bottom: 25, 50, 100 or All."],
                             [".XLSX", "Downloads an Excel file with every item that matches the search and filters (all pages, in the current order). It has the same columns and numbers as the table, including the location filter: ID, Name, Category, Subcategory, Expected Total, Assigned Quantity, Staff Count, Missing, Locations."],
                             ...(hasQuickCountButton
@@ -370,15 +404,16 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                 id: "items",
                 title: "Adding and editing items",
                 blocks: [
-                    "**Add Item** opens an empty form. Only **Item Name** and **Category** are required.",
+                    "**Add Item** opens an empty form. Only **Item Name** and **Category** are required. Adding and editing is for admins and users with **Edit Items**. Many items at once can be added on the **Import Items** page.",
                     {
                         terms: [
-                            ["Item Name", "Must be unique. If the name is already used, you'll see “An item with this name already exists”."],
+                            ["Item Name", "Two items can have the same name; the Code tells them apart."],
                             ["Subcategory (optional)", "Pick the Category first; the list then shows only that category's subcategories. **None** means no subcategory."],
                             ["Supplier", "Who we usually buy it from."],
                             ["Hotels", "The hotels that use this item; at least one. You can only add or remove your own hotels (unless you have access to all hotels). Stock can only be received or moved into a hotel on this list."],
-                            ["Cost per unit", "The price of one unit."],
-                            ["Opening Quantity - (hotel)", "Admin only, one box per hotel. The starting stock the Expected Total is built from. Change it only after a full physical count. It doesn't put stock into any location."],
+                            ["Cost per unit", "The price of one unit. Once a purchase with a cost is logged, it comes from the latest purchase and can't be typed (it says “From the purchase of …”). Without purchases, you fill it in."],
+                            ["Code and catalogue fields", "Code, Specification, Material, Size, Color, Supplier Description: only the ones this department uses (set on the Departments page). Code is optional but unique: if another item has it, you'll see “Code … is already used by item #…”."],
+                            ["Opening Quantity - (hotel)", "Admins and users with **Edit Opening**, one box per hotel. The starting stock the Expected Total is built from. Change it only after a full physical count. It doesn't put stock into any location."],
                             ["Choose Image", "Adds or replaces the photo. The small x next to it removes it."]
                         ]
                     },
@@ -411,6 +446,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             "Moving out of Unassigned into a real location raises Assigned Quantity.",
                             "Moving to another hotel lowers one hotel's Expected Total and raises the other's.",
                             "If the item has no stock anywhere, it can't be moved. Stock first gets into a location through a purchase (received into a location on the Purchases page).",
+                            "Units reported broken can't be moved until the count is closed. You'll see “Only N can be moved from here, … were reported broken”.",
                             "Every move is saved and shows in the item's history → Movements."
                         ]
                     }
@@ -430,8 +466,8 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                     {
                         list: [
                             "The black button with the red bin is only shown to admins.",
-                            "**Delete** only works when the item's stock is only in Unassigned and it has no purchase or movement history.",
-                            "**Delete with history** removes the item together with all its purchases and moves, as if it never existed. You have to type the item's exact name first. It can't be undone: use it only for test items or mistakes."
+                            "**Delete** only works when the item's stock is only in Unassigned and it has no purchase, movement or loss (broken / missing / found) history.",
+                            "**Delete with history** removes the item together with all its purchases, moves and losses, as if it never existed. You have to type the item's exact name first. It can't be undone: use it only for test items or mistakes."
                         ]
                     }
                 ]
@@ -446,7 +482,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             "Log in with your own username and password.",
                             "**Which hotel are you counting?** Choose the hotel. You only see your own hotels.",
                             "**Where are you working right now?** Choose the location you are standing in.",
-                            "The list shows every item that has stock at this location, A to Z, with its photo. Use the search box to find one quickly. A green **Counted: N** means it has already been counted.",
+                            "The list shows every item that has stock at this location, with its photo: the ones not counted yet first, A to Z, and the counted ones at the bottom. Use the search box to find one quickly. A green **Counted: N** means it has already been counted.",
                             "Tap an item. Tap the photo to see it bigger. Count all the units of this item at this location, then set the number with − and +, or tap the number and type it.",
                             "Press **Save count**. You go back to the list and the item shows as counted."
                         ]
@@ -455,6 +491,8 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                         list: [
                             "Saving again replaces the previous count; it doesn't add to it. The screen shows who counted last and when.",
                             "**Actually, not counted yet** removes the count of this item at this location (for example after a mistake). Counting staff can only undo their own counts.",
+                            "**Report broken** (in the item screen) says how many broke, with an optional note. The plan (Assigned) doesn't change; the items page shows a red “−N broken” chip until the count is closed. If the item was already counted, the count goes down by the broken ones.",
+                            "On the first screen you may see a message from the admin, and the 3 people who counted the most items in the last 7 days (both switched on in System Monitor). The **Feedback** button sends a note to the admin.",
                             "An item that is physically there but isn't in the list isn't assigned to this location in the system. Don't skip it: tell a manager, who can move it there with ⇄ so it appears.",
                             "You only see the items of your own department (admins see all).",
                             "After 60 minutes without saving anything, you are logged out. Every save or undo gives another 60 minutes. On shared PDAs, always press **Log out** (top right of the hotel / location screen) when you finish."
@@ -471,6 +509,7 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             ["“… saved a count of N while you were counting, so yours wasn't saved”", "Two people counted the same item at the same location. Your number is still in the box. Agree with your colleague on the right number and press Save count again."],
                             ["“Someone reset this count while you were counting…”", "The count was cleared in the meantime (by an admin with Reset Counts, or by a colleague with Actually, not counted yet). Check the number and save again."],
                             ["“This item isn't assigned to this location anymore…”", "Someone moved all its stock out of this location while you were counting. Go back to the list."],
+                            ["“That's more than there are at …”", "In Report broken you entered more than there are at this location (counting the ones already reported broken). Check the number."],
                             ["“Can't reach the server…” / “Check your connection…”", "The device isn't on the Wi-Fi. Reconnect and try again."]
                         ]
                     }
@@ -486,8 +525,28 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                             "Green: the count matches, nothing to do.",
                             "Red or yellow: hover over the chip to see which location is different, and count it again on site if needed.",
                             "⇄: the units are in a different location than the system thinks. Record where they really are with a move (⇄); the marker then goes away.",
-                            "If units are really missing (fewer were counted and they aren't in another location), tell an admin.",
-                            "Counts don't clear by themselves. Before the next count, an admin clears them with **Reset Counts**."
+                            "If units are really missing (fewer were counted and they aren't in another location), they're saved as Missing when an admin closes the count.",
+                            "Counts don't clear by themselves. **Close count** closes them and keeps the results; **Reset Counts** clears them without keeping anything."
+                        ]
+                    }
+                ]
+            },
+            {
+                id: "closeCount",
+                title: "Close count (admin only)",
+                blocks: [
+                    {
+                        steps: [
+                            "Press **Close count** and choose Hotel, Department (this page's department is already picked), Location and Item. Anything left on All includes everything.",
+                            "The preview shows every counted location that's different: **System** (the plan), **Broken** (reported broken), **Counted** and **Difference** (Missing or Found). For example System 10, Broken 2, Counted 7 = −1 Missing.",
+                            "Press **Yes, close count**. A backup is made first."
+                        ]
+                    },
+                    {
+                        list: [
+                            "At every counted location, Assigned becomes what was counted, the difference is saved as Missing or Found, the broken reports are settled (the red chip goes away) and the counts are cleared.",
+                            "Broken, missing and found are in **Reports → Losses**.",
+                            "Locations nobody counted are not touched. It can't be undone from the app."
                         ]
                     }
                 ]
@@ -513,12 +572,13 @@ function content(language, department, quickCountAddress, hasQuickCountButton) {
                     {
                         terms: [
                             ["See this page", "Admins and users with access to this page."],
-                            ["Add and edit items", "Everyone who sees the page, for their own hotels. Details of items shared with other hotels: admin only."],
+                            ["Add and edit items", "Admins and users with **Edit Items**, for their own hotels. Details of items shared with other hotels: admin only."],
                             ["Move, and Movements history", "Movements access."],
                             ["Purchases history", "Purchases access."],
-                            ["Opening Quantity, Delete, Reset Counts", "Admin only."],
+                            ["Opening Quantity", "Admins and users with **Edit Opening**."],
+                            ["Delete, Close count, Reset Counts", "Admin only."],
                             ["Hotel filter", "Users with more than one hotel."],
-                            ["Quick Count", "Admins, users with access to an items page, and counting staff (Quick Count users)."]
+                            ["Quick Count and Report broken", "Admins, users with access to an items page, and counting staff (Quick Count users)."]
                         ]
                     },
                     "Which hotels and which department each person sees is set per user on the Users page."
