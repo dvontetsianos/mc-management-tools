@@ -1,0 +1,63 @@
+MC MANAGEMENT TOOLS - TODO
+Last checked against the code: 17/10/2026
+Mark done items with [x], or just delete the line.
+
+
+=== BUGS (fix first) ===
+
+[ ] Deleting a purchase leaves its movement behind (the stock goes back, the movement stays in Movements)
+[ ] Purchases page, user with ONLY purchases access: items, suppliers and locations lists stay empty
+[ ] Change password: accepts an empty password, and the typed text stays there for the next user (after Cancel)
+[ ] Items pages: the Hotel filter lists hotels the user doesn't have
+[ ] Lost & Found: create, claim and unclaim return an empty answer (the screen isn't affected)
+[ ] Users: "all hotels" can be removed from a user who has no hotels
+[ ] Categories: names must be unique across ALL departments (two departments can't both have "Glasses")
+[ ] Two people moving the same item at the same second can create stock (rare)
+
+
+=== HALF DONE ===
+
+[ ] New hotel: its "Unassigned" is only created when the first item is added, not when the hotel is created
+[ ] Requests and Lost & Found per hotel: the database has the column, nothing uses it yet (who sees what)
+[ ] Purchases table, "Received Into": show the hotel name too (Quick Count already does)
+[ ] Quick Count button: only on the F&B page, add it to Housekeeping and Kitchen too
+
+
+=== FEATURES ===
+
+[ ] Par level (waiting for the F&B manager: how they order, fixed numbers per outlet, who keeps them up to date)
+[ ] System Monitor: list unused files in uploads (not used by any item) and remove them
+[ ] Items Excel export: follow each user's Columns choice
+[ ] Purchases: clickable sorting on the table
+[ ] Spend report: department filter
+[ ] Purchase budget per hotel, per year
+[ ] Maintenance: ομαδοποίηση των φθορών και αυτόματη δημιουργία δελτίου καταστροφής
+[ ] Maintenance: χειμερινή φύλαξη
+
+
+=== TECHNICAL ===
+
+[ ] Full paths for uploads and the database (like the logs), so the app doesn't depend on the folder it's started from
+[ ] Move to MySQL? (decide if/when it's needed)
+[ ] Search the app for typos
+
+
+=== NOT CODE ===
+
+[ ] Housekeeping catalogue: import it with Import Items (or the 2 scripts) with the latest Excel
+[ ] Ask Eirini about the kids' bathrobe sizes (4-6, 7-10, 11-12)
+[ ] Close the October count when counting is finished
+[ ] Fill in first/last names and positions on the Users page
+
+
+=== DONE (for reference) ===
+
+[x] Info button on the items pages (F&B, Housekeeping, Kitchen), explanations in Greek and English
+[x] Broken: note when reporting, red chip on the items pages, kept apart from missing
+[x] Quick Count: counted items at the bottom, shows code and size, works for all 3 departments
+[x] Dashboard buttons navigate inside the app
+[x] Suppliers delete button for admins only
+[x] Add Item: categories filtered by department
+[x] Excel export: hotel names, "Assigned" wording, protection against formulas
+[x] Excel Viewer removed, Import Items added
+[x] Users have first name, last name and position
