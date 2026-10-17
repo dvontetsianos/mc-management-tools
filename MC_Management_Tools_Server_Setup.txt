@@ -1,58 +1,35 @@
 ================================================================
 MC MANAGEMENT TOOLS - SERVER SETUP GUIDE
 ================================================================
-For moving the app to a NEW Windows PC, with the data of the
-current server. Do the parts in order. Each command box is one
-paste: paste it, press Enter, wait for it to finish.
+For moving the app to a NEW Windows PC. Parts 1-9 set up the
+new PC with an empty app (no users, no items). The live data
+is copied on the switch day (Part 10).
+
+Do the parts in order. Each command box is one paste: paste
+it, press Enter, wait for it to finish.
 
 Use EXACTLY these two folders (update.bat expects them):
     C:\MC Management Tools      the app
     C:\nssm-2.24                the service tool
 
-"Admin PowerShell" = Start menu -> type PowerShell -> right-click
--> "Run as administrator".
+"Admin PowerShell" = right-click the Start button ->
+"Terminal (Admin)" (or "Windows PowerShell (Admin)") -> Yes.
 
 PORT: the app uses port 8000. If another program on the new PC
 already uses 8000, use 8080 everywhere this guide says 8000
 (service, firewall, test address) and make a new QR code.
 
-
 ----------------------------------------------------------------
-PART 0 - WRITE DOWN FROM THE CURRENT SERVER
-----------------------------------------------------------------
-
-On the CURRENT server, open PowerShell and note the versions:
-
-    python --version
-
-    node --version
-
-Copy the file C:\MC Management Tools\.env to a USB stick.
-It holds SECRET_KEY (keeps everyone logged in after the move)
-and BACKUP_DIR (where backups go). Never send it to anyone,
-never put it in git.
-
-Open Task Scheduler and note the backup task(s): the name, the
-times (03:00 and 12:00) and the "When running the task, use the
-following user account" setting. You'll disable them on the
-switch day.
-
-
-----------------------------------------------------------------
-PART 1 - INSTALL THE SOFTWARE (new PC)
+PART 1 - INSTALL THE SOFTWARE
 ----------------------------------------------------------------
 
-In an Admin PowerShell, one at a time. Use the same Python
-version as the current server (change 3.14 if Part 0 showed
-another one, e.g. 3.13):
+In an Admin PowerShell, one at a time:
 
     winget install -e --id Git.Git --scope machine
 
     winget install -e --id Python.Python.3.14 --scope machine
 
     winget install -e --id OpenJS.NodeJS.LTS --scope machine
-
-    winget install -e --id Microsoft.VisualStudioCode --scope machine
 
 Close PowerShell and open it again, then check:
 
@@ -66,7 +43,6 @@ All three must print a version. If "python" opens the Microsoft
 Store instead: Settings -> Apps -> Advanced app settings -> App
 execution aliases -> switch OFF both "python" entries, then open
 PowerShell again.
-
 
 ----------------------------------------------------------------
 PART 2 - GET THE APP
@@ -82,45 +58,80 @@ In PowerShell (normal is fine):
 
 This gives the "main" branch, the one servers run.
 
-
 ----------------------------------------------------------------
 PART 3 - BACKEND
 ----------------------------------------------------------------
 
-Still in C:\MC Management Tools:
+Use the same PowerShell window as Part 2. The line should start
+with:   PS C:\MC Management Tools>
+
+(If you closed it: open PowerShell and type
+    cd "C:\MC Management Tools"   )
+
+STEP 1 - Create the app's own Python folder
 
     python -m venv .venv
 
-Allow PowerShell to run the activate script (once per user,
-answer Y if asked):
+It takes about 10 seconds and prints nothing. A new folder
+".venv" appears in C:\MC Management Tools. It keeps the app's
+packages apart from the rest of the PC.
+
+STEP 2 - Allow PowerShell to use it (only once on this PC)
 
     Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
+If it asks a question, type Y and press Enter.
+(Windows blocks scripts by default, this allows the one in Step 3.)
+
+STEP 3 - Switch into it
+
     .venv\Scripts\activate
 
-You should now see (.venv) at the start of the line.
+The line now starts with (.venv):
+    (.venv) PS C:\MC Management Tools>
+
+STEP 4 - Install the backend packages
 
     pip install -r requirements.txt
 
-Put the .env from the USB stick in C:\MC Management Tools
-(next to requirements.txt). Open it and check BACKUP_DIR: that
-folder must exist on THIS PC. If it doesn't, create it (or
-change BACKUP_DIR to a folder that does).
+It takes 1-2 minutes and prints a lot. It should end with
+"Successfully installed ...".
 
-Create the two runtime folders:
+STEP 5 - Create the .env file
+
+    python -c "import secrets; print(secrets.token_hex(32))"
+
+It prints a long random code. Copy it.
+
+Open Notepad and type these two lines (paste the code after
+SECRET_KEY=, and use your backup folder):
+
+    SECRET_KEY=paste-the-code-here
+    BACKUP_DIR=D:\MC Backups
+
+Save it in C:\MC Management Tools as:
+    File name:     .env
+    Save as type:  All files (*.*)
+
+The backup folder must exist. If it doesn't, create it.
+Never send this file to anyone, never put it in git.
+
+STEP 6 - Create two empty folders the app needs
 
     mkdir uploads
 
     mkdir logs
 
+(uploads = item photos, logs = backup log)
+If it says "already exists", that's fine.
 
 ----------------------------------------------------------------
 PART 4 - FRONTEND
 ----------------------------------------------------------------
 
-Do NOT create frontend\.env.local. Without it the app talks to
-whatever address it was opened from, so the IP can change any
-time.
+Same PowerShell window. Do NOT create frontend\.env.local.
+Without it the app talks to whatever address it was opened
+from, so the IP can change any time.
 
     cd frontend
 
@@ -135,42 +146,23 @@ update.bat does this for you. The first time it's by hand,
 because update.bat also restarts the service, which doesn't
 exist yet.)
 
-
 ----------------------------------------------------------------
-PART 5 - TEST DATA
-----------------------------------------------------------------
-
-For testing, use a COPY of the current server's data (the real
-copy happens on the switch day, Part 11):
-
-  1. From the current server's backup folder, take the newest
-     zip from database\daily. Unzip it: inside is assets.db.
-     Put it in C:\MC Management Tools (next to requirements.txt).
-  2. Copy the current server's C:\MC Management Tools\uploads
-     folder over the empty uploads folder here.
-
-No create_admin.py and no migrate scripts: this database
-already has the users and every update.
-
-
-----------------------------------------------------------------
-PART 6 - TEST RUN
+PART 5 - TEST RUN
 ----------------------------------------------------------------
 
-In C:\MC Management Tools with (.venv) showing:
+Same PowerShell window, with (.venv) showing. (In a new window:
+cd "C:\MC Management Tools" and then .venv\Scripts\activate)
 
     uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-On this PC open http://localhost:8000 and check:
-  - the login page loads, you can log in
-  - items show with their photos
-  - pressing F5 on an inner page (e.g. F&B Items) still works
+On this PC open http://localhost:8000. The login page must
+load. (You can't log in yet: the app is empty until the switch
+day. That's expected.)
 
 Press Ctrl+C in PowerShell to stop it.
 
-
 ----------------------------------------------------------------
-PART 7 - INSTALL AS A WINDOWS SERVICE (NSSM)
+PART 6 - INSTALL AS A WINDOWS SERVICE (NSSM)
 ----------------------------------------------------------------
 
 Download NSSM 2.24 from https://nssm.cc/download and unzip it so
@@ -195,9 +187,8 @@ In an Admin PowerShell, ONE line at a time:
 The last one must print SERVICE_RUNNING. The service starts by
 itself when Windows starts, even with nobody logged in.
 
-
 ----------------------------------------------------------------
-PART 8 - FIREWALL
+PART 7 - FIREWALL
 ----------------------------------------------------------------
 
 In an Admin PowerShell:
@@ -207,89 +198,123 @@ In an Admin PowerShell:
 From a phone on the same Wi-Fi open http://<this PC's IP>:8000
 (find the IP with "ipconfig", the IPv4 Address line).
 
-
 ----------------------------------------------------------------
-PART 9 - AUTOMATIC BACKUPS (03:00 and 12:00)
+PART 8 - AUTOMATIC BACKUPS (03:00 and 12:00)
 ----------------------------------------------------------------
 
-In an Admin PowerShell, ONE box at a time:
+This creates a Windows task that backs up the app every day at
+03:00 and 12:00. You do it only once.
+
+STEP 1 - Open an Admin PowerShell
+
+Use this SAME window for Steps 2 to 6. Steps 2-4 prepare the
+pieces and Step 5 puts them together. A new window would
+forget them.
+
+STEP 2 - What to run (the backup script)
 
     $action = New-ScheduledTaskAction -Execute "C:\MC Management Tools\.venv\Scripts\python.exe" -Argument "backup_db.py" -WorkingDirectory "C:\MC Management Tools"
 
+It prints nothing. That's normal.
+
+STEP 3 - When (03:00 and 12:00)
+
     $triggers = @((New-ScheduledTaskTrigger -Daily -At 03:00), (New-ScheduledTaskTrigger -Daily -At 12:00))
+
+It prints nothing.
+
+STEP 4 - Extra settings
 
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
 
+It prints nothing.
+(If the PC was off at 03:00, the backup runs as soon as it's
+back on. A backup that takes over 1 hour is stopped.)
+
+STEP 5 - Create the task
+
     Register-ScheduledTask -TaskName "MC Management Tools Backup" -Action $action -Trigger $triggers -Settings $settings -User "SYSTEM" -RunLevel Highest
 
-StartWhenAvailable = if the PC was off at 03:00, the backup runs
-as soon as it's back on.
+It prints a small table with "MC Management Tools Backup"
+and State "Ready".
 
-Test it now:
+STEP 6 - Test it now
 
     Start-ScheduledTask -TaskName "MC Management Tools Backup"
 
-Wait a minute, then check:
-  - BACKUP_DIR\database\daily has a new mc_backup_....zip
-  - BACKUP_DIR\READ ME - backup status.txt says it went fine
-  - if not: C:\MC Management Tools\logs\backup_log.txt says why
+Wait 1 minute. Then in File Explorer open the backup folder
+(the BACKUP_DIR from .env) and check:
+  - database\daily has a new mc_backup_....zip
+  - "READ ME - backup status.txt" says it went fine
+If not: C:\MC Management Tools\logs\backup_log.txt says why.
 
-Note: the task runs as SYSTEM. If .env has BACKUP_SHARE_DIR
-(a network folder), SYSTEM may not be allowed to write there -
-the status file will say so. Local BACKUP_DIR always works.
-
+You can see the task any time: Start -> type "Task Scheduler"
+-> Task Scheduler Library -> "MC Management Tools Backup".
 
 ----------------------------------------------------------------
-PART 10 - FINAL CHECK
+PART 9 - FINAL CHECK
 ----------------------------------------------------------------
 
   1. Restart the PC. Don't log in.
-  2. From a phone, open http://<this PC's IP>:8000. It must load.
-     That proves the app runs on its own.
-
+  2. From a phone, open http://<this PC's IP>:8000. The login
+     page must load. That proves the app runs on its own.
 
 ----------------------------------------------------------------
-PART 11 - THE SWITCH DAY (15-30 minutes, nobody counting)
+PART 10 - THE SWITCH DAY (15-30 minutes, nobody counting)
 ----------------------------------------------------------------
 
-On the CURRENT server (Admin PowerShell):
+By now the current server (the laptop) is at 192.168.208.7.
+
+THE DAY BEFORE (optional, saves time on the day):
+Copy the photos early, the same way as step 4 below, but only
+the uploads folder.
+
+On the CURRENT server:
 
   1. Open the app -> System Monitor -> Back up now.
 
-  2. Stop the app:
+  2. Stop the app (Admin PowerShell):
 
     & "C:\nssm-2.24\win64\nssm.exe" stop MCManagementTools
 
-  3. Copy C:\MC Management Tools\assets.db and the uploads
-     folder to the USB stick (or over the network).
+On the NEW PC:
 
-On the NEW PC (Admin PowerShell):
-
-  4. Stop the app:
+  3. Stop the app (Admin PowerShell):
 
     & "C:\nssm-2.24\win64\nssm.exe" stop MCManagementTools
 
-  5. Replace C:\MC Management Tools\assets.db and the uploads
-     folder with the ones from step 3.
+  4. Copy the live data from the laptop:
+     Press Win + R, type
 
-  6. Start the app:
+         \\192.168.208.7\c$\MC Management Tools
+
+     and press Enter. If it asks, log in with an administrator
+     account of the laptop.
+     Copy assets.db and the uploads folder into this PC's
+     C:\MC Management Tools. Choose "Replace" for assets.db.
+     If you copied the photos the day before, choose "Skip"
+     for the files that already exist (only new photos copy).
+
+  5. Start the app (Admin PowerShell):
 
     & "C:\nssm-2.24\win64\nssm.exe" start MCManagementTools
 
-  7. Check: log in, items, photos, a Quick Count from a phone,
+  6. Check: log in, items, photos, a Quick Count from a phone,
      the open counts are still there.
+     Everyone has to log in again once (the new PC has its own
+     SECRET_KEY). That's expected.
 
 Back on the CURRENT server, so it never runs again by mistake:
 
-  8. Disable the service:
+  7. Disable the service (Admin PowerShell):
 
     & "C:\nssm-2.24\win64\nssm.exe" set MCManagementTools Start SERVICE_DISABLED
 
-  9. Task Scheduler -> right-click its backup task(s) ->
-     Disable. (Two PCs must never back up into the same folder.)
+  8. Task Scheduler -> Task Scheduler Library -> right-click the
+     MC backup task(s) -> Disable. (Two PCs must never back up
+     into the same folder.)
 
 Keep the old PC untouched for a week or two, as a fallback.
-
 
 ----------------------------------------------------------------
 FROM NOW ON - UPDATES
@@ -300,7 +325,6 @@ update.bat. In PowerShell, in C:\MC Management Tools, type
 python and the script's real name, for example:
 
     python migrate_user_names.py
-
 
 ----------------------------------------------------------------
 GOTCHAS
