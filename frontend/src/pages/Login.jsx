@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Box,
     Paper,
@@ -87,6 +87,19 @@ function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+
+    
+    //sent back here because the login ended (e.g. signed out by an admin): say why, once
+    useEffect(() => {
+        try {
+            const reason = sessionStorage.getItem("signed_out_reason");
+            sessionStorage.removeItem("signed_out_reason");
+            if (reason) setError(reason);
+        } catch {
+            //nothing saved
+        }
+    }, []);
 
 
     const handleLogin = async (e) => {

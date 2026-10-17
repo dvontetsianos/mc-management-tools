@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useUserNames } from "../hooks/useUserNames";
+import OnlineUsers from "../components/OnlineUsers";
 import { formatLocalDateTime } from "../utils/formatDate";
 import {
     Box,
@@ -493,6 +494,9 @@ function SystemMonitor() {
                             ]}
                         />
                     </Box>
+
+                    {/* who's online, and signing people out */}
+                    <OnlineUsers />
 
                     {/* recent logins */}
                     <Paper sx={{ p: 2.5, borderRadius: 3, mb: 2 }}>

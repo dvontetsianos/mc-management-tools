@@ -59,9 +59,33 @@ APP_STARTED_AT = datetime.now()
 
 security = HTTPBearer()
 
+#---------------------------------------------------------------------------------
+#every request: is this login still allowed (not signed out, user not deleted)? and note when they were last seen
+def check_session(username: str, issued_at, client_ip):
+    db = SessionLocal()
+    try:
+        db_user = db.query(models.User).filter(models.User.username == username).first()
+
+        if db_user is None:
+            raise HTTPException(status_code=401, detail="This user no longer exists. Please log in again.")
+
+        #signed out by an admin (or the password was changed) after this login was issued
+        if db_user.tokens_valid_after is not None:
+            valid_after_ms = db_user.tokens_valid_after.replace(tzinfo=timezone.utc).timestamp() * 1000
+            if issued_at is None or issued_at <= valid_after_ms:
+                raise HTTPException(status_code=401, detail="You were signed out. Please log in again.")
+
+        #last seen: written at most once a minute, so it costs nothing
+        now = datetime.utcnow()
+        if db_user.last_seen_at is None or (now - db_user.last_seen_at).total_seconds() >= 60 or db_user.last_seen_ip != client_ip:
+            db_user.last_seen_at = now
+            db_user.last_seen_ip = client_ip
+            db.commit()
+    finally:
+        db.close()
 #-----------------------------------------------------------------------------------
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+def get_current_user(request: Request, credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
 
     try:
@@ -74,6 +98,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
 
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
+
+        check_session(username, payload.get("issued_ms"), request.client.host if request.client else None)
         
         return {
             "username": username,
@@ -439,7 +465,8 @@ def create_access_token(data: dict):
 
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire})
+    #"issued_ms" = when this login was issued (in milliseconds), so signing out can cancel older ones
+    to_encode.update({"exp": expire, "issued_ms": int(datetime.now(timezone.utc).timestamp() * 1000)})
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -2211,6 +2238,11 @@ def change_user_password(
 
     db_user.password_hash = pwd_context.hash(password_data.password)
 
+    
+    #a new password ends the user's open sessions (except when admins change their own)
+    if db_user.username != admin["username"]:
+        db_user.tokens_valid_after = datetime.utcnow()
+
     db.commit()
 
     return {
@@ -2218,6 +2250,82 @@ def change_user_password(
     }
 
 
+
+#-------------------------------------------------------------------------
+#who's online: everyone seen in the last hour (a login lasts an hour without activity)
+@app.get("/users/online")
+def get_online_users(
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    since = datetime.utcnow() - timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    users = db.query(models.User).filter(
+        models.User.last_seen_at.isnot(None),
+        models.User.last_seen_at >= since
+    ).order_by(models.User.last_seen_at.desc()).all()
+
+    return [
+        {
+            "id": user.id,
+            "username": user.username,
+            "name": display_name(user),
+            "role": user.role,
+            "logged_in_at": user.last_login_at,
+            "last_seen_at": user.last_seen_at,
+            "ip": user.last_seen_ip,
+            "is_you": user.username == admin["username"]
+        }
+        for user in users
+        #signed out after they were last seen: not online anymore
+        if not (user.tokens_valid_after and user.tokens_valid_after >= user.last_seen_at)
+    ]
+
+#-----------------------------------------------------------------------------------
+#sign out one user: their next click takes them to the login page
+@app.post("/users/{user_id}/sign-out")
+def sign_out_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if db_user.username == admin["username"]:
+        raise HTTPException(status_code=400, detail="To sign yourself out, use Log out")
+
+    db_user.tokens_valid_after = datetime.utcnow()
+    db.commit()
+
+    log_action(db, admin, "signed out", "User", db_user.username, db_user.id)
+
+    return {"message": f"{display_name(db_user)} was signed out"}
+
+#-------------------------------------------------------------------------------------
+#sign out everyone except the admin doing it
+@app.post("/users/sign-out-all")
+def sign_out_all_users(
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+
+    now = datetime.utcnow()
+    count = 0
+
+    for db_user in db.query(models.User).filter(models.User.username != admin["username"]):
+        db_user.tokens_valid_after = now
+        count += 1
+
+    db.commit()
+
+    log_action(db, admin, "signed out everyone", "User", f"{count} users", None)
+
+    return {"message": f"Everyone else was signed out ({count} users)"}
 #----------------------------------------------------------------------------
 #update first name, last name and position
 @app.put("/users/{user_id}/details")
@@ -2460,6 +2568,12 @@ def login(user: schemas.UserLogin, request: Request, db: Session = Depends(get_d
         "department_id": db_user.department_id,
         "hotel_ids": [link.hotel_id for link in db_user.hotel_links]
     })
+
+    #for "who's online" in System Monitor
+    db_user.last_login_at = datetime.utcnow()
+    db_user.last_seen_at = db_user.last_login_at
+    db_user.last_seen_ip = client_host
+    db.commit()
 
     return {
         "access_token": token,
